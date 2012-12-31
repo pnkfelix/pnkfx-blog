@@ -147,7 +147,18 @@ the <code>_deploy/</code> subdirectory is itself a clone of the targetted
 github repository, with the <code>gh-pages</code> branch checked out.
 This can be confusing if your main source tree (the parent
 directory of <code>_deploy/</code>) is itself the same repository as the
-targetted github repository</p></li>
+targetted github repository.</p></li>
+</ul>
+</li>
+<li><p>Update: <code>rake deploy</code> just worked fine for me, password prompts and all.
+I think my earlier difficulty was an artifact of some previous bad
+state, one of either:</p>
+
+<ul>
+<li><p>I had put in a malformatted url for the target repository</p></li>
+<li><p>My target repository already had a <code>gh-pages</code> branch (from earlier
+testing) that needed to be pulled-and-merged (or discarded in some
+fashion, which was what my merge amounted to).</p></li>
 </ul>
 </li>
 </ul>
