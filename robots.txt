@@ -1,4 +1,4 @@
 User-agent: *
 Disallow: 
 
-Sitemap: http://blog.pnkfx.org/sitemap.xml 
+Sitemap: http://github.com.github.com/pnkfelix/pnkfx-blog/sitemap.xml 

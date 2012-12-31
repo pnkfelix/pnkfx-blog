@@ -1,19 +1,19 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>
     <url>
-        <loc>http://blog.pnkfx.org/blog/2012/12/31/hello-world/</loc>
-        <lastmod>2012-12-31T15:10:58+01:00</lastmod>
+        <loc>http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2012/12/31/hello-world/</loc>
+        <lastmod>2012-12-31T15:50:26+01:00</lastmod>
     </url>
     <url>
-        <loc>http://blog.pnkfx.org/blog/archives/</loc>
-        <lastmod>2012-12-31T15:10:58+01:00</lastmod>
+        <loc>http://github.com.github.com/pnkfelix/pnkfx-blog/blog/archives/</loc>
+        <lastmod>2012-12-31T15:50:26+01:00</lastmod>
     </url>
     <url>
-        <loc>http://blog.pnkfx.org/</loc>
-        <lastmod>2012-12-31T15:10:58+01:00</lastmod>
+        <loc>http://github.com.github.com/pnkfelix/pnkfx-blog/</loc>
+        <lastmod>2012-12-31T15:50:26+01:00</lastmod>
     </url>
     <url>
-        <loc>http://blog.pnkfx.org/robots.txt</loc>
+        <loc>http://github.com.github.com/pnkfelix/pnkfx-blog/robots.txt</loc>
         <lastmod>2012-12-31T15:10:58+01:00</lastmod>
     </url>
 </urlset>
