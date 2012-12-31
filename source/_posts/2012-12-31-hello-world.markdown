@@ -34,6 +34,8 @@ Just so I can remind myself of the Octopress basics in the immediate future:
 
       % rake new_post["Hello World"]
 
+* The command `rake generate` will convert the source into static html pages.
+
 * After generating the file (and during subsequent editting), one can preview
   the state locally in a local Ruby webserver via:
 
@@ -43,3 +45,28 @@ Just so I can remind myself of the Octopress basics in the immediate future:
   The `rake preview` invocation will continuously monitor your post
   source files so that you can keep working on your post and then
   reload in your web browser without rerunning `rake` itself.
+
+* The command `rake deploy` is supposed to deploy the content into its intended
+  live location.  I have been having difficulty using this command,
+  in part because I think it is written assuming you have your ssh-key
+  already set up and integrated with github (or something similar) so that
+  there would be no password prompts.
+
+  * But of course I have not done this yet.
+
+  * One important detail about `rake deploy` with github pages is that
+    the `_deploy/` subdirectory is itself a clone of the targetted
+    github repository, with the `gh-pages` branch checked out.
+    This can be confusing if your main source tree (the parent
+    directory of `_deploy/`) is itself the same repository as the
+    targetted github repository.
+
+* Update: `rake deploy` just worked fine for me, password prompts and all.
+  I think my earlier difficulty was an artifact of some previous bad
+  state, one of either:
+
+  * I had put in a malformatted url for the target repository
+
+  * My target repository already had a `gh-pages` branch (from earlier
+    testing) that needed to be pulled-and-merged (or discarded in some
+    fashion, which was what my merge amounted to).
