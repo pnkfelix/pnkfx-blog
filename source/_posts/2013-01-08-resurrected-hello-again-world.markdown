@@ -3,7 +3,7 @@ layout: post
 title: "Resurrected (Hello Again World)"
 date: 2013-01-08 00:55
 comments: false
-categories: 
+categories: octopress github git
 ---
 
 It's Clobbering Time
