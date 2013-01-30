@@ -4,7 +4,7 @@
   <title><![CDATA[Category: gc, | The {pnk}f(eli)x Blog]]></title>
   <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/blog/categories/gc-/atom.xml" rel="self"/>
   <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/"/>
-  <updated>2013-01-30T02:05:14+01:00</updated>
+  <updated>2013-01-30T02:06:25+01:00</updated>
   <id>http://github.com.github.com/pnkfelix/pnkfx-blog/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -18,8 +18,8 @@
     <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/01/29/implicit-versus-explicit-finalization/"/>
     <updated>2013-01-29T22:47:00+01:00</updated>
     <id>http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/01/29/implicit-versus-explicit-finalization</id>
-    <content type="html"><![CDATA[<p>(This post is largely a response to Niko Matsakis's blog post <a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">Destructors and
-Finalizers in Rust</a>.  I started composing it as a comment there,
+    <content type="html"><![CDATA[<p>(This post is largely a response to Niko Matsakis's blog post
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">Destructors and Finalizers in Rust</a>.  I started composing it as a comment there,
 but eventually realized I needed more breathing room.)</p>
 
 <p>I agree wholeheartedly with Niko's statement that the Boehm paper
