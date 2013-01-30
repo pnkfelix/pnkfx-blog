@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: finalizers | The {pnk}f(eli)x Blog]]></title>
+  <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/blog/categories/finalizers/atom.xml" rel="self"/>
+  <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/"/>
+  <updated>2013-01-30T02:05:14+01:00</updated>
+  <id>http://github.com.github.com/pnkfelix/pnkfx-blog/</id>
+  <author>
+    <name><![CDATA[Felix S. Klock II]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Implicit versus Explicit Finalization]]></title>
+    <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/01/29/implicit-versus-explicit-finalization/"/>
+    <updated>2013-01-29T22:47:00+01:00</updated>
+    <id>http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/01/29/implicit-versus-explicit-finalization</id>
+    <content type="html"><![CDATA[<p>(This post is largely a response to Niko Matsakis's blog post <a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">Destructors and
+Finalizers in Rust</a>.  I started composing it as a comment there,
+but eventually realized I needed more breathing room.)</p>
+
+<p>I agree wholeheartedly with Niko's statement that the Boehm paper
+<a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">"Destructors, Finalizers, and Synchronization"</a> is a really nice
+discussion of this topic.
+However, a significant portion of the destructor/finalizer design space is
+only briefly discussed in that paper, and I worry that Niko's post overlooks
+it.</p>
+
+<p>There are designs that do not run finalizers directly from the garbage
+collection process (whether that collector be a coroutine with the mutator, or
+a concurrently running thread), and instead run finalization code
+at explicit points in the code of the mutator (or mutator threads).</p>
+
+<p>To me, such an approach seems appropriate for systems-level programming;
+it seems to align with the spirit of giving the programmer access to the set of
+knobs they need for explicit sequencing and resource management (or rope
+to hang themselves with).</p>
+
+<h2>Explicit Cleanup</h2>
+
+<p>In the <a href="http://www.cs.indiana.edu/~dyb/pubs/guardians-pldi93.pdf">guardian</a> and <a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">reference-queue</a> family of systems (see
+also <a href="http://docs.racket-lang.org/reference/willexecutor.html">wills and executors</a>), resource cleanup code is no longer asynchronously
+run by the GC.  Instead, cleanup is the obligation of the
+mutator.  The only asynchronous cleanup action of the garbage collector
+is to add entries to the appropriate guardians/reference queues (that is, the
+queues associated with an object that has been appropriately registered and
+subsequently discovered to be unreachable).</p>
+
+<p>I have included a more explicit description of what a Guardian API is like in
+the appendix at the end of this blog post, in case the previous paragraph was
+too terse.</p>
+
+<p>With such an API in hand, developers can build <a href="http://repository.readscheme.org/ftp/papers/sw2010/02-hsu.pdf">libraries</a> that one can
+plausibly reason about, in a single- or multi-threaded context.</p>
+
+<p>To be fair: Boehm <em>does</em> address these approaches briefly; see the beginning
+of section 3.5.1 of his paper, "Explicit Finalizer Invocation".  However,
+he also mixes them in with Java's <code>System.runFinalization()</code> and the motivation
+for that method.  Thus one must take care to distinguish which of Boehm's complaints
+apply to all explicit finalization systems, and which apply solely to systems
+such as Java with <code>runFinalization</code> that provide a mix of explicit and implicit finalization.</p>
+
+<h2>Passing the Buck</h2>
+
+<p>One important characteristic (some might say "drawback") of explicit
+finalization approaches is that the mutator does need to periodically process
+its associated guardians/reference queues.  After all, with the transfer of
+responsibility for cleanup from the collector to the mutator, the mutator must
+meet this obligation eventually.</p>
+
+<p>One standard way to do this is to sprinkle cleanup code (i.e. "check if
+guardian has entries; if so, process some of them") at points in the control
+flow of library routines using that guardian.  (In other words, in languages
+with guardians, library designers can hopefully isolate the cleanup code behind the interface of the library that
+requires such cleanup.)</p>
+
+<p>In fact, since there are distinct guardians/reference-queues, one can
+prioritize the scheduling (i.e. frequency and incremental-cost) of the
+cleanups according to the characteristics of individual libraries, within the
+mutator.  Contrast this against relying on the scheduling of the garbage collector with its
+single finalization queue for the whole heap.</p>
+
+<p>The two main problems with explicit cleanup from my point of view are:</p>
+
+<ol>
+<li><p>ensuring that the necessary processing does <em>eventually</em> happen
+(i.e. prevent resource leaks when control does not often (or ever) flow back into the
+developer's library utilizing the guardian), and</p></li>
+<li><p>inserting finalizer invocations across the code of a library detracts
+from its readability; they are a clear example of a cross-cutting concern that
+should be factored into its own "aspect."</p></li>
+</ol>
+
+
+<p>Boehm essentially covers both of the points above (though on first reading I
+only interpreted him as describing the second point):</p>
+
+<blockquote><p>This appears to be the safest way to handle finalization in single-threaded
+code, although it has some clear disadvantages in certain contexts:
+Potentially large amounts of code, especially long running routines, must be
+explicitly sprinkled with finalizer invocations.</p></blockquote>
+
+<p>In the very worst case, in a "normal" imperative language with concurrent
+threads, these last two drawbacks could be addressed by the client-developer:
+the client-developer can set their associated cleanup code to run on a
+distinct thread (that the <em>mutator</em> manages, not the garbage collector).  This
+avoids the ugly sprinkling/cross-cutting of concerns, and should ensure that
+cleanup does eventually occur (assuming correctly-written multi-threaded code,
+"ha ha").</p>
+
+<p>Of course, that last suggestion is essentially reimplementing the GC's
+finalizer thread as a mutator process.  But nonetheless, in principle this
+could be implemented as a library, as long as the appropriate primitives are
+available underneath.</p>
+
+<p>By making explicit finalization expressible as a library,
+the developer community would be free to propose competing API's
+and implementations.  That seems like a good thing for a young
+experimental language.</p>
+
+<p>(One <em>might</em> even be able to develop finalization
+libraries that are "composable", in the sense that different finalization
+libraries could be used by distinct libraries in the same overall program.
+One could coin the term
+<a href="http://en.wikipedia.org/wiki/Decomposing_Composers">"composing decomposers"</a>
+for such things.)</p>
+
+<h2>Wait, what was that about "normal" languages?</h2>
+
+<p>I wrote the end of the previous section intending for it to apply to Rust.
+Then I realized that I do not have enough experience writing Rust programs to
+be certain it is reasonable to develop a mutator-based cleanup process
+that runs on its own thread.</p>
+
+<p>I am only discussing cleanup for structures held in managed-boxes (not in
+owned-boxes or stack-allocated).  It might be feasible to express cleanup
+routines for managed boxes with relatively trivial types in Rust, at least for
+some libraries.</p>
+
+<p>But it might be that in practice, managed boxes would generally have
+types that would make it impossible for a separate thread to extract them from
+a guardian and be able to access their contents.</p>
+
+<p>There is also the serious problem that such a cleanup thread seems likely to require
+the use of mutex locks in order to coordinate with the "real" mutator; this in
+particular seems antithetical to the ideals of Rust.</p>
+
+<p>(Hopefully I will soon acquire sufficient experience with Rust itself to be
+able to address this issue more coherently.)</p>
+
+<!---
+
+----
+
+Another idiosyncrasy with a lot of the guardian-like systems is that they
+enqueue the original object for processing, which is quite counter-intuitive
+when one considers the effort that the GC went through to determine that the
+object was otherwise unreachable.
+
+This perhaps could be addressed by using something like the model described at
+the start of section 3.1 of Boehm's paper, "Alternatives"; namely, instead of
+enqueuing the unreachable object on a reference queue, the GC could instead
+enqueue an associated distinct cleanup object. Boehm states that such a
+cleanup object falls victim to all the same problems, but as I understand it,
+that is only true if it is invoked by the GC in the same way that Java-style
+finalizers are invoked, as described in his paper.
+
+It would be interesting to know whether any managed runtimes offer only
+guardians/reference-queues with this style of distinct associated cleanup
+objects; I am not aware of any myself.  I might attempt to hack one up in the
+future.
+
+--->
+
+
+<h2>Conclusion</h2>
+
+<p>I am not saying this is easy, and I am not saying that the systems I am
+referencing get everything right either.  But finalizers, even those invoked
+from a system-managed asynchronous thread, are not the only answer.</p>
+
+<p>Perhaps my pithy summary is that: Implicit finalizers are indeed inherently
+asynchronous routines; but with explicit finalization, one has more options
+(yet still may be able to fall back on asynchrony if necessary).</p>
+
+<p>So, what does all of this mean for Rust?  Well, Niko already suggested
+limiting destructors solely to types that contain only "owned data."</p>
+
+<p>I have no problem with that, since it clearly deals with all of the issues
+that Boehm described.</p>
+
+<p>But my suspicion is that Rust developers will soon discover that one really
+does need the GC to feed information forward about the managed boxes that it
+is collecting.  And so we will then be at a crossroads: Put in Java-style
+finalizers, or adopt another approach?</p>
+
+<p>My goal is to make sure we remember to consider those other approaches when we
+hit that crossroads.</p>
+
+<h2>References</h2>
+
+<ol>
+<li><a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">"Destructors and Finalizers in Rust"</a>
+<br/>Niko Matsakis
+<br/>Blog post, 2013</li>
+<li><a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">"Destructors, Finalizers, and Synchronization"</a>
+<br/>Hans Boehm
+<br/>HP Tech Report; POPL 2003</li>
+<li><a href="http://www.cs.indiana.edu/~dyb/pubs/guardians-pldi93.pdf">"Guardians in a Generation-Based Garbage Collector"</a>
+<br/>Dybvig, Bruggeman, and Eby
+<br/>PLDI, 1993</li>
+<li><a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">"How to Handle Java Finalization's Memory-Retention Issues"</a>
+<br/>Tony Printezis
+<br/>Tech Report, 2007</li>
+<li><a href="http://docs.racket-lang.org/reference/willexecutor.html">"Wills and Executors"</a>
+<br/>PLT Racket Reference Documentation</li>
+<li><a href="http://repository.readscheme.org/ftp/papers/sw2010/02-hsu.pdf">"Implementing User-level Value-weak Hashtables"</a>
+<br/>Aaron Hsu
+<br/>Scheme Workshop 2010
+<br/>(I only properly appreciated the value (and difficulties) of using guardians for such purposes after I read this paper)</li>
+</ol>
+
+
+<h2>Appendix A. What are Guardians?</h2>
+
+<p>I here outline a concrete example of how this works in the case of Guardians
+(adapted from <a href="http://repository.readscheme.org/ftp/papers/sw2010/02-hsu.pdf">Hsu</a>).  (To aid readability, I have replaced the use of
+procedure-arity-based-dispatch, as written by Hsu to match the Chez Scheme
+API, and I am rewriting his example with a new distinct named procedures .)</p>
+
+<p>One can construct as many guardian instances (or simply "guardians") as one wants.
+Each guardian is associated with two things:</p>
+
+<ol>
+<li><code>reclaimable</code> : a set of objects previously determined to be reclaimable by the garbage collector, and</li>
+<li><code>registry</code> : a set of objects scheduled to be eventually enqueued in the first set.</li>
+</ol>
+
+
+<p>Both of these sets are initially empty when the guardian is constructed.</p>
+
+<pre><code>&gt; (define g (make-guardian))
+&gt; (define v "VAL")
+&gt; (define p (weak-cons v '())
+&gt; (guardian-register! g v)
+
+&gt; (set! v #f)                    ;; Now `"VAL"` is unreachable via strong-refs ...
+&gt; (guardian-fetch! g)            ;; ... but GC has not discovered that yet.
+#f
+
+&gt; (collect-garbage)              ;; `"VAL"` is still unreachable ...
+&gt; p                              ;; ... though one can access via weak paths ...
+("VAL")
+&gt; (define x (guardian-fetch! g)) ;; ... and the guardian held it in `reclaimable`
+&gt; x
+"VAL"
+
+                                 ;; At this point, "VAL" is again strongly reachable
+                                 ;; (via `x`).  However, it is *not* in either of the
+                                 ;; sets for the guardian `g`, and thus is not scheduled
+                                 ;; to be enqueued in the `reclaimable` set.
+
+&gt; (set! x #f)                    ;; Now "VAL" is no longer strongly reachable...
+&gt; (collect-garbage)
+&gt; p                              ;; ... and thus can be reclaimed.
+(#!blank-weak-pointer)
+</code></pre>
+
+<p>So, what does this have to do with finalization?</p>
+
+<p>With the guardian API in hand, one could take care of closing individual
+file descriptors associated with heap-allocated file objects, by
+a protocol such as:</p>
+
+<ol>
+<li><p>Create one guardian G for the file library, whose sole purpose is closing
+file descriptors.</p></li>
+<li><p>In the constructor for file objects, register each constructed file object
+with G.</p></li>
+<li><p>In a periodic process, dequeue objects from G and close their associated
+file descriptors.</p></li>
+</ol>
+
+
+<h2>Appendix B. Another peeve about guardians</h2>
+
+<p>One idiosyncrasy about a lot of the guardian-like systems is that they enqueue
+the original object for processing, which is quite counter-intuitive to me
+given the effort that the GC went through to determine that the object was
+otherwise unreachable.</p>
+
+<p>Perhaps this could be addressed by using something like the model described at
+the start of section 3.1 of Boehm's paper, "Alternatives"; namely, instead of
+enqueuing the unreachable object on a reference queue, the GC could instead
+enqueue an associated distinct cleanup object, and reclaim the originally
+registered object itself. (Boehm states that such a cleanup object falls
+victim to all the same problems, but as I understand it, that is only true if
+it is invoked by the GC in the same way that Java-style finalizers are
+invoked, as described in his paper.)</p>
+
+<p>The associated cleanup object would need to carry any state necessary for the
+cleanup action (e.g., the file descriptor itself).  So that seems like a
+potential for ugly redundancy and wastage (in either time or space, depending
+on whether uses a level of indirection or simply redundantly stores all the
+necessary state in the object and in its associated cleanup object.).</p>
+
+<p>But nonetheless, a decoupled system like this may be easier to reason about,
+especially when one has scenarios where an object is registered with multiple
+guardians/reference-queues.</p>
+
+<p>As far as I understand, the reference queue system in Java, as described by
+<a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">Printezis</a>, is sufficient to express a structure like this.  Still, it
+would be interesting to know whether any managed runtimes offer <em>only</em>
+guardians/reference-queues with this style of distinct associated cleanup
+objects; I am not aware of any that are so conservative.  I might attempt to
+hack one up in the future.</p>
+]]></content>
+  </entry>
+  
+</feed>
