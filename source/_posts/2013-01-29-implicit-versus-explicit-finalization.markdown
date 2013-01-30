@@ -168,7 +168,7 @@ Conclusion
 ----------
 
 I am not saying this is easy, and I am not saying that the systems I am
-referencing get everything right either.  But implcit finalizers, even those invoked
+referencing get everything right either.  But implicit finalizers, even those invoked
 from a system-managed asynchronous thread, are not the only answer.
 
 Perhaps my pithy summary is that: Implicit finalizers are indeed inherently
