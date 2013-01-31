@@ -2,7 +2,7 @@
 layout: post
 title: "Hello World"
 date: 2012-12-31 14:34
-comments: false
+comments: true
 categories: octopress
 ---
 
