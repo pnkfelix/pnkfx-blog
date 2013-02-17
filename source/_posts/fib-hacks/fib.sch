@@ -7,8 +7,8 @@
     (let* ((start (call-with-values current-utc-time cons))
            (result (thunk))
            (finis (call-with-values current-utc-time cons))
-           (delta (delay (- (+ (* (car finis) #e10e9) (cdr finis))
-                            (+ (* (car start) #e10e9) (cdr start))))))
+           (delta (- (+ (* (car finis) #e10e9) (cdr finis))
+                     (+ (* (car start) #e10e9) (cdr start)))))
       (cons result delta)))
 
   (define (add-left-padding str len)
@@ -17,7 +17,7 @@
         (string-append (make-string (- len (string-length str))) str)))
 
   (define (report expr result delta)
-    (let* ((dsecs (/ (floor (/ (force delta) #e10e7)) 100)))
+    (let* ((dsecs (/ (floor (/ delta #e10e7)) 100)))
       (for-each display (list expr
                               ": " (add-left-padding (number->string result) 10)
                               " elapsed: " (inexact dsecs)))
