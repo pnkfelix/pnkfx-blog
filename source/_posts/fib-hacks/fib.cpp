@@ -3,7 +3,7 @@
 #include <CoreServices/CoreServices.h>
 #include <mach/mach_time.h>
 
-uint32_t fib(uint32_t n) {
+static uint32_t fib(uint32_t n) {
     return (n < 2) ? 1 : (fib(n-1) + fib(n-2));
 }
 
@@ -13,7 +13,7 @@ template<typename T, typename U> struct pair {
 };
 
 template<typename T>
-pair<T, uint64_t> timeit(T thunk()) {
+static pair<T, uint64_t> timeit(T thunk()) {
     uint64_t start = mach_absolute_time();
     T result = thunk();
     uint64_t finis = mach_absolute_time();
@@ -25,19 +25,19 @@ pair<T, uint64_t> timeit(T thunk()) {
     return p;
 }
 
-void report(const char *expr, uint32_t result, uint64_t delta) {
+static void report(const char *expr, uint32_t result, uint64_t delta) {
     uint32_t dsecs = delta / 1000000000;
     uint32_t dnanos = uint32_t(delta % 1000000000);
     uint32_t dsuffix = dnanos / 10000000;
     printf("%s: %10u elapsed: %u.%02us\n", expr, result, dsecs, dsuffix);
 }
 
-uint32_t fib10() { return fib(10); }
-uint32_t fib20() { return fib(20); }
-uint32_t fib30() { return fib(30); }
-uint32_t fib40() { return fib(40); }
-uint32_t fib41() { return fib(41); }
-uint32_t fib42() { return fib(42); }
+static uint32_t fib10() { return fib(10); }
+static uint32_t fib20() { return fib(20); }
+static uint32_t fib30() { return fib(30); }
+static uint32_t fib40() { return fib(40); }
+static uint32_t fib41() { return fib(41); }
+static uint32_t fib42() { return fib(42); }
 
 int main() {
     pair<uint32_t, uint64_t> rd1 = timeit(fib10);

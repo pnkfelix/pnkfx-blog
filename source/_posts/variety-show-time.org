@@ -37,6 +37,7 @@ user	0m6.091s
 sys	0m0.002s
 
 ** Larceny
+   CLOCK: [2013-02-17 Sun 12:02]--[2013-02-17 Sun 12:05] =>  0:03
    CLOCK: [2013-02-17 Sun 04:33]--[2013-02-17 Sun 04:38] =>  0:05
    CLOCK: [2013-02-17 Sun 04:23]--[2013-02-17 Sun 04:33] =>  0:10
    CLOCK: [2013-02-17 Sun 04:14]--[2013-02-17 Sun 04:23] =>  0:00
@@ -60,6 +61,7 @@ sys	0m0.002s
      the C++ eval.)
 
 ** Comparison notes
+   CLOCK: [2013-02-17 Sun 12:05]--[2013-02-17 Sun 12:06] =>  0:01
    CLOCK: [2013-02-17 Sun 03:27]--[2013-02-17 Sun 03:35] =>  0:08
 
    * So, the initial comparison is quite interesting, if you ask me:
@@ -288,3 +290,5 @@ sys	0m0.469s
       competitively fast with Rust, and also that I do not necessarily
       have to lift all of its lambda expressions to defined procedures
       in order to do so.
+
+    * (Nor did it matter for Rust either, AFAICT.  That's good news.)

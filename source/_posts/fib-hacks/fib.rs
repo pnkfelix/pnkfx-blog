@@ -29,12 +29,12 @@ fn fib42() -> uint { fib(42) }
 
 extern mod std;
 fn main () {
-    let (result1, delta1) = timeit(fib10);
-    let (result2, delta2) = timeit(fib20);
-    let (result3, delta3) = timeit(fib30);
-    let (result4, delta4) = timeit(fib40);
-    let (result5, delta5) = timeit(fib41);
-    let (result6, delta6) = timeit(fib42);
+    let (result1, delta1) = timeit(fn~ () -> uint { fib(10) });
+    let (result2, delta2) = timeit(fn~ () -> uint { fib(20) });
+    let (result3, delta3) = timeit(fn~ () -> uint { fib(30) });
+    let (result4, delta4) = timeit(fn~ () -> uint { fib(40) });
+    let (result5, delta5) = timeit(fn~ () -> uint { fib(41) });
+    let (result6, delta6) = timeit(fn~ () -> uint { fib(42) });
     report("fib(10)", result1, delta1);
     report("fib(20)", result2, delta2);
     report("fib(30)", result3, delta3);
