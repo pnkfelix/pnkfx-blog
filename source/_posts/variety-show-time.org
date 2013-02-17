@@ -1,8 +1,3 @@
-* Taking notes
-  CLOCK: [2013-02-17 Sun 02:16]--[2013-02-17 Sun 02:20] =>  0:04
-  CLOCK: [2013-02-17 Sun 02:15]--[2013-02-17 Sun 02:16] =>  0:00
-
-
 * Fib hacks
 ** Rust
    CLOCK: [2013-02-17 Sun 02:20]--[2013-02-17 Sun 02:31] =>  0:11
@@ -42,12 +37,21 @@ user	0m6.091s
 sys	0m0.002s
 
 ** Larceny
+   CLOCK: [2013-02-17 Sun 04:33]--[2013-02-17 Sun 04:38] =>  0:05
+   CLOCK: [2013-02-17 Sun 04:23]--[2013-02-17 Sun 04:33] =>  0:10
+   CLOCK: [2013-02-17 Sun 04:14]--[2013-02-17 Sun 04:23] =>  0:00
    CLOCK: [2013-02-17 Sun 02:31]--[2013-02-17 Sun 03:27] =>  0:56
 
    * Wow, got way bogged down in trying to figure out the syntax for
      Larceny's format specifiers.  Crazy.
 
+   * Then got sucked in trying to find all the ways I might
+     speed up the Larceny code.
+     E.g. -unsafe, (compiler-switches 'fast-unsafe), fx+
+     Me, biased, no...  BUT I think I accompished the job.  :)
+
 ** C++
+   CLOCK: [2013-02-17 Sun 04:04]--[2013-02-17 Sun 04:14] =>  0:00
    CLOCK: [2013-02-17 Sun 03:36]--[2013-02-17 Sun 04:04] =>  0:28
 
    * I cheated here and did not use actual closures.  To be fair,
@@ -55,8 +59,10 @@ sys	0m0.002s
      do the same.  I will do that now (and charge the effort to
      the C++ eval.)
 
-** So, the initial comparison is quite interesting, if you ask me:
+** Comparison notes
    CLOCK: [2013-02-17 Sun 03:27]--[2013-02-17 Sun 03:35] =>  0:08
+
+   * So, the initial comparison is quite interesting, if you ask me:
 
 ```transcript
 bash -c "time larceny -- -e '(compile-file \"fib.sch\")' -e '(exit)'"
@@ -218,3 +224,67 @@ fib(42):  433494437 elapsed: 0.97s
 real	0m1.956s
 user	0m1.948s
 sys	0m0.007s
+
+    * After putting in all of: -unsafe to runtime, 'fast-unsafe at compile time,
+      *and* <:fix:fix and fx- in the fib code, I get the following:
+
+bash -c "time larceny -- -e '(compiler-switches (quote fast-unsafe))' -e '(compile-file \"fib.sch\")' -e '(exit)'"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+
+real	0m0.053s
+user	0m0.038s
+sys	0m0.014s
+bash -c "time larceny -unsafe -nobanner -- fib.fasl"
+fib(10):         89 elapsed: 0.0
+fib(20):      10946 elapsed: 0.0
+fib(30):    1346269 elapsed: 0.0
+fib(40):  165580141 elapsed: 0.99
+fib(41):  267914296 elapsed: 1.0
+fib(42):  433494437 elapsed: 2.99
+
+real	0m5.237s
+user	0m5.216s
+sys	0m0.018s
+bash -c "time rustc -o rust-fib fib.rs"
+warning: no debug symbols in executable (-arch x86_64)
+
+real	0m0.987s
+user	0m0.434s
+sys	0m0.162s
+bash -c "time ./rust-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 1.18s
+fib(41):  267914296 elapsed: 1.92s
+fib(42):  433494437 elapsed: 3.10s
+
+real	0m6.230s
+user	0m6.224s
+sys	0m0.003s
+bash -c "time g++ -framework CoreServices -O2 -o cxx-fib fib.cpp"
+
+real	0m0.785s
+user	0m0.290s
+sys	0m0.261s
+bash -c "time ./cxx-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 0.36s
+fib(41):  267914296 elapsed: 0.59s
+fib(42):  433494437 elapsed: 0.95s
+
+real	0m1.925s
+user	0m1.922s
+sys	0m0.002s
+
+real	0m15.237s
+user	0m14.132s
+sys	0m0.469s
+
+    * I think this is a good place for me to stop the investigation
+      for tonight.  I have managed to prove that I can get Larceny
+      competitively fast with Rust, and also that I do not necessarily
+      have to lift all of its lambda expressions to defined procedures
+      in order to do so.
