@@ -62,7 +62,7 @@ sys	0m0.002s
      the C++ eval.)
 
 ** Clojure
-   CLOCK: [2013-02-17 Sun 13:37]
+   CLOCK: [2013-02-17 Sun 13:37]--[2013-02-17 Sun 14:24] =>  0:51
    CLOCK: [2013-02-17 Sun 13:17]--[2013-02-17 Sun 13:32] =>  0:15
 
    * Okay, this is one that will be interesting.
@@ -75,8 +75,34 @@ sys	0m0.002s
    * To load a file and then initiate the repl, do:
      clj -i <file.clj> -r
 
-   * To compile a file into the 
+   * To compile a file into the current directory (so that you
+     can use '.' as one of the appropriate entries to add to
+     the classpath), do:
+
+     clj -e '(do (set! *compile-path* ".") (compile (quote fib)))'
+
+     (note that many class files are generated, which is a reason
+      one might prefer to emit the compiled code into classes/
+      as is the default)
+
+   * But it does not suffice to solely put '.' or './classes/' on the
+     classpath; one must also put the appropriate clojure.jar on it.
+     This can be programmatically extracted from 
+
+** Node
+   CLOCK: [2013-02-17 Sun 20:53]--[2013-02-17 Sun 21:01] =>  0:08
+   CLOCK: [2013-02-17 Sun 17:41]--[2013-02-17 Sun 17:52] =>  0:11
+   CLOCK: [2013-02-17 Sun 15:04]--[2013-02-17 Sun 15:40] =>  0:36
+
+   * Decided to install the microtime module (for parity with other
+     runtimes that are using nanosecond-based measurement utilties)
+     rather than learn how to reimplement it myself (though maybe that
+     would not be so hard).
+
 ** Comparison notes
+   CLOCK: [2013-02-17 Sun 21:01]--[2013-02-17 Sun 21:05] =>  0:04
+   CLOCK: [2013-02-17 Sun 14:45]--[2013-02-17 Sun 14:46] =>  0:19
+   CLOCK: [2013-02-17 Sun 14:24]--[2013-02-17 Sun 14:29] =>  0:05
    CLOCK: [2013-02-17 Sun 12:05]--[2013-02-17 Sun 12:06] =>  0:01
    CLOCK: [2013-02-17 Sun 03:27]--[2013-02-17 Sun 03:35] =>  0:08
 
@@ -390,3 +416,208 @@ real	0m5.017s
 user	0m5.015s
 sys	0m0.001s
 ```
+    * So now that we have Clojure in the mix, how do things look:
+
+```transcript
+bash -c "time larceny -- -e '(compiler-switches (quote default))' -e '(compile-file \"fib.sch\" \"fib.fasl\")' -e '(exit)'"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+
+real	0m0.058s
+user	0m0.045s
+sys	0m0.011s
+bash -c "time larceny -- -e '(compiler-switches (quote fast-unsafe))' -e '(compile-file \"fib.sch\" \"unsafe-fib.fasl\")' -e '(exit)'"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+
+real	0m0.049s
+user	0m0.036s
+sys	0m0.011s
+bash -c "time larceny -unsafe -nobanner -- unsafe-fib.fasl"
+fib(10):         89 elapsed: 0.0
+fib(20):      10946 elapsed: 0.0
+fib(30):    1346269 elapsed: 0.0
+fib(40):  165580141 elapsed: 0.99
+fib(41):  267914296 elapsed: 1.99
+fib(42):  433494437 elapsed: 2.0
+fib(43):  701408733 elapsed: 4.99
+
+real	0m9.791s
+user	0m9.774s
+sys	0m0.015s
+bash -c "time larceny -nobanner -- fib.fasl"
+fib(10):         89 elapsed: 0.0
+fib(20):      10946 elapsed: 0.0
+fib(30):    1346269 elapsed: 0.0
+fib(40):  165580141 elapsed: 1.0
+fib(41):  267914296 elapsed: 2.0
+fib(42):  433494437 elapsed: 3.99
+fib(43):  701408733 elapsed: 5.0
+
+real	0m12.454s
+user	0m12.437s
+sys	0m0.015s
+bash -c "time rustc -o rust-fib fib.rs"
+warning: no debug symbols in executable (-arch x86_64)
+
+real	0m0.429s
+user	0m0.398s
+sys	0m0.034s
+bash -c "time ./rust-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 1.15s
+fib(41):  267914296 elapsed: 1.86s
+fib(42):  433494437 elapsed: 3.02s
+fib(43):  701408733 elapsed: 4.87s
+
+real	0m10.942s
+user	0m10.939s
+sys	0m0.003s
+bash -c "time g++ -framework CoreServices -O2 -o cxx-fib fib.cpp"
+
+real	0m0.312s
+user	0m0.271s
+sys	0m0.039s
+bash -c "time ./cxx-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 0.53s
+fib(41):  267914296 elapsed: 0.85s
+fib(42):  433494437 elapsed: 1.38s
+fib(43):  701408733 elapsed: 2.23s
+
+real	0m5.015s
+user	0m5.013s
+sys	0m0.001s
+mkdir classes
+bash -c "time clj -e '(compile (quote fib))'"
+fib
+
+real	0m0.915s
+user	0m1.537s
+sys	0m0.072s
+bash -c "time java -cp "/Users/pnkfelix/Dev/Homebrew/homebrew/Cellar/clojure/1.4.0/clojure-1.4.0.jar":classes fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.01s
+fib(40):  165580141 elapsed: 0.40s
+fib(41):  267914296 elapsed: 0.66s
+fib(42):  433494437 elapsed: 1.05s
+fib(43):  701408733 elapsed: 1.70s
+
+real	0m39.296s
+user	0m39.913s
+sys	0m0.094s
+```
+
+    * Okay now I have added node.js as well.
+
+```transcript
+bash -c "time larceny -- -e '(compiler-switches (quote default))' -e '(compile-file \"fib.sch\" \"fib.fasl\")' -e '(exit)'"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+
+real	0m0.103s
+user	0m0.048s
+sys	0m0.019s
+bash -c "time larceny -- -e '(compiler-switches (quote fast-unsafe))' -e '(compile-file \"fib.sch\" \"unsafe-fib.fasl\")' -e '(exit)'"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+
+real	0m0.049s
+user	0m0.036s
+sys	0m0.012s
+bash -c "time larceny -unsafe -nobanner -- unsafe-fib.fasl"
+fib(10):         89 elapsed: 0.0
+fib(20):      10946 elapsed: 0.0
+fib(30):    1346269 elapsed: 0.0
+fib(40):  165580141 elapsed: 0.99
+fib(41):  267914296 elapsed: 1.0
+fib(42):  433494437 elapsed: 2.99
+fib(43):  701408733 elapsed: 4.0
+
+real	0m9.780s
+user	0m9.742s
+sys	0m0.019s
+bash -c "time larceny -nobanner -- fib.fasl"
+fib(10):         89 elapsed: 0.0
+fib(20):      10946 elapsed: 0.0
+fib(30):    1346269 elapsed: 0.0
+fib(40):  165580141 elapsed: 1.0
+fib(41):  267914296 elapsed: 2.0
+fib(42):  433494437 elapsed: 3.0
+fib(43):  701408733 elapsed: 5.99
+
+real	0m12.493s
+user	0m12.476s
+sys	0m0.014s
+bash -c "time rustc -o rust-fib fib.rs"
+warning: no debug symbols in executable (-arch x86_64)
+
+real	0m1.074s
+user	0m0.435s
+sys	0m0.184s
+bash -c "time ./rust-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 1.14s
+fib(41):  267914296 elapsed: 1.85s
+fib(42):  433494437 elapsed: 3.03s
+fib(43):  701408733 elapsed: 4.86s
+
+real	0m10.937s
+user	0m10.915s
+sys	0m0.004s
+bash -c "time g++ -framework CoreServices -O2 -o cxx-fib fib.cpp"
+
+real	0m0.902s
+user	0m0.315s
+sys	0m0.288s
+bash -c "time ./cxx-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 0.53s
+fib(41):  267914296 elapsed: 0.85s
+fib(42):  433494437 elapsed: 1.38s
+fib(43):  701408733 elapsed: 2.23s
+
+real	0m5.012s
+user	0m5.010s
+sys	0m0.001s
+mkdir classes
+bash -c "time clj -e '(compile (quote fib))'"
+fib
+
+real	0m0.920s
+user	0m1.550s
+sys	0m0.069s
+bash -c "time java -cp "/Users/pnkfelix/Dev/Homebrew/homebrew/Cellar/clojure/1.4.0/clojure-1.4.0.jar":classes fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.01s
+fib(40):  165580141 elapsed: 0.40s
+fib(41):  267914296 elapsed: 0.64s
+fib(42):  433494437 elapsed: 1.03s
+fib(43):  701408733 elapsed: 1.68s
+
+real	0m38.667s
+user	0m39.288s
+sys	0m0.094s
+bash -c "time node fib.js"
+fib(10):         89 elapsed: 0.00
+fib(20):      10946 elapsed: 0.00
+fib(30):    1346269 elapsed: 0.01
+fib(40):  165580141 elapsed: 1.33
+fib(41):  267914296 elapsed: 2.16
+fib(42):  433494437 elapsed: 3.49
+fib(43):  701408733 elapsed: 5.66
+
+real	0m12.721s
+user	0m12.729s
+sys	0m0.044s
+```
+    * So, it reamins interesting that clojure outperforms C++.
+
+    * I am going to upgrade for fib(44) for one last run, and then
+      I will move on to Earley parsing.

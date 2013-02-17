@@ -1,5 +1,5 @@
-# test-one: test-clj
-test-all: test-larc test-rust test-cxx test-clj
+# test-one: test-node
+test-all: test-larc test-rust test-cxx test-clj test-node
 
 clean:
 	rm -f fib.fasl unsafe-fib.fasl rust-fib cxx-fib
@@ -7,6 +7,9 @@ clean:
 	rm -rf rust-fib.dSYM
 
 CLJJAR:=$(shell clj -e '(-> clojure.lang.Atom (.getProtectionDomain) (.getCodeSource) (.getLocation) (.getPath))')
+
+test-node: fib.js
+	bash -c "time node $<"
 
 test-clj: classes/fib.class
 	bash -c "time java -cp $(CLJJAR):classes fib"
