@@ -731,3 +731,25 @@ real	0m22.372s
 user	0m22.392s
 sys	0m0.080s
 ```
+
+* earley hacks
+** General Earley notes
+   CLOCK: [2013-02-17 Sun 21:31]--[2013-02-17 Sun 21:43] =>  0:12
+   CLOCK: [2013-02-17 Sun 21:31]--[2013-02-17 Sun 21:31] =>  0:00
+   CLOCK: [2013-02-17 Sun 21:16]--[2013-02-17 Sun 21:26] =>  0:10
+
+** Larceny
+   CLOCK: [2013-02-17 Sun 21:56]--[2013-02-17 Sun 23:57] =>  2:01
+   CLOCK: [2013-02-17 Sun 21:54]--[2013-02-17 Sun 21:55] =>  0:01
+   CLOCK: [2013-02-17 Sun 21:43]--[2013-02-17 Sun 21:52] =>  0:09
+
+   * There's a lot of stuff in the Earley paper that implies
+     "I like dynamic languages" -- e.g. the injection of extra values
+     like `phi` or `eos` into the primitive domains of nontermanal and
+     terminal.
+
+     So far I am modelling `phi` as #t and `eos` as #\nul; but we will
+     see how that goes.
+
+     Keeping the types straight is tricky; keeping them honest in the
+     doc comments is even trickier.
