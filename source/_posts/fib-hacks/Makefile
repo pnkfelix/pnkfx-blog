@@ -1,5 +1,4 @@
-test-one: test-clj
-
+# test-one: test-clj
 test-all: test-larc test-rust test-cxx test-clj
 
 clean:
