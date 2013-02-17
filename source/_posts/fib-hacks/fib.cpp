@@ -38,6 +38,7 @@ static uint32_t fib30() { return fib(30); }
 static uint32_t fib40() { return fib(40); }
 static uint32_t fib41() { return fib(41); }
 static uint32_t fib42() { return fib(42); }
+static uint32_t fib43() { return fib(43); }
 
 int main() {
     pair<uint32_t, uint64_t> rd1 = timeit(fib10);
@@ -46,11 +47,13 @@ int main() {
     pair<uint32_t, uint64_t> rd4 = timeit(fib40);
     pair<uint32_t, uint64_t> rd5 = timeit(fib41);
     pair<uint32_t, uint64_t> rd6 = timeit(fib42);
+    pair<uint32_t, uint64_t> rd7 = timeit(fib43);
     report("fib(10)", rd1.t, rd1.u);
     report("fib(20)", rd2.t, rd2.u);
     report("fib(30)", rd3.t, rd3.u);
     report("fib(40)", rd4.t, rd4.u);
     report("fib(41)", rd5.t, rd5.u);
     report("fib(42)", rd6.t, rd6.u);
+    report("fib(43)", rd7.t, rd7.u);
     return 0;
 }
