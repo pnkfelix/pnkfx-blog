@@ -162,3 +162,59 @@ fib(42):  433494437 elapsed: 0.96s
 real	0m1.946s
 user	0m1.944s
 sys	0m0.001s
+
+    * The Larceny results seem quite noisy: the elapsed time seems
+      to jump up and down by a second without an immediately
+      discernable reason (though garbage collection of the state
+      being allocated for the time calculations seems possible)
+
+bash -c "time larceny -- -e '(compile-file \"fib.sch\")' -e '(exit)'"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+
+real	0m0.070s
+user	0m0.051s
+sys	0m0.015s
+bash -c "time larceny -nobanner -- fib.fasl"
+fib(10):         89 elapsed: 0.0
+fib(20):      10946 elapsed: 0.0
+fib(30):    1346269 elapsed: 0.0
+fib(40):  165580141 elapsed: 1.0
+fib(41):  267914296 elapsed: 2.0
+fib(42):  433494437 elapsed: 3.99
+
+real	0m8.024s
+user	0m7.992s
+sys	0m0.019s
+bash -c "time rustc -o rust-fib fib.rs"
+warning: no debug symbols in executable (-arch x86_64)
+
+real	0m0.947s
+user	0m0.433s
+sys	0m0.145s
+bash -c "time ./rust-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 1.18s
+fib(41):  267914296 elapsed: 1.93s
+fib(42):  433494437 elapsed: 3.11s
+
+real	0m6.259s
+user	0m6.241s
+sys	0m0.004s
+bash -c "time g++ -framework CoreServices -O2 -o cxx-fib fib.cpp"
+
+real	0m0.955s
+user	0m0.306s
+sys	0m0.437s
+bash -c "time ./cxx-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 0.36s
+fib(41):  267914296 elapsed: 0.60s
+fib(42):  433494437 elapsed: 0.97s
+
+real	0m1.956s
+user	0m1.948s
+sys	0m0.007s
