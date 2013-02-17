@@ -18,6 +18,7 @@
 
    * So, results for Rust on Fib:
 
+```transcript
 bash -c "time rustc -o fib fib.rs"
 warning: no debug symbols in executable (-arch x86_64)
 
@@ -35,7 +36,7 @@ fib(42):  433494437 elapsed: 3.05s
 real	0m6.094s
 user	0m6.091s
 sys	0m0.002s
-
+```
 ** Larceny
    CLOCK: [2013-02-17 Sun 12:02]--[2013-02-17 Sun 12:05] =>  0:03
    CLOCK: [2013-02-17 Sun 04:33]--[2013-02-17 Sun 04:38] =>  0:05
@@ -60,12 +61,27 @@ sys	0m0.002s
      do the same.  I will do that now (and charge the effort to
      the C++ eval.)
 
+** Clojure
+   CLOCK: [2013-02-17 Sun 13:37]
+   CLOCK: [2013-02-17 Sun 13:17]--[2013-02-17 Sun 13:32] =>  0:15
+
+   * Okay, this is one that will be interesting.
+
+   * For parity with Larceny's approach, I should employ AOT
+     compilation.
+
+   * But lets just get the simplest thing working first.
+
+   * To load a file and then initiate the repl, do:
+     clj -i <file.clj> -r
+
+   * To compile a file into the 
 ** Comparison notes
    CLOCK: [2013-02-17 Sun 12:05]--[2013-02-17 Sun 12:06] =>  0:01
    CLOCK: [2013-02-17 Sun 03:27]--[2013-02-17 Sun 03:35] =>  0:08
 
    * So, the initial comparison is quite interesting, if you ask me:
-
+
 ```transcript
 bash -c "time larceny -- -e '(compile-file \"fib.sch\")' -e '(exit)'"
 Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
@@ -119,7 +135,8 @@ sys	0m0.006s
       (but it is not a true Apples to Apples comparison since both Rust
       and Larceny are using at-least-something approximating a closure,
       while C++ is just using a function pointer and code duplication.)
-
+
+```transcript
 bash -c "time larceny -- -e '(compile-file \"fib.sch\")' -e '(exit)'"
 Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
 
@@ -170,12 +187,14 @@ fib(42):  433494437 elapsed: 0.96s
 real	0m1.946s
 user	0m1.944s
 sys	0m0.001s
+```
 
     * The Larceny results seem quite noisy: the elapsed time seems
       to jump up and down by a second without an immediately
       discernable reason (though garbage collection of the state
       being allocated for the time calculations seems possible)
-
+
+```transcript
 bash -c "time larceny -- -e '(compile-file \"fib.sch\")' -e '(exit)'"
 Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
 
@@ -226,10 +245,12 @@ fib(42):  433494437 elapsed: 0.97s
 real	0m1.956s
 user	0m1.948s
 sys	0m0.007s
+```
 
     * After putting in all of: -unsafe to runtime, 'fast-unsafe at compile time,
-      *and* <:fix:fix and fx- in the fib code, I get the following:
-
+      *and* `<:fix:fix` and `fx-` in the fib code, I get the following:
+
+```transcript
 bash -c "time larceny -- -e '(compiler-switches (quote fast-unsafe))' -e '(compile-file \"fib.sch\")' -e '(exit)'"
 Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
 
@@ -284,6 +305,7 @@ sys	0m0.002s
 real	0m15.237s
 user	0m14.132s
 sys	0m0.469s
+```
 
     * I think this is a good place for me to stop the investigation
       for tonight.  I have managed to prove that I can get Larceny
@@ -292,3 +314,79 @@ sys	0m0.469s
       in order to do so.
 
     * (Nor did it matter for Rust either, AFAICT.  That's good news.)
+
+    * Pumped values up to fib(43) and made separate safe/unsafe Larceny variants
+
+```transcript
+bash -c "time larceny -- -e '(compiler-switches (quote default))' -e '(compile-file \"fib.sch\" \"fib.fasl\")' -e '(exit)'"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+
+real	0m0.078s
+user	0m0.060s
+sys	0m0.016s
+bash -c "time larceny -- -e '(compiler-switches (quote fast-unsafe))' -e '(compile-file \"fib.sch\" \"unsafe-fib.fasl\")' -e '(exit)'"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+
+real	0m0.066s
+user	0m0.045s
+sys	0m0.018s
+bash -c "time larceny -unsafe -nobanner -- unsafe-fib.fasl"
+fib(10):         89 elapsed: 0.0
+fib(20):      10946 elapsed: 0.0
+fib(30):    1346269 elapsed: 0.0
+fib(40):  165580141 elapsed: 0.99
+fib(41):  267914296 elapsed: 1.99
+fib(42):  433494437 elapsed: 2.0
+fib(43):  701408733 elapsed: 4.0
+
+real	0m9.667s
+user	0m9.640s
+sys	0m0.024s
+bash -c "time larceny -nobanner -- fib.fasl"
+fib(10):         89 elapsed: 0.0
+fib(20):      10946 elapsed: 0.0
+fib(30):    1346269 elapsed: 0.0
+fib(40):  165580141 elapsed: 1.0
+fib(41):  267914296 elapsed: 2.0
+fib(42):  433494437 elapsed: 3.0
+fib(43):  701408733 elapsed: 5.99
+
+real	0m12.423s
+user	0m12.406s
+sys	0m0.015s
+bash -c "time rustc -o rust-fib fib.rs"
+warning: no debug symbols in executable (-arch x86_64)
+
+real	0m0.444s
+user	0m0.413s
+sys	0m0.032s
+bash -c "time ./rust-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 1.14s
+fib(41):  267914296 elapsed: 1.85s
+fib(42):  433494437 elapsed: 2.99s
+fib(43):  701408733 elapsed: 4.85s
+
+real	0m10.863s
+user	0m10.859s
+sys	0m0.002s
+bash -c "time g++ -framework CoreServices -O2 -o cxx-fib fib.cpp"
+
+real	0m0.308s
+user	0m0.269s
+sys	0m0.038s
+bash -c "time ./cxx-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 0.52s
+fib(41):  267914296 elapsed: 0.85s
+fib(42):  433494437 elapsed: 1.37s
+fib(43):  701408733 elapsed: 2.24s
+
+real	0m5.017s
+user	0m5.015s
+sys	0m0.001s
+```
