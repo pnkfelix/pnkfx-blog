@@ -25,6 +25,7 @@
         [result5 delta5] (timeit (fn [] (fib 41)))
         [result6 delta6] (timeit (fn [] (fib 42)))
         [result7 delta7] (timeit (fn [] (fib 43)))
+        [result8 delta8] (timeit (fn [] (fib 44)))
         ]
     (report "fib(10)" result1 delta1)
     (report "fib(20)" result2 delta2)
@@ -33,4 +34,5 @@
     (report "fib(41)" result5 delta5)
     (report "fib(42)" result6 delta6)
     (report "fib(43)" result7 delta7)
+    (report "fib(44)" result8 delta8)
     ))

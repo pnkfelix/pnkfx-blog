@@ -621,3 +621,113 @@ sys	0m0.044s
 
     * I am going to upgrade for fib(44) for one last run, and then
       I will move on to Earley parsing.
+
+```transcript
+bash -c "time larceny -- -e '(compiler-switches (quote default))' -e '(compile-file \"fib.sch\" \"fib.fasl\")' -e '(exit)'"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+
+real	0m0.064s
+user	0m0.050s
+sys	0m0.013s
+bash -c "time larceny -- -e '(compiler-switches (quote fast-unsafe))' -e '(compile-file \"fib.sch\" \"unsafe-fib.fasl\")' -e '(exit)'"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+
+real	0m0.052s
+user	0m0.038s
+sys	0m0.012s
+bash -c "time larceny -unsafe -nobanner -- unsafe-fib.fasl"
+fib(10):         89 elapsed: 0.0
+fib(20):      10946 elapsed: 0.0
+fib(30):    1346269 elapsed: 0.0
+fib(40):  165580141 elapsed: 0.99
+fib(41):  267914296 elapsed: 1.99
+fib(42):  433494437 elapsed: 2.0
+fib(43):  701408733 elapsed: 4.0
+fib(44): 1134903170 elapsed: 6.99
+
+real	0m16.774s
+user	0m16.755s
+sys	0m0.017s
+bash -c "time larceny -nobanner -- fib.fasl"
+fib(10):         89 elapsed: 0.0
+fib(20):      10946 elapsed: 0.0
+fib(30):    1346269 elapsed: 0.0
+fib(40):  165580141 elapsed: 1.0
+fib(41):  267914296 elapsed: 2.0
+fib(42):  433494437 elapsed: 3.99
+fib(43):  701408733 elapsed: 5.99
+fib(44): 1134903170 elapsed: 9.0
+
+real	0m23.381s
+user	0m23.360s
+sys	0m0.018s
+bash -c "time rustc -o rust-fib fib.rs"
+warning: no debug symbols in executable (-arch x86_64)
+
+real	0m0.469s
+user	0m0.432s
+sys	0m0.037s
+bash -c "time ./rust-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 1.19s
+fib(41):  267914296 elapsed: 1.92s
+fib(42):  433494437 elapsed: 3.11s
+fib(43):  701408733 elapsed: 5.01s
+fib(44): 1134903170 elapsed: 8.19s
+
+real	0m19.464s
+user	0m19.459s
+sys	0m0.005s
+bash -c "time g++ -framework CoreServices -O2 -o cxx-fib fib.cpp"
+
+real	0m0.325s
+user	0m0.282s
+sys	0m0.039s
+bash -c "time ./cxx-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 0.53s
+fib(41):  267914296 elapsed: 0.86s
+fib(42):  433494437 elapsed: 1.39s
+fib(43):  701408733 elapsed: 2.27s
+fib(44): 1134903170 elapsed: 3.68s
+
+real	0m8.770s
+user	0m8.765s
+sys	0m0.003s
+bash -c "time clj -e '(compile (quote fib))'"
+fib
+
+real	0m0.952s
+user	0m1.643s
+sys	0m0.072s
+bash -c "time java -cp "/Users/pnkfelix/Dev/Homebrew/homebrew/Cellar/clojure/1.4.0/clojure-1.4.0.jar":classes fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.01s
+fib(40):  165580141 elapsed: 0.40s
+fib(41):  267914296 elapsed: 0.65s
+fib(42):  433494437 elapsed: 1.05s
+fib(43):  701408733 elapsed: 1.72s
+fib(44): 1134903170 elapsed: 2.77s
+
+real	1m7.278s
+user	1m7.951s
+sys	0m0.118s
+bash -c "time node fib.js"
+fib(10):         89 elapsed: 0.00
+fib(20):      10946 elapsed: 0.00
+fib(30):    1346269 elapsed: 0.01
+fib(40):  165580141 elapsed: 1.36
+fib(41):  267914296 elapsed: 2.21
+fib(42):  433494437 elapsed: 3.58
+fib(43):  701408733 elapsed: 5.77
+fib(44): 1134903170 elapsed: 9.36
+
+real	0m22.372s
+user	0m22.392s
+sys	0m0.080s
+```

@@ -36,6 +36,7 @@ fn main () {
     let (result5, delta5) = timeit(fn~ () -> uint { fib(41) });
     let (result6, delta6) = timeit(fn~ () -> uint { fib(42) });
     let (result7, delta7) = timeit(fn~ () -> uint { fib(43) });
+    let (result8, delta8) = timeit(fn~ () -> uint { fib(44) });
     report("fib(10)", result1, delta1);
     report("fib(20)", result2, delta2);
     report("fib(30)", result3, delta3);
@@ -43,4 +44,5 @@ fn main () {
     report("fib(41)", result5, delta5);
     report("fib(42)", result6, delta6);
     report("fib(43)", result7, delta7);
+    report("fib(44)", result8, delta8);
 }

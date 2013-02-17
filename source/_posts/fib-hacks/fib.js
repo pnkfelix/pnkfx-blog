@@ -45,6 +45,7 @@ function main() {
   var rd5 = timeit(function () { return fib(41); });
   var rd6 = timeit(function () { return fib(42); });
   var rd7 = timeit(function () { return fib(43); });
+  var rd8 = timeit(function () { return fib(44); });
   report("fib(10)", rd1[0], rd1[1]);
   report("fib(20)", rd2[0], rd2[1]);
   report("fib(30)", rd3[0], rd3[1]);
@@ -52,6 +53,7 @@ function main() {
   report("fib(41)", rd5[0], rd5[1]);
   report("fib(42)", rd6[0], rd6[1]);
   report("fib(43)", rd7[0], rd7[1]);
+  report("fib(44)", rd8[0], rd8[1]);
 }
 
 main()
