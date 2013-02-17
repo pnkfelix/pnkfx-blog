@@ -1,4 +1,5 @@
 (require 'time)
+(keyboard-interrupt-handler (quit-handler))
 (let ()
   (define (fib n)
     (if (<:fix:fix n 2) 1 (+ (fib (fx- n 1)) (fib (fx- n 2)))))
