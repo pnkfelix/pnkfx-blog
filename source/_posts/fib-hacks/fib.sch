@@ -1,0 +1,41 @@
+(require 'time)
+(let ()
+  (define (fib n)
+    (if (< n 2) 1 (+ (fib (- n 1)) (fib (- n 2)))))
+
+  (define (timeit thunk)
+    (let* ((start (call-with-values current-utc-time cons))
+           (result (thunk))
+           (finis (call-with-values current-utc-time cons))
+           (delta (- (+ (* (car finis) #e10e9) (cdr finis))
+                     (+ (* (car start) #e10e9) (cdr start)))))
+      (cons result delta)))
+
+  (define (add-left-padding str len)
+    (if (>= (string-length str) len)
+        str
+        (string-append (make-string (- len (string-length str))) str)))
+
+  (define (report expr result delta)
+    (let* ((dsecs (/ (floor (/ delta #e10e7)) 100)))
+      (for-each display (list expr
+                              ": " (add-left-padding (number->string result) 10)
+                              " elapsed: " (inexact dsecs)))
+      (newline)))
+
+  (define (main)
+    (let* ((result*delta1 (timeit (lambda () (fib 10))))
+           (result*delta2 (timeit (lambda () (fib 20))))
+           (result*delta3 (timeit (lambda () (fib 30))))
+           (result*delta4 (timeit (lambda () (fib 40))))
+           (result*delta5 (timeit (lambda () (fib 41))))
+           (result*delta6 (timeit (lambda () (fib 42)))))
+      (report "fib(10)" (car result*delta1) (cdr result*delta1))
+      (report "fib(20)" (car result*delta2) (cdr result*delta2))
+      (report "fib(30)" (car result*delta3) (cdr result*delta3))
+      (report "fib(40)" (car result*delta4) (cdr result*delta4))
+      (report "fib(41)" (car result*delta5) (cdr result*delta5))
+      (report "fib(42)" (car result*delta6) (cdr result*delta6))))
+
+  (main)
+  (exit))

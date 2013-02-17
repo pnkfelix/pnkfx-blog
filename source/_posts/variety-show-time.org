@@ -1,0 +1,164 @@
+* Taking notes
+  CLOCK: [2013-02-17 Sun 02:16]--[2013-02-17 Sun 02:20] =>  0:04
+  CLOCK: [2013-02-17 Sun 02:15]--[2013-02-17 Sun 02:16] =>  0:00
+
+
+* Fib hacks
+** Rust
+   CLOCK: [2013-02-17 Sun 02:20]--[2013-02-17 Sun 02:31] =>  0:11
+   CLOCK: [2013-02-17 Sun 01:59]--[2013-02-17 Sun 02:15] =>  0:16
+   CLOCK: [2013-02-16 Sat 19:53]--[2013-02-16 Sat 20:03] =>  0:10
+
+   * Okay, got something I'm reasonable happy with as a hacked
+     up Fibonacci in Rust.  
+   * Above Took about 26 minutes
+
+   * most of that was spent either trying to remember why use
+     std::... does not work out of the box, or
+
+   * just messing with the time library (e.g. it does not support
+     subtracting timespecs directly; should there be a trait for this,
+     much like how there is one for Ord?  Seems like one might need
+     associated-type-synonyms to get full leverage out of this.
+
+   * So, results for Rust on Fib:
+
+bash -c "time rustc -o fib fib.rs"
+warning: no debug symbols in executable (-arch x86_64)
+
+real	0m0.441s
+user	0m0.404s
+sys	0m0.039s
+bash -c "time ./fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 1.15s
+fib(41):  267914296 elapsed: 1.86s
+fib(42):  433494437 elapsed: 3.05s
+
+real	0m6.094s
+user	0m6.091s
+sys	0m0.002s
+
+** Larceny
+   CLOCK: [2013-02-17 Sun 02:31]--[2013-02-17 Sun 03:27] =>  0:56
+
+   * Wow, got way bogged down in trying to figure out the syntax for
+     Larceny's format specifiers.  Crazy.
+
+** C++
+   CLOCK: [2013-02-17 Sun 03:36]--[2013-02-17 Sun 04:04] =>  0:28
+
+   * I cheated here and did not use actual closures.  To be fair,
+     I should make new variants of Larceny and Rust benchmarks that
+     do the same.  I will do that now (and charge the effort to
+     the C++ eval.)
+
+** So, the initial comparison is quite interesting, if you ask me:
+   CLOCK: [2013-02-17 Sun 03:27]--[2013-02-17 Sun 03:35] =>  0:08
+
+```transcript
+bash -c "time larceny -- -e '(compile-file \"fib.sch\")' -e '(exit)'"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+
+real	0m0.064s
+user	0m0.047s
+sys	0m0.015s
+bash -c "time larceny -- fib.fasl"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+fib(10):         89 elapsed: 0.0
+fib(20):      10946 elapsed: 0.0
+fib(30):    1346269 elapsed: 0.0
+fib(40):  165580141 elapsed: 1.0
+fib(41):  267914296 elapsed: 2.0
+fib(42):  433494437 elapsed: 3.99
+
+real	0m7.587s
+user	0m7.567s
+sys	0m0.017s
+bash -c "time rustc -o rust-fib fib.rs"
+warning: no debug symbols in executable (-arch x86_64)
+
+real	0m0.450s
+user	0m0.417s
+sys	0m0.036s
+bash -c "time ./rust-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.01s
+fib(40):  165580141 elapsed: 1.20s
+fib(41):  267914296 elapsed: 1.92s
+fib(42):  433494437 elapsed: 3.10s
+
+real	0m6.261s
+user	0m6.249s
+sys	0m0.006s
+```
+
+    * Observations follow:
+
+    * Larceny's compile time for this file blows rustc out of the
+      water: 0.064s versus 0.45s.
+
+    * The elapsed times on this benchmark put rustc in the lead.
+
+    * I tried some of the compiler-switches to see if they would help,
+      but they did not (and one of them, inline-assignment, caused
+      Larceny to immediately die with a bus error).
+
+    * Another transcript below, this time after throwing C++ into the mix
+      (but it is not a true Apples to Apples comparison since both Rust
+      and Larceny are using at-least-something approximating a closure,
+      while C++ is just using a function pointer and code duplication.)
+
+bash -c "time larceny -- -e '(compile-file \"fib.sch\")' -e '(exit)'"
+Larceny v0.97 "Funny in the Head" (Aug 19 2009 04:24:46, precise:Posix:unified)
+
+real	0m0.059s
+user	0m0.044s
+sys	0m0.013s
+bash -c "time larceny -nobanner -- fib.fasl"
+fib(10):         89 elapsed: 0.0
+fib(20):      10946 elapsed: 0.0
+fib(30):    1346269 elapsed: 0.0
+fib(40):  165580141 elapsed: 1.0
+fib(41):  267914296 elapsed: 2.99
+fib(42):  433494437 elapsed: 3.0
+
+real	0m7.585s
+user	0m7.564s
+sys	0m0.017s
+bash -c "time rustc -o rust-fib fib.rs"
+warning: no debug symbols in executable (-arch x86_64)
+
+real	0m0.985s
+user	0m0.433s
+sys	0m0.180s
+bash -c "time ./rust-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.01s
+fib(40):  165580141 elapsed: 1.20s
+fib(41):  267914296 elapsed: 1.95s
+fib(42):  433494437 elapsed: 3.16s
+
+real	0m6.343s
+user	0m6.339s
+sys	0m0.003s
+bash -c "time g++ -framework CoreServices -O2 -o cxx-fib fib.cpp"
+
+real	0m0.800s
+user	0m0.307s
+sys	0m0.278s
+bash -c "time ./cxx-fib"
+fib(10):         89 elapsed: 0.00s
+fib(20):      10946 elapsed: 0.00s
+fib(30):    1346269 elapsed: 0.00s
+fib(40):  165580141 elapsed: 0.36s
+fib(41):  267914296 elapsed: 0.60s
+fib(42):  433494437 elapsed: 0.96s
+
+real	0m1.946s
+user	0m1.944s
+sys	0m0.001s
