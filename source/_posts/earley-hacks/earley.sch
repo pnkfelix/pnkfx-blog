@@ -134,8 +134,15 @@
 
 ;; lookahead-matches? : Lookahead String Nat -> Boolean
 (define (lookahead-matches? alpha input i)
-  (let ((k (string-length alpha))
-        (l (string-length input)))
+  (let* ((first-nul (let loop ((i 0)) (cond ((= i (string-length alpha))
+                                             #f)
+                                            ((char=? #\nul (string-ref alpha i))
+                                             i)
+                                            (else
+                                             (loop (+ i 1))))))
+         (alpha (cond (first-nul (substring alpha 0 first-nul)) (else alpha)))
+         (k (string-length alpha))
+         (l (string-length input)))
     (and (<= (+ i k) l)
          (string=? alpha (substring input i (+ i k))))))
 
