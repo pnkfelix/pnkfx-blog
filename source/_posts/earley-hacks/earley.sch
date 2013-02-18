@@ -155,7 +155,7 @@
     (cond ((null? s) s)
           (else
            (cond ((eq? nt (car s))
-                  (append t s))
+                  (append t (cdr s)))
                  (else
                   (cons (car s) (loop (cdr s)))))))))
 
