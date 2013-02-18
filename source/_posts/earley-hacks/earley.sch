@@ -35,7 +35,7 @@
 ;; is represented by
 ;;   (E (E (T T * P)) + (T P))
 ;;
-;; The *degree of ambiguity* of a setnence is the number of its
+;; The *degree of ambiguity* of a sentence is the number of its
 ;; distinct derivation trees. A sentence is *unambiguous* if it has
 ;; degree 1 of ambiguity.  A grammar is *unambiguous* if each of its
 ;; sentences is unambiguous.  A grammar has *bounded ambiguity* if
@@ -124,12 +124,41 @@
   (let ((prod (car g)))
     (car prod)))
 
+;; grammar-results-for : Grammar Nonterminal -> [Listof ProdSeq]
+(define (grammar-results-for g sym)
+  (map cddr (filter (lambda (rule) (eq? sym (production-lhs rule))) g)))
+
 ;; A PTerm is a Character
 ;; interpretation: non #\nul is string content;
 ;; #\nul marks end-of-string.
 ;;
 ;; A PProdElem is one of: Symbol Character.
 ;; A PProdSeq is a [Listof [Oneof PProdElem String]]
+
+;; sentence? : PProdSeq -> Boolean
+;; Returns true iff s is sentential; i.e. composed entirely of terminal elements.
+(define (sentence? s)
+  (null? (filter symbol? s)))
+
+;; first-nonterm : PProdSeq -> Symbol
+;; requires: s is non-sentential.
+(define (first-nonterm s)
+  (cond ((symbol? (car s))
+         (car s))
+        (else
+         (first-nonterm (cdr s)))))
+
+;; substitute-first : PProdSeq Nonterminal PProdSeq -> PProdSeq
+;; Returns new seq r = s[nt := t].  Does not assume nt appears in s.
+(define (substitute-first s nt t)
+  (let loop ((s s))
+    (cond ((null? s) s)
+          (else
+           (cond ((eq? nt (car s))
+                  (append t s))
+                 (else
+                  (cons (car s) (loop (cdr s)))))))))
+
 ;; A Lookahead is a String
 
 ;; lookahead-matches? : Lookahead String Nat -> Boolean
@@ -210,7 +239,7 @@
     (cons todo done)))
 
 ;; workset-more-todo? : [Worksetof X] -> Boolean
-(define (workset-more-todo? s) (not (null? (car x))))
+(define (workset-more-todo? s) (not (null? (car s))))
 
 ;; workset-next/!: [Worksetof X] -> values: X [Worksetof X]
 ;; requires: (workset-more-todo? set)
@@ -226,7 +255,7 @@
 (define (workset-member? x set)
   (or (member x (car set))
       (member x (cdr set))
-      false))
+      #f))
 
 ;; workset-contents : [Worksetof X] -> [Listof X]
 (define (workset-contents set)
@@ -239,6 +268,10 @@
       (let ((todo (car set))
             (done (cdr set)))
         (workset (cons x todo) done))))
+
+;; workset-add-all/! [Worksetof X] [Listof X] -> [Worksetof X]
+(define (workset-add-all/! set l)
+  (foldr (lambda (x set) (workset-add/! set x)) set l))
 
 ;; A StateSet is a [Worksetof State]
 
@@ -284,6 +317,25 @@
   (let ((v (vector-copy vec)))
     (vector-set! v i val)
     v))
+
+;; find-prefixes : Grammar Nat PProdSeq  -> [Listof Lookahead]
+;; returns list [alpha | alpha is terminal, |alpha| = k, and gamma =>* alpha ^ beta for some beta.
+(define (find-prefixes g k gamma)
+  (let loop ((sentences '())
+             (set (workset (list gamma))))
+    (cond ((workset-more-todo? set)
+           (let-values (((e set) (workset-next/! set)))
+             (cond ((sentence? e)
+                    (loop (cons e sentences) set))
+                   (else
+                    (let* ((nt (first-nonterm e))
+                           (results (grammar-results-for g nt))
+                           (substitutions (map (lambda (result)
+                                                 (substitute-first e nt result))
+                                               results)))
+                      (loop sentences (workset-add-all/! set substitutions)))))))
+          (else
+           sentences))))
 
 ;; Grammar Nat String -> EarleyComputation
 (define (earley g k str)
