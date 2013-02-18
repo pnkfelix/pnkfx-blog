@@ -320,7 +320,7 @@
                   (let* ((c (cursor-next (state-cursor s)))
                          (rules (filter (lambda (p) (eq? c (cursor-nonterm j))) g))
                          (suffix (cursor-post (cursor-shift (state-cursor s))))
-                         (h (h-follow comp suffix))
+                         (h (h-follow comp (append suffix alpha)))
                          (S_i* (foldr (lambda (beta set)
                                         (foldr (lambda (rule set)
                                                  (state-set-add/!
