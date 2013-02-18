@@ -130,7 +130,14 @@
 ;;
 ;; A PProdElem is one of: Symbol Character.
 ;; A PProdSeq is a [Listof [Oneof PProdElem String]]
-;; A PTermSeq is a [Listof PTerm]
+;; A Lookahead is a String
+
+;; lookahead-matches? : Lookahead String Nat -> Boolean
+(define (lookahead-matches? alpha input i)
+  (let ((k (string-length alpha))
+        (l (string-length input)))
+    (and (<= (+ i k) l)
+         (string=? alpha (substring input i (+ i k))))))
 
 ;; A ProductionCursor is a
 ;;   (list [Oneof Nonterminal #t] PProdSeq PProdSeq)
@@ -143,7 +150,7 @@
 
 ;; root->cursor : Nonterminal -> ProductionCursor
 (define (root->cursor r)
-  (list #t '() (list root #\nul)))
+  (list #t '() (list r #\nul)))
 
 (define (cursor-nonterm c) (list-ref c 0))
 (define (cursor-prev c) (list-ref c 1))
@@ -156,20 +163,20 @@
 
 ;; cursor-shift : ProductionCursor -> ProductionCursor
 (define (cursor-shift c)
-  (let ((p (cursor-post c))
-        (s (prodseq-first p))
-        (r (prodseq-rest p)))
+  (let* ((p (cursor-post c))
+         (s (prodseq-first p))
+         (r (prodseq-rest p)))
     (list (cursor-nonterm c) (cons s (cursor-prev c)) r)))
 
 ;; A Position is a Nat
 ;; (may consider making it a (cons String Nat), but for now lets get by with Nat
 
-;; A State is a (list ProductionCursor Position PTermSeq)
+;; A State is a (list ProductionCursor Position Lookahead)
 
 (define (state cursor pos termseq)
   (list cursor pos termseq))
 (define (state-cursor s) (list-ref s 0))
-(define (state-position s) (list-ref s 1))
+(define (state-input-position s) (list-ref s 1))
 (define (state-successor s) (list-ref s 2))
 
 (define (state-final? s)
@@ -180,35 +187,90 @@
 (define (state-position-index s)
   (list-ref s 1))
 
-;; A StateSet is a [Listof State]
+(define (state-cursor-shift/! s)
+  (state (cursor-shift (state-cursor s))
+         (state-input-position s)
+         (state-successor s)))
 
-(define (state-set . states) states)
+;; A [Worksetof X] is a (cons [Listof X] [Listof X])
+;; interpretation: A workset (todo . done) represents the set (todo U
+;; done), where the elements of done have already been processed.
+
+;; workset: [Listof X] -> [Worksetof X]
+;; workset: [Listof X] [Listof X] -> [Worksetof X]
+(define (workset todo . args)
+  (let ((done (if (null? args) '() (car args))))
+    (cons todo done)))
+
+;; workset-more-todo? : [Worksetof X] -> Boolean
+(define (workset-more-todo? s) (not (null? (car x))))
+
+;; workset-next/!: [Worksetof X] -> values: X [Worksetof X]
+;; requires: (workset-more-todo? set)
+;; Takes an element x off the to-do list; returns x and set with x on
+;; done list.
+(define (workset-next/! set)
+  (let* ((todo (car set))
+         (done (cdr set))
+         (x (car todo)))
+    (values x (workset (cdr todo) (cons x done)))))
+
+;; workset-member? : X [Worksetof X] -> Boolean
+(define (workset-member? x set)
+  (or (member x (car set))
+      (member x (cdr set))
+      false))
+
+;; workset-contents : [Worksetof X] -> [Listof X]
+(define (workset-contents set)
+  (append (car set) (cdr set)))
+
+;; workset-add/! : [Worksetof X] X -> [Worksetof X]
+(define (workset-add/! set x)
+  (if (workset-member? x set)
+      set
+      (let ((todo (car set))
+            (done (cdr set)))
+        (workset (cons x todo) done))))
+
+;; A StateSet is a [Worksetof State]
+
+(define (state-set . states) (workset states))
 
 ;; state-set-add/! : l/StateSet State -> l/StateSet
 (define (state-set-add/! set state)
-  (if (member state set)
-      set
-      (append set (list state))))
+  (workset-add/! set state))
 
 ;; An EarleyComputation is a (vector Grammar Nat String Nat [Vectorof StateSet])
-;; interpretation: A computation (list G K STR STR-IDX STATESETSEQ SET-IDX) is
+;; interpretation: A computation (list G K STR STR-IDX STATESETS) is
 ;; parsing STR with repsect to G, using K characters of look-ahead.
 ;; It has built up STATESETSEQ, is currently looking at STR[STR-IDX],
-;; and is processing state STATESETSEQ[STR-IDX][SET-IDX].
+;; and is processing workset STATESETS[STR-IDX].
 
-(define (ec g k str idx states states-cursor)
-  (vector g k str idx states states-cursor))
+(define (ec g k str idx states)
+  (vector g k str idx states))
 (define (ec-grammar c)          (vector-ref c 0))
 (define (ec-lookahead c)        (vector-ref c 1))
 (define (ec-input c)            (vector-ref c 2))
 (define (ec-input-index c)      (vector-ref c 3))
-(define (ec-states c)           (vector-ref c 4))
-(define (ec-states-cursor c)    (vector-ref c 5))
+(define (ec-states-vector c)    (vector-ref c 4))
 
-(define (ec-state c)
-  (list-ref (ec-states c) (ec-states-cursor c)))
+(define (ec-stateset c)
+  (vector-ref (ec-states-vector c) (ec-input-index c)))
 
-(define ec-state-update/! c 
+;; ec-stateset-update/! : EarleyComputation Nat StateSet -> EarleyComputation
+(define (ec-stateset-update/! c i states)
+  (ec (ec-grammar c) (ec-lookahead c)
+      (ec-input c) (ec-input-index c)
+      (vector-replace/! (ec-states-vector c) i states)))
+
+;; ec-next-token/! : EarleyComputation -> EarleyComputation
+(define (ec-next-token/! c)
+  (ec (ec-grammar c)
+      (ec-lookahead c)
+      (ec-input c)
+      (+ 1 (ec-input-index c))
+      (ec-states-vector c)))
 
 ;; vector-replace/! : &l/[Vectorof X] X nat -> &l/[Vectorof X]
 (define (vector-replace/! vec i val)
@@ -217,36 +279,71 @@
     v))
 
 ;; Grammar Nat String -> EarleyComputation
-(define (earley-init g k str)
+(define (earley g k str)
   (let ((v (make-vector (string-length str) '()))
         (root (grammar-root g)))
     (vector-set! v 0 (state-set (state (root->cursor root) 0 (make-list k #f))))
-    (ec g k str 0 v 0)))
+    (ec g k str 0 v)))
 
 ;; earley-step : EarleyComputation -> EarleyComputation
 (define (earley-step comp)
-  (let ((i (ec-input-index comp))
-        (s_i (ec-state comp))
-        (g (ec-grammar comp)))
-    (cond
-     ;; predictor:
-     ((and (state-nonfinal? s_i) (nonterminal? (cursor-next (state-cursor s_i))))
-      (let* ((c (cursor-next (state-cursor s_i)))
-             (rules (filter (lambda (p) (eq? c (production-lhs p))) g))
-             (suffix (cursor-post (cursor-shift (state-cursor s_i))))
-             (h (h-follow comp suffix))
-             (s_i* (foldr (lambda (beta set)
-                            (foldr (lambda (rule set)
-                                     (state-set-add/!
-                                      set
-                                      (state (production->cursor rule) i beta)))
-                                   set
-                                   rules))
-                          s_i
-                          h)))
-        ...))
-     ...)))
+
+  ;; In earley70:
+  ;; - X_1...X_n is the 1-indexed input string (length n).
+  ;; - G is the grammar, with productions D_p -> C_p,1 ... C_p,|p|, where 1 <= p <= d-1
+  ;; - p identifies a rule of the grammar,
+  ;; - j is a cursor into the p's rule,
+  ;; - f is a cursor into the input string (length n),
+  ;; - alpha is a k-length lookahead string,
+  ;; - i is a cursor for the input string (length n) and state set S_i (indexed from 0 to n+1, inclusive)
+  ;; - s is member of S_i we are currently processing
+
+  (let ((X (ec-input comp))
+        (i (ec-input-index comp))
+        (S_i (ec-stateset comp)))
+    (let* ((comp*
+            (let-values (((s S_i) (workset-next/! S_i)))
+              (let ((g (ec-grammar comp))
+                    (j (state-cursor s))
+                    (f (state-input-position s))
+                    (alpha (state-successor s)))
+                (cond
+                 ;; predictor:
+                 ((and (state-nonfinal? s) (nonterminal? (cursor-next (state-cursor s))))
+                  (let* ((c (cursor-next (state-cursor s)))
+                         (rules (filter (lambda (p) (eq? c (cursor-nonterm j))) g))
+                         (suffix (cursor-post (cursor-shift (state-cursor s))))
+                         (h (h-follow comp suffix))
+                         (S_i* (foldr (lambda (beta set)
+                                        (foldr (lambda (rule set)
+                                                 (state-set-add/!
+                                                  set
+                                                  (state (production->cursor rule) i beta)))
+                                               set
+                                               rules))
+                                      S_i
+                                      h)))
+                    (ec-stateset-update/! comp i S_i*)))
+                 ;; completor:
+                 ((and (state-final? s) (lookahead-matches? alpha X i))
+                  (let* ((S_f (vector-ref (ec-states-vector c) f))
+                         (D_p (cursor-nonterm (state-cursor s)))
+                         (S_i* (foldr (lambda (s* set)
+                                        (workset-add/! set
+                                                       (state-cursor-shift/! s*)))
+                                      S_i
+                                      (workset-contents S_f))))
+                    (ec-stateset-update/! comp i S_i*)))
+                 ;; scanner:
+                 ((and (state-nonfinal? s) (terminal? (cursor-next (state-cursor s))))
+                  (if (terminal-matches? (cursor-next (state-cursor s)) input (+ i 1))
+                      (ec-stateset-update! comp (+ i 1) (workset-add/!
+                                                      (vector-ref (ec-states-vector comp) (+ i 1))
+                                                      (state-cursor-shift/! s)))
+                      comp)))))))
+      (if (workset-more-todo? (ec-stateset comp*))
+          comp*
+          (ec-next-token/! comp*)))))
 
 (display "Hello World")
 (newline)
-(exit)
