@@ -49,11 +49,12 @@
 ;; which also outputs the set of all legal derivation trees for the
 ;; string.
 
-;; A Terminal is a Character.
+;; A Terminal is a Character or non-empty String.
 
 ;; A GrammarTerminal is a Character other than #\nul.
 
-(define (terminal? c) (char? c))
+(define (terminal? c)
+  (or (char? c) (and (string? c) (not (zero? (string-length c))))))
 
 (define (grammar-terminal? c)
   (and (char? c) (not (char=? c #\nul))))
@@ -140,10 +141,12 @@
 (define (sentence? s)
   (null? (filter symbol? s)))
 
-;; sentence->string : PProdSeq -> String
+;; sentence->string : [Oneof String PProdSeq] -> String
 ;; requires: s is sentential.
 (define (sentence->string s)
-  (apply string-append (map (lambda (x) (if (char? x) (string x) x)) s)))
+  (if (string? s)
+      s
+      (apply string-append (map (lambda (x) (if (char? x) (string x) x)) s))))
 
 ;; first-nonterm : PProdSeq -> Symbol
 ;; requires: s is non-sentential.
@@ -153,29 +156,55 @@
         (else
          (first-nonterm (cdr s)))))
 
-;; take-prefix : PProdSeq Nat -> PProdSeq
+;; null-sentence? : PProdSeq -> Boolean
+(define (null-sentence? s)
+  (cond ((null? s) #t)
+        (else
+         (cond ((and (string? (car s)) (zero? (string-length (car s))))
+                (null-sentence? (cdr s)))
+               (else
+                #f)))))
+  
+
+;; take-prefix : [Oneof String PProdSeq] Nat -> PProdSeq
 ;; returns first k characters or symbols in s, or as many as s can supply.
 (define (take-prefix s k)
-  (cond ((null? s) s)
-        ((zero? k) '())
+  (cond ((string? s)
+         (substring s 0 (min k (string-length s))))
         (else
-         (cond ((string? (car s))
-                (cond
-                 ((zero? (string-length (car s))) (take-prefix (cdr s) k))
-                 (else (cons (string-ref (car s) 0)
-                             (take-prefix (cons (substring (car s) 1 (string-length (car s))) (cdr s))
-                                          (- k 1))))))
-               (else
-                (cons (car s) (take-prefix (cdr s) (- k 1))))))))
+         (let loop ((s s)
+                    (k k) )
+           (cond ((null? s) s)
+                 ((zero? k) '())
+                 (else
+                  (cond ((string? (car s))
+                         (cond
+                          ((zero? (string-length (car s))) (loop (cdr s) k))
+                          (else (cons (string-ref (car s) 0)
+                                      (loop (cons (substring (car s) 1 (string-length (car s))) (cdr s))
+                                                   (- k 1))))))
+                        (else
+                         (cons (car s) (loop (cdr s) (- k 1)))))))))))
 
-;; substitute-first : PProdSeq Nonterminal PProdSeq -> PProdSeq
+;; take-term-prefix : [Oneof String PProdSeq] -> PProdSeq
+(define (take-term-prefix s)
+  (cond ((string? s) s)
+        (else (let loop ((s s))
+                (cond ((null? s) s)
+                      (else (cond ((symbol? (car s)) '())
+                                  (else (cons (car s) (loop (cdr s)))))))))))
+
+;; substitute-first : PProdSeq Nonterminal [Oneof String PProdSeq] -> PProdSeq
 ;; Returns new seq r = s[nt := t].  Does not assume nt appears in s.
 (define (substitute-first s nt t)
   (let loop ((s s))
     (cond ((null? s) s)
           (else
            (cond ((eq? nt (car s))
-                  (append t (cdr s)))
+                  (cond ((string? t)
+                         (cons t (cdr s)))
+                        (else
+                         (append t (cdr s)))))
                  (else
                   (cons (car s) (loop (cdr s)))))))))
 
@@ -340,6 +369,224 @@
   (let ((v (vector-copy vec)))
     (vector-set! v i val)
     v))
+
+;; cons-union: X [Listof X] -> [Listof X]
+(define (cons-union x r)
+  (if (member x r)
+      r
+      (cons x r)))
+  
+;; separate-nullable-nonterminals : Grammar -> (list [Listof Nonterm] [Listof Nonterm])
+;; returns ((S ...) (T ...)) where S =>* \empty and never T =>* \empty.
+(define (separate-nullable-nonterminals grammar)
+  (define (writln x) '(begin (write x) (newline)))
+
+  (let ((nullable (let loop ((nullable '())
+                             (g grammar))
+                    (cond ((null? g) nullable)
+                          (else
+                           (let* ((rule (car g))
+                                  (nt (production-lhs rule))
+                                  (rhs (production-rhs rule)))
+                             (writln `(loop rule: ,rule nt: ,nt rhs: ,rhs nullable: ,nullable))
+                             (cond ((or (null-sentence? rhs)
+                                        (andmap (lambda (x) (or (equal? x "") (member x nullable))) rhs))
+                                    (writln `(nt: ,nt is nullable))
+                                    (let ((n* (cons-union nt nullable)))
+                                      (if (not (eq? n* nullable))
+                                          (loop n* grammar)
+                                          (loop n* (cdr g)))))
+                                   (else
+                                    (loop nullable (cdr g))))))))))
+    (list nullable (foldr (lambda (x l) (if (member x nullable)
+                                            l
+                                            (cons-union x l)))
+                          '()
+                          (map production-lhs grammar)))))
+
+;; ormap : (X -> Boolean) [Listof X] -> Boolean
+(define (ormap f l)
+  (cond ((null? l) #f)
+        (else
+         (or (f (car l))
+             (ormap f (cdr l))))))
+
+;; andmap : (X -> Boolean) [Listof X] -> Boolean
+(define (andmap f l)
+  (cond ((null? l) #t)
+        (else
+         (and (f (car l))
+              (andmap f (cdr l))))))
+
+;; grammar-rewrite-to-nonnullable : Grammar -> Grammar
+;; Produces a grammar that generates the same language as input
+;; grammar, but every production either rewrites to an empty right-hand-side
+;; or to a string of non-nullable symbols.  (Furthermore, only the root
+;; rule is allowed to have an empty right-hand-side.)
+(define (grammar-rewrite-to-nonnullable grammar)
+  (define (writln x) '(begin (write x) (newline)))
+
+  (define nonterms (map symbol->string (map production-lhs grammar)))
+
+  (define prime
+     (let ((prime-suffix
+            (let loop ((trial "^"))
+              (if (ormap (lambda (x)
+                           (let* ((len (string-length x))
+                                  (suffix (substring x
+                                                     (max 0 (- len (string-length trial)))
+                                                     len)))
+                             (string=? suffix trial)))
+                         nonterms)
+                  (loop (string-append trial "*"))
+                  trial))))
+       (lambda (sym)
+         (string->symbol (string-append (symbol->string sym) prime-suffix)))))
+
+  ;; Don't _need_ to generate fresh names for anything apart from the
+  ;; root nonterminal, but doing so makes it clear when there has been
+  ;; a change to the L(P) for a nonterminal P.
+  '(define (prime sym)
+     sym)
+
+  (let* ((components (separate-nullable-nonterminals grammar))
+         (nullable (car components))
+         (nonnullable (cadr components)))
+
+    (define (nullable? s) (member s nullable))
+    (define (nonnullable? s) (member s nonnullable))
+
+
+    (define (generate-all-nonnull-variants rhs)
+      (let loop ((rhs rhs))
+        (writln `(generate-all-nonnull-variants loop rhs: ,rhs))
+        (cond ((null? rhs) (list rhs))
+              (else
+               (let* ((others (loop (cdr rhs)))
+                      (s (car rhs)))
+                 (cond ((or (terminal? s) (nonnullable? s))
+                        (map (lambda (x) (cons s x)) others))
+                       ((nullable? s)
+                        (let ((s* (prime s)))
+                          (append others (map (lambda (x) (cons s* x)) others))))))))))
+
+    (let* ((g* (let loop ((g grammar)
+                          (g* '()))
+                 (writln `(loop g: ,g g*: ,g*))
+                 (cond ((null? g)
+                        g*)
+                       (else
+                        (let* ((rule (car g))
+                               (nt (production-lhs rule))
+                               (rhs (production-rhs rule))
+                               (rhs*s (generate-all-nonnull-variants rhs)))
+                          (writln `(rule: ,rule nt: ,nt rhs: ,rhs rhs*s: ,rhs*s))
+                          (cond ((nullable? nt)
+                                 (let ((nt* (prime nt)))
+                                   (loop (cdr g)
+                                         (append (map (lambda (rhs) `(,nt* -> ,@rhs)) rhs*s)
+                                                 g*))))
+                                ((nonnullable? nt)
+                                 (loop (cdr g)
+                                       (append (map (lambda (rhs) `(,nt -> ,@rhs)) rhs*s)
+                                               g*)))))))))
+           (g* (reverse g*))
+           (orig-root (grammar-root grammar))
+           (g* (filter (lambda (rule) (not (null-sentence? (production-rhs rule)))) g*))
+           (g*  (cond ((nullable? orig-root)
+                       (append `((,orig-root ->) (,orig-root -> ,(prime orig-root))) g*))
+                      (else
+                       g*))))
+      g*)))
+
+;; build-prefix-map : Grammar Nat -> [Listof (list Nonterm Lookahead)]
+(define (build-prefix-map grammar k)
+  ;; An InterimMap is an associative list of
+  ;;   (list Nonterm String ProdSeq)
+  ;; where the String s is a prefix of the ProdSeq.
+
+  (define (writln x) '(begin (write x) (newline)))
+
+  ;; map-add-prefixes : InterimMap Nonterminal [Listof PProdSeq] -> InterimMap
+  (define (map-add-prefixes imap nt prefixes)
+    ;; (writln `(map-add-prefixes imap: ,imap nt: ,nt prefixes: ,prefixes))
+    (foldr (lambda (p imap)
+             (let* ((prefix (take-term-prefix p))
+                    ;; (_ (writln `(prefix: ,prefix)))
+                    (prefix (take-prefix prefix k))
+                    ;; (_ (writln `(prefix: ,prefix)))
+                    (s (sentence->string prefix))
+                    (entry (list nt s p)))
+               (if (not (member entry imap))
+                   (cons entry imap)
+                   imap)))
+           imap
+           prefixes))
+
+  ;; map-has-prefix-for : InterimMap Nonterminal PProdSeq -> Boolean
+  (define (map-has-prefix-for imap nt rhs)
+    (writln `(map-has-prefix-for imap: ,imap nt: ,nt rhs: ,rhs))
+    (let* ((str (sentence->string (take-term-prefix rhs)))
+           (str (substring str 0 (min (string-length str) k))))
+      (writln `(map-has-prefix-for imap: ,imap nt: ,nt rhs: ,rhs str: ,str))
+      (not (null? (filter (lambda (entry) (and (symbol=? (car entry) nt) (string=? (cadr entry) str)))
+                          imap)))))
+
+  (define list-map map)
+
+  (define (partition pred? lst)
+    (let loop ((lst lst))
+      (cond ((null? lst)
+             (list '() '()))
+            (else
+             (let ((x (car lst))
+                   (rest (loop (cdr lst))))
+               (if (pred? (car lst))
+                   (list (cons x (car rest)) (cadr rest))
+                   (list (car rest) (cons x (cadr rest)))))))))
+
+  (define (substitute-series seq imap)
+    (cond ((sentence? seq)
+           (list seq))
+          (else
+           (let* ((u (first-nonterm seq))
+                  (u-substs (map caddr (filter (lambda (entry) (eq? (car entry) u)) imap)))
+                  (u-parts (partition sentence? u-substs))
+                  (u-sents (car u-parts))
+                  (u-nonsents (cadr u-parts))
+                  (_ (writln `(substitute-series u-sents: ,u-sents u-nonsents: ,u-nonsents)))
+                  (seq*s-sents (map (lambda (u-subst) (substitute-first seq u u-subst)) u-sents))
+                  (seq*s-nonsents (map (lambda (u-subst) (substitute-first seq u u-subst)) u-nonsents)))
+             (append seq*s-sents
+                     seq*s-nonsents
+                     (apply append (map (lambda (s) (substitute-series s imap)) (filter (lambda (x) (not (sentence? x))) seq*s-sents))))))))
+
+  (let* ((components (separate-nullable-nonterminals grammar))
+         (nullable (car components))
+         (nonnullable (cadr components))
+         (map (let loop ((imap '())
+                         (g grammar))
+                (cond ((null? g) imap)
+                      (else
+                       (let* ((rule (car g))
+                              (nt (production-lhs rule))
+                              (rhs (production-rhs rule))
+                              (consequences (let loop ((rhs rhs))
+                                              (let ((series (substitute-series rhs imap)))
+                                                (writln `(series: ,series))
+                                                (filter (lambda (rhs) (not (map-has-prefix-for imap nt rhs)))
+                                                        series)))))
+                         (writln `(nt: ,nt consequences: ,consequences))
+                         (cond ((null? consequences)
+                                (loop imap (cdr g)))
+                               (else
+                                (let* ((imap* (map-add-prefixes imap nt consequences)))
+                                  (cond ((eq? imap* imap)
+                                         (loop imap (cdr g)))
+                                        (else
+                                         (loop imap* grammar))))))))))))
+    map))
+
 
 ;; find-prefixes : Grammar Nat PProdSeq  -> [Listof Lookahead]
 ;; returns list [alpha | alpha is terminal, |alpha| = k, and gamma =>* alpha ^ beta for some beta.
