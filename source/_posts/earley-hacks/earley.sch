@@ -140,6 +140,11 @@
 (define (sentence? s)
   (null? (filter symbol? s)))
 
+;; sentence->string : PProdSeq -> String
+;; requires: s is sentential.
+(define (sentence->string s)
+  (apply string-append (map (lambda (x) (if (char? x) (string x) x)) s)))
+
 ;; first-nonterm : PProdSeq -> Symbol
 ;; requires: s is non-sentential.
 (define (first-nonterm s)
@@ -147,6 +152,21 @@
          (car s))
         (else
          (first-nonterm (cdr s)))))
+
+;; take-prefix : PProdSeq Nat -> PProdSeq
+;; returns first k characters or symbols in s, or as many as s can supply.
+(define (take-prefix s k)
+  (cond ((null? s) s)
+        ((zero? k) '())
+        (else
+         (cond ((string? (car s))
+                (cond
+                 ((zero? (string-length (car s))) (take-prefix (cdr s) k))
+                 (else (cons (string-ref (car s) 0)
+                             (take-prefix (cons (substring (car s) 1 (string-length (car s))) (cdr s))
+                                          (- k 1))))))
+               (else
+                (cons (car s) (take-prefix (cdr s) (- k 1))))))))
 
 ;; substitute-first : PProdSeq Nonterminal PProdSeq -> PProdSeq
 ;; Returns new seq r = s[nt := t].  Does not assume nt appears in s.
@@ -236,37 +256,40 @@
 ;; workset: [Listof X] [Listof X] -> [Worksetof X]
 (define (workset todo . args)
   (let ((done (if (null? args) '() (car args))))
-    (cons todo done)))
+    (list todo done)))
+
+(define (workset-todo w) (car w))
+(define (workset-done w) (cadr w))
 
 ;; workset-more-todo? : [Worksetof X] -> Boolean
-(define (workset-more-todo? s) (not (null? (car s))))
+(define (workset-more-todo? s) (not (null? (workset-todo s))))
 
 ;; workset-next/!: [Worksetof X] -> values: X [Worksetof X]
 ;; requires: (workset-more-todo? set)
 ;; Takes an element x off the to-do list; returns x and set with x on
 ;; done list.
 (define (workset-next/! set)
-  (let* ((todo (car set))
-         (done (cdr set))
+  (let* ((todo (workset-todo set))
+         (done (workset-done set))
          (x (car todo)))
     (values x (workset (cdr todo) (cons x done)))))
 
 ;; workset-member? : X [Worksetof X] -> Boolean
 (define (workset-member? x set)
-  (or (member x (car set))
-      (member x (cdr set))
+  (or (member x (workset-todo set))
+      (member x (workset-done set))
       #f))
 
 ;; workset-contents : [Worksetof X] -> [Listof X]
 (define (workset-contents set)
-  (append (car set) (cdr set)))
+  (append (workset-todo set) (workset-done set)))
 
 ;; workset-add/! : [Worksetof X] X -> [Worksetof X]
 (define (workset-add/! set x)
   (if (workset-member? x set)
       set
-      (let ((todo (car set))
-            (done (cdr set)))
+      (let ((todo (workset-todo set))
+            (done (workset-done set)))
         (workset (cons x todo) done))))
 
 ;; workset-add-all/! [Worksetof X] [Listof X] -> [Worksetof X]
@@ -321,19 +344,32 @@
 ;; find-prefixes : Grammar Nat PProdSeq  -> [Listof Lookahead]
 ;; returns list [alpha | alpha is terminal, |alpha| = k, and gamma =>* alpha ^ beta for some beta.
 (define (find-prefixes g k gamma)
+  (define (displn x) (display x) (newline))
+  (define (writln x) (write x) (newline))
+
   (let loop ((sentences '())
              (set (workset (list gamma))))
+    (writln `(sentences: ,sentences set: ,set))
     (cond ((workset-more-todo? set)
            (let-values (((e set) (workset-next/! set)))
-             (cond ((sentence? e)
-                    (loop (cons e sentences) set))
-                   (else
-                    (let* ((nt (first-nonterm e))
-                           (results (grammar-results-for g nt))
-                           (substitutions (map (lambda (result)
-                                                 (substitute-first e nt result))
-                                               results)))
-                      (loop sentences (workset-add-all/! set substitutions)))))))
+             (let ((prefix (take-prefix e k)))
+               (writln `(prefix: ,prefix))
+               (cond ((and (sentence? prefix) (= k (length prefix)))
+                      (writln `(adding ,e to sentences: ,sentences))
+                      (loop (cons (sentence->string prefix) sentences) set))
+                     (else
+                      (let* ((nt (first-nonterm e))
+                             (_ (writln `(nt: ,nt)))
+                             (results (grammar-results-for g nt))
+                             (substitutions (map (lambda (result)
+                                                   (substitute-first e nt result))
+                                                 results))
+                             (filtered (filter (lambda (subst)
+                                                 (let ((prefix (take-prefix subst k)))
+                                                   (or (not (sentence? prefix))
+                                                       (not (member (sentence->string prefix) sentences)))))
+                                               substitutions)))
+                        (loop sentences (workset-add-all/! set filtered))))))))
           (else
            sentences))))
 
