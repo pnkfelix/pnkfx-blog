@@ -739,6 +739,8 @@ sys	0m0.080s
    CLOCK: [2013-02-17 Sun 21:16]--[2013-02-17 Sun 21:26] =>  0:10
 
 ** Larceny
+   CLOCK: [2013-02-19 Tue 10:42]--[2013-02-19 Tue 11:49] =>  1:07
+   CLOCK: [2013-02-19 Tue 08:59]--[2013-02-19 Tue 10:34] =>  1:35
    CLOCK: [2013-02-18 Mon 11:42]--[2013-02-18 Mon 16:35] =>  4:53
    CLOCK: [2013-02-18 Mon 10:45]--[2013-02-18 Mon 10:59] =>  0:14
    CLOCK: [2013-02-18 Mon 09:21]--[2013-02-18 Mon 10:45] =>  1:24
@@ -756,3 +758,5 @@ sys	0m0.080s
 
      Keeping the types straight is tricky; keeping them honest in the
      doc comments is even trickier.
+
+   * Tue: Redoing build-prefix-map to be more "obviously correct"
