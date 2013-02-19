@@ -99,6 +99,27 @@
           (else
            (cdr ps)))))
 
+;; ProdSeq ProdSeq Nat -> Boolean
+;; If the ps and ps* have equal k-prefixes, returns true.
+(define (prodseq-equal-upto ps ps* k)
+  (define (term-count tok)
+    (cond ((string? tok) (string-length tok))
+          ((char? tok)   1)
+          ((symbol? tok) 1)))
+  (let loop ((ps ps) (ps* ps*) (k k))
+    (cond ((<= k 0)                                     #t)
+          ((or (null? ps) (null? ps*))                  (and (null? ps) (null? ps*)))
+          ;; Special case; short-cut when we have same token
+          ((equal? (car ps) (car ps*))
+           (loop (cdr ps) (cdr ps*) (- k (term-count (car ps)))))
+          (else ;; Otherwise, fall through to generalized handler
+           (let ((q (prodseq-first ps))
+                 (qs (prodseq-rest ps))
+                 (r (prodseq-first ps*))
+                 (rs (prodseq-rest ps*)))
+             (and (equal? q r)
+                  (loop qs rs (- k 1))))))))
+
 ;; A Production is a (cons Nonterminal (cons '-> ProdSeq))
 
 ;; production-lhs : Production -> Nonterminal
@@ -502,91 +523,117 @@
 ;; build-prefix-map : Grammar Nat -> [Listof (list Nonterm Lookahead)]
 (define (build-prefix-map grammar k)
   ;; An InterimMap is an associative list of
-  ;;   (list Nonterm String ProdSeq)
-  ;; where the String s is a prefix of the ProdSeq.
+  ;;   (list Nonterm ProdSeq ProdSeq)
+  ;;
+  ;; interpretation: an imap (entry ...) represents the deduction that:
+  ;; for every entry = (D alpha beta), D => beta =>* alpha.
+  ;;
+  ;; Possible generalization: replace the third `origin` member = beta with
+  ;; the derivation beta => beta' => ... => alpha.
+
+  (define entry-nonterm car)
+  (define entry-rewrite cadr)
+  (define entry-origin caddr)
 
   (define (writln x) '(begin (write x) (newline)))
 
-  ;; map-add-prefixes : InterimMap Nonterminal [Listof PProdSeq] -> InterimMap
-  (define (map-add-prefixes imap nt prefixes)
-    ;; (writln `(map-add-prefixes imap: ,imap nt: ,nt prefixes: ,prefixes))
-    (foldr (lambda (p imap)
-             (let* ((prefix (take-term-prefix p))
-                    ;; (_ (writln `(prefix: ,prefix)))
-                    (prefix (take-prefix prefix k))
-                    ;; (_ (writln `(prefix: ,prefix)))
-                    (s (sentence->string prefix))
-                    (entry (list nt s p)))
-               (if (not (member entry imap))
-                   (cons entry imap)
-                   imap)))
-           imap
-           prefixes))
+  ;; map-entries : InterimMap Nonterminal -> [Listof ProdSeq]
+  (define (map-entries imap nt)
+    (map cadr (filter (lambda (entry) (symbol=? (car entry) nt)) imap)))
 
-  ;; map-has-prefix-for : InterimMap Nonterminal PProdSeq -> Boolean
-  (define (map-has-prefix-for imap nt rhs)
-    (writln `(map-has-prefix-for imap: ,imap nt: ,nt rhs: ,rhs))
-    (let* ((str (sentence->string (take-term-prefix rhs)))
-           (str (substring str 0 (min (string-length str) k))))
-      (writln `(map-has-prefix-for imap: ,imap nt: ,nt rhs: ,rhs str: ,str))
-      (not (null? (filter (lambda (entry) (and (symbol=? (car entry) nt) (string=? (cadr entry) str)))
-                          imap)))))
+  ;; map-incorporate : InterimMap Nonterm [Listof ProdSeq] ProdSeq -> [Maybe InterimMap]
+  ;; If beta... has new prefixes, returns a new maap with them added; otherwise #f.
+  (define (map-incorporate imap nt beta... origin)
+    (define (map-has-prefix-for imap A alpha)
+      (ormap (lambda (entry)
+               (let ((B (entry-nonterm entry)) (beta (entry-rewrite entry)))
+                 (and (eq? A B) (prodseq-equal-upto alpha beta k))))
+             imap))
 
-  (define list-map map)
+    ;; map-incorporate-one : InterimMap Nonterm ProdSeq ProdSeq -> [Maybe InterimMap]
+    (define (map-incorporate-one imap nt beta origin)
+      (and (not (map-has-prefix-for imap nt beta))
+           (cons (list nt beta origin) imap)))
 
-  (define (partition pred? lst)
-    (let loop ((lst lst))
-      (cond ((null? lst)
-             (list '() '()))
-            (else
-             (let ((x (car lst))
-                   (rest (loop (cdr lst))))
-               (if (pred? (car lst))
-                   (list (cons x (car rest)) (cadr rest))
-                   (list (car rest) (cons x (cadr rest)))))))))
+    (let ((result (foldr (lambda (beta mmap)
+                           (or (map-incorporate-one (or mmap imap) nt beta origin)
+                               mmap))
+                         #f
+                         beta...)))
 
-  (define (substitute-series seq imap)
-    (cond ((sentence? seq)
-           (list seq))
-          (else
-           (let* ((u (first-nonterm seq))
-                  (u-substs (map caddr (filter (lambda (entry) (eq? (car entry) u)) imap)))
-                  (u-parts (partition sentence? u-substs))
-                  (u-sents (car u-parts))
-                  (u-nonsents (cadr u-parts))
-                  (_ (writln `(substitute-series u-sents: ,u-sents u-nonsents: ,u-nonsents)))
-                  (seq*s-sents (map (lambda (u-subst) (substitute-first seq u u-subst)) u-sents))
-                  (seq*s-nonsents (map (lambda (u-subst) (substitute-first seq u u-subst)) u-nonsents)))
-             (append seq*s-sents
-                     seq*s-nonsents
-                     (apply append (map (lambda (s) (substitute-series s imap)) (filter (lambda (x) (not (sentence? x))) seq*s-sents))))))))
+      (writln `(map-incorporate imap: ,imap nt: ,nt beta...: ,beta... result: ,result))
+
+      result))
 
   (let* ((components (separate-nullable-nonterminals grammar))
-         (nullable (car components))
          (nonnullable (cadr components))
-         (map (let loop ((imap '())
-                         (g grammar))
-                (cond ((null? g) imap)
-                      (else
-                       (let* ((rule (car g))
-                              (nt (production-lhs rule))
-                              (rhs (production-rhs rule))
-                              (consequences (let loop ((rhs rhs))
-                                              (let ((series (substitute-series rhs imap)))
-                                                (writln `(series: ,series))
-                                                (filter (lambda (rhs) (not (map-has-prefix-for imap nt rhs)))
-                                                        series)))))
-                         (writln `(nt: ,nt consequences: ,consequences))
-                         (cond ((null? consequences)
-                                (loop imap (cdr g)))
-                               (else
-                                (let* ((imap* (map-add-prefixes imap nt consequences)))
-                                  (cond ((eq? imap* imap)
-                                         (loop imap (cdr g)))
-                                        (else
-                                         (loop imap* grammar))))))))))))
-    map))
+         (nonnullable? (lambda (s) (memq s nonnullable)))
 
+         (initial-imap  (map (lambda (rule) (list (production-lhs rule)
+                                                  (production-rhs rule)
+                                                  (production-rhs rule)
+                                                  ))
+                             grammar))
+
+         ;; Intention: explore =>-tree to identify all intermediate
+         ;; sentential k-prefixes
+
+         (map2 (let loop ((imap initial-imap)
+                          (cursor initial-imap))
+                 ;; Strategy: For each entry (D alpha) in imap with
+                 ;; leading nonterminal A and entries {beta ...} for A
+                 ;; in imap: add {(D alpha[A := beta]) ...}  to imap.
+
+                 ;; The "add" operation on an imap does the addition
+                 ;; only if there is not already another entry with a
+                 ;; matching k-prefix.
+
+                 (cond ((null? cursor) imap)
+                       (else
+                        (let* ((entry (car cursor))
+                               (D (entry-nonterm entry))
+                               (alpha (entry-rewrite entry))
+                               (origin (entry-origin entry))
+                               (_ (writln `(loop imap: ,imap entry ,D =>* ,alpha)))
+                               (mmap
+                                (cond
+                                 ((sentence? alpha) #f)
+                                 (else
+                                  (let* ((A (first-nonterm alpha))
+                                         (beta... (map-entries imap A))
+                                         (alpha*... (map (lambda (beta)
+                                                           (substitute-first alpha A beta))
+                                                         beta...))
+                                         (dropped...
+                                          (let loop2 ((alpha alpha))
+                                            (cond ((sentence? alpha)
+                                                   '())
+                                                  ((nonnullable? (first-nonterm alpha))
+                                                   '())
+                                                  (else
+                                                   (let ((drop (substitute-first alpha (first-nonterm alpha) '())))
+                                                     (cons drop (loop2 drop))))))))
+
+                                    (map-incorporate imap D
+                                                     (append dropped... alpha*...)
+                                                     origin))))))
+
+                          (cond (mmap
+                                 (writln `(mmap: ,mmap -> restart))
+                                 (loop mmap mmap)) ;; restart
+                                (else
+                                 (writln `(mmap: ,imap -> next-rule))
+                                 (loop imap (cdr cursor))))))))))
+    (writln `(map2: ,map2))
+    (map (lambda (entry)
+           (let ((D (entry-nonterm entry))
+                 (alpha (entry-rewrite entry)))
+             (list D
+                   (sentence->string (take-term-prefix alpha))
+                   alpha
+                   (entry-origin entry)
+                   )))
+         map2)))
 
 ;; find-prefixes : Grammar Nat PProdSeq  -> [Listof Lookahead]
 ;; returns list [alpha | alpha is terminal, |alpha| = k, and gamma =>* alpha ^ beta for some beta.
