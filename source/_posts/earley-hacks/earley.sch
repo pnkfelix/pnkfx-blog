@@ -354,19 +354,28 @@
 (define (state-set-add/! set state)
   (workset-add/! set state))
 
-;; An EarleyComputation is a (vector Grammar Nat String Nat [Vectorof StateSet])
-;; interpretation: A computation (list G K STR STR-IDX STATESETS) is
+;; An EarleyComputation is a (vector grammar lookahead input index states map)
+;; where grammar is a Grammar
+;;       lookahead is a Nat
+;;       input is a String
+;;       index is a Nat
+;;       states is a [Vectorof StateSet]
+;;       map is a [Maybe ExpansionMap]
+;; Invariant: if map non-false, then map = (build-expansion-map grammar k)
+;; interpretation: A computation (vector G K STR STR-IDX STATESETS M) is
 ;; parsing STR with repsect to G, using K characters of look-ahead.
 ;; It has built up STATESETSEQ, is currently looking at STR[STR-IDX],
 ;; and is processing workset STATESETS[STR-IDX].
 
-(define (ec g k str idx states)
-  (vector g k str idx states))
+(define (ec g k str idx states mmap)
+  (vector g k str idx states mmap))
+
 (define (ec-grammar c)          (vector-ref c 0))
 (define (ec-lookahead c)        (vector-ref c 1))
 (define (ec-input c)            (vector-ref c 2))
 (define (ec-input-index c)      (vector-ref c 3))
 (define (ec-states-vector c)    (vector-ref c 4))
+(define (ec-expansion-map c)    (vector-ref c 5))
 
 (define (ec-stateset c)
   (vector-ref (ec-states-vector c) (ec-input-index c)))
@@ -375,7 +384,8 @@
 (define (ec-stateset-update/! c i states)
   (ec (ec-grammar c) (ec-lookahead c)
       (ec-input c) (ec-input-index c)
-      (vector-replace/! (ec-states-vector c) i states)))
+      (vector-replace/! (ec-states-vector c) i states)
+      (ec-expansion-map c)))
 
 ;; ec-next-token/! : EarleyComputation -> EarleyComputation
 (define (ec-next-token/! c)
@@ -383,7 +393,8 @@
       (ec-lookahead c)
       (ec-input c)
       (+ 1 (ec-input-index c))
-      (ec-states-vector c)))
+      (ec-states-vector c)
+      (ec-expansion-map c)))
 
 ;; vector-replace/! : &l/[Vectorof X] X nat -> &l/[Vectorof X]
 (define (vector-replace/! vec i val)
@@ -438,6 +449,28 @@
         (else
          (and (f (car l))
               (andmap f (cdr l))))))
+
+;; partition : (X -> Boolean) [Listof X] -> (values [Listof X] [Listof X])
+(define (partition f l)
+  (let loop ((yes '()) (no '()) (l l))
+    (cond ((null? l)
+           (values (reverse yes) (reverse no)))
+          (else
+           (cond ((f (car l))
+                  (loop (cons (car l) yes) no (cdr l)))
+                 (else
+                  (loop yes (cons (car l) no) (cdr l))))))))
+
+;; uniq
+(define (uniq l)
+  (let loop ((new '())
+             (l l))
+    (cond ((null? l) (reverse new))
+          (else
+           (cond ((member (car l) new)
+                  (loop new (cdr l)))
+                 (else
+                  (loop (cons (car l) new) (cdr l))))))))
 
 ;; grammar-rewrite-to-nonnullable : Grammar -> Grammar
 ;; Produces a grammar that generates the same language as input
@@ -520,8 +553,28 @@
                        g*))))
       g*)))
 
-;; build-prefix-map : Grammar Nat -> [Listof (list Nonterm Lookahead)]
-(define (build-prefix-map grammar k)
+;; assq-all: [Listof (X . Y)] X -> [Listof (X . Y)]
+(define (assq-all a-lst key)
+  (filter (lambda (entry) (eq? (car entry) key)) a-lst))
+
+;; A ExpansionMap is a:
+;;   (list [Listof (list Nonterm Lookahead)]    ;; (D <=k-prefix-for-D)
+;;         [Listof (list Nonterm Lookahead)])   ;; (D <=k-sentence-for-D)
+
+;; cross-product: (X Y -> Z) [Listof X] [Listof Y] -> [Listof Z]
+(define (cross-product op xs ys)
+  (apply append (map (lambda (x) (map (lambda (y) (op x y)) ys)) xs)))
+
+(define (expansion-map prefixes sentences)
+  (list prefixes sentences))
+(define (expansion-map-prefixes-for em nt)
+  ; (write `(expansion-map-prefixes-for em: ,em nt: ,nt)) (newline)
+  (map cadr (assq-all (car em) nt)))
+(define (expansion-map-sentences-for em nt)
+  (map cadr (assq-all (cadr em) nt)))
+
+;; build-expansion-map : Grammar Nat -> ExpansionMap
+(define (build-expansion-map grammar k)
   ;; An InterimMap is an associative list of
   ;;   (list Nonterm ProdSeq ProdSeq)
   ;;
@@ -539,10 +592,10 @@
 
   ;; map-entries : InterimMap Nonterminal -> [Listof ProdSeq]
   (define (map-entries imap nt)
-    (map cadr (filter (lambda (entry) (symbol=? (car entry) nt)) imap)))
+    (map cadr (assq-all imap nt)))
 
   ;; map-incorporate : InterimMap Nonterm [Listof ProdSeq] ProdSeq -> [Maybe InterimMap]
-  ;; If beta... has new prefixes, returns a new maap with them added; otherwise #f.
+  ;; If beta... has new prefixes, returns a new map with them added; otherwise #f.
   (define (map-incorporate imap nt beta... origin)
     (define (map-has-prefix-for imap A alpha)
       (ormap (lambda (entry)
@@ -623,56 +676,77 @@
                                  (loop mmap mmap)) ;; restart
                                 (else
                                  (writln `(mmap: ,imap -> next-rule))
-                                 (loop imap (cdr cursor))))))))))
-    (writln `(map2: ,map2))
-    (map (lambda (entry)
-           (let ((D (entry-nonterm entry))
-                 (alpha (entry-rewrite entry)))
-             (list D
-                   (sentence->string (take-term-prefix alpha))
-                   alpha
-                   (entry-origin entry)
-                   )))
-         map2)))
+                                 (loop imap (cdr cursor)))))))))
+         (_ (writln `(map2: ,map2)))
+         (expanded
+          (map (lambda (entry)
+                 (let ((D (entry-nonterm entry))
+                       (alpha (entry-rewrite entry)))
+                   (list D
+                         (sentence->string (take-term-prefix alpha))
+                         alpha
+                         (entry-origin entry)
+                         )))
+               map2))
+         (separate-entries
+          (lambda ()
+            (partition (lambda (expanded-entry) (sentence? (caddr expanded-entry)))
+                       expanded)))
+         (take-2   (lambda (x) (list (car x) (cadr x))))
+         (take-3   (lambda (x) (list (car x) (cadr x) (caddr x))))
+         (drop-3rd (lambda (x) (list (car x) (cadr x) (cadddr x))))
+         (drop-alpha (lambda (expanded-entry) (drop-3rd expanded-entry)))
+         (drop-alpha-and-origin take-2))
+    (call-with-values separate-entries
+      (lambda (sentences prefixes)
+        (expansion-map (uniq (map drop-alpha-and-origin prefixes))
+                       (uniq (map drop-alpha-and-origin sentences)))))))
 
-;; find-prefixes : Grammar Nat PProdSeq  -> [Listof Lookahead]
+;; find-prefixes : [Oneof Grammar ExpansionMap] Nat PProdSeq -> [Listof Lookahead]
 ;; returns list [alpha | alpha is terminal, |alpha| = k, and gamma =>* alpha ^ beta for some beta.
-(define (find-prefixes g k gamma)
-  (define (displn x) (display x) (newline))
-  (define (writln x) (write x) (newline))
+(define (find-prefixes g-or-em k gamma)
+  (define em (if (symbol? (car (car g-or-em)))
+                 (build-expansion-map g-or-em k)
+                 g-or-em))
 
-  (let loop ((sentences '())
-             (set (workset (list gamma))))
-    (writln `(sentences: ,sentences set: ,set))
-    (cond ((workset-more-todo? set)
-           (let-values (((e set) (workset-next/! set)))
-             (let ((prefix (take-prefix e k)))
-               (writln `(prefix: ,prefix))
-               (cond ((and (sentence? prefix) (= k (length prefix)))
-                      (writln `(adding ,e to sentences: ,sentences))
-                      (loop (cons (sentence->string prefix) sentences) set))
-                     (else
-                      (let* ((nt (first-nonterm e))
-                             (_ (writln `(nt: ,nt)))
-                             (results (grammar-results-for g nt))
-                             (substitutions (map (lambda (result)
-                                                   (substitute-first e nt result))
-                                                 results))
-                             (filtered (filter (lambda (subst)
-                                                 (let ((prefix (take-prefix subst k)))
-                                                   (or (not (sentence? prefix))
-                                                       (not (member (sentence->string prefix) sentences)))))
-                                               substitutions)))
-                        (loop sentences (workset-add-all/! set filtered))))))))
-          (else
-           sentences))))
+  (define (writln x) '(begin (write x) (newline)))
+
+  (let ((strings
+         (let loop ((prefixes '(""))
+                    (gamma gamma))
+           (let* ((c (prodseq-first gamma))
+                  (r (prodseq-rest gamma))
+                  (c-additions
+                   (cond ((char? c) (list (string c)))
+                         ((symbol? c) (expansion-map-sentences-for em c)))))
+             (writln `(loop prefixes: ,prefixes c: ,c r: ,r))
+             (cond
+              ((null? r) ;; last symbol in gamma
+               (let ((c-prefixes
+                      (cond ((char? c) '())
+                            ((symbol? c) (expansion-map-prefixes-for em c)))))
+                 (cross-product string-append
+                                prefixes
+                                (append c-prefixes c-additions))))
+              (else
+               (loop (cross-product string-append
+                                    prefixes
+                                    c-additions)
+                     r)))))))
+    (filter (lambda (x) (>= (string-length x) k))
+            strings)))
+
+(define (h-follow comp gamma)
+  (find-prefixes (ec-expansion-map comp)
+                 (ec-lookahead comp)
+                 gamma))
 
 ;; Grammar Nat String -> EarleyComputation
 (define (earley g k str)
   (let ((v (make-vector (string-length str) '()))
         (root (grammar-root g)))
     (vector-set! v 0 (state-set (state (root->cursor root) 0 (make-list k #f))))
-    (ec g k str 0 v)))
+    (ec g k str 0 v (build-expansion-map g k))))
 
 ;; earley-step : EarleyComputation -> EarleyComputation
 (define (earley-step comp)
