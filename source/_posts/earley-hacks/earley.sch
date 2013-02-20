@@ -77,6 +77,14 @@
 ;; A ProdSeq is a [Listof [Oneof String ProdElem]]
 ;; A TermSeq is a [Listof GrammarTerminal]
 
+;; ProdSeq -> Boolean
+(define (prodseq-null? ps)
+  (or (null? ps)
+      (let ((s (car ps)))
+        (and (string? s)
+             (zero? (string-length s))
+             (prodseq-null? (cdr ps))))))
+
 ;; ProdSeq -> ProdElem
 (define (prodseq-first ps)
   (let ((s (car ps)))
@@ -108,7 +116,8 @@
           ((symbol? tok) 1)))
   (let loop ((ps ps) (ps* ps*) (k k))
     (cond ((<= k 0)                                     #t)
-          ((or (null? ps) (null? ps*))                  (and (null? ps) (null? ps*)))
+          ((or (prodseq-null? ps) (prodseq-null? ps*))
+           (and (prodseq-null? ps) (prodseq-null? ps*)))
           ;; Special case; short-cut when we have same token
           ((equal? (car ps) (car ps*))
            (loop (cdr ps) (cdr ps*) (- k (term-count (car ps)))))
@@ -179,13 +188,12 @@
 
 ;; null-sentence? : PProdSeq -> Boolean
 (define (null-sentence? s)
-  (cond ((null? s) #t)
+  (cond ((prodseq-null? s) #t)
         (else
          (cond ((and (string? (car s)) (zero? (string-length (car s))))
                 (null-sentence? (cdr s)))
                (else
                 #f)))))
-  
 
 ;; take-prefix : [Oneof String PProdSeq] Nat -> PProdSeq
 ;; returns first k characters or symbols in s, or as many as s can supply.
@@ -195,7 +203,7 @@
         (else
          (let loop ((s s)
                     (k k) )
-           (cond ((null? s) s)
+           (cond ((prodseq-null? s) s)
                  ((zero? k) '())
                  (else
                   (cond ((string? (car s))
@@ -211,7 +219,7 @@
 (define (take-term-prefix s)
   (cond ((string? s) s)
         (else (let loop ((s s))
-                (cond ((null? s) s)
+                (cond ((prodseq-null? s) s)
                       (else (cond ((symbol? (car s)) '())
                                   (else (cons (car s) (loop (cdr s)))))))))))
 
@@ -219,7 +227,7 @@
 ;; Returns new seq r = s[nt := t].  Does not assume nt appears in s.
 (define (substitute-first s nt t)
   (let loop ((s s))
-    (cond ((null? s) s)
+    (cond ((prodseq-null? s) s)
           (else
            (cond ((eq? nt (car s))
                   (cond ((string? t)
@@ -228,6 +236,13 @@
                          (append t (cdr s)))))
                  (else
                   (cons (car s) (loop (cdr s)))))))))
+
+;; A nicely rendered -|
+(define left-tack-char #\x22a3)
+;; A nicely rendered ->
+(define right-arrow-char #\x2192)
+;; A somewhat nicely rendered \phi
+(define phi-char #\x03d5)
 
 ;; A Lookahead is a String
 
@@ -245,22 +260,59 @@
     (and (<= (+ i k) l)
          (string=? alpha (substring input i (+ i k))))))
 
-;; A ProductionCursor is a
-;;   (list [Oneof Nonterminal #t] PProdSeq PProdSeq)
+
+(define-values (cursor cursor-nonterm cursor-prev cursor-post)
+  (let ()
+
+    ;; A ProductionCursor is a
+    ;;   (list [Oneof Nonterminal #t] PProdSeq PProdSeq)
+
+    (define (cursor nonterm prev post)
+      (list nonterm prev post))
+    (define (cursor-nonterm c) (list-ref c 0))
+    (define (cursor-prev c) (list-ref c 1))
+    (define (cursor-post c) (list-ref c 2))
+
+    (let* ((cursor-rtd (make-record-type 'cursor '(nonterm prev post)))
+           (cursor (record-constructor cursor-rtd))
+           (cursor-nonterm (record-accessor cursor-rtd 'nonterm))
+           (cursor-prev (record-accessor cursor-rtd 'prev))
+           (cursor-post (record-accessor cursor-rtd 'post))
+           (_ (rtd-printer-set! cursor-rtd
+                                (lambda (c port)
+                                  (let* ((d (lambda (x) (display x port)))
+                                         (elem (lambda (e)
+                                                 (let ((e (if (eqv? e #\nul)
+                                                              left-tack-char
+                                                              e)))
+                                                   (d e))))
+                                         (nonterm (cursor-nonterm c))
+                                         (nonterm (if (eqv? nonterm #t)
+                                                      phi-char
+                                                      nonterm)))
+                                    (display "#<cursor" port)
+                                    (begin (d " ")
+                                           (d nonterm)
+                                           (d (string #\space
+                                                      right-arrow-char
+                                                      #\space))
+                                           (for-each elem
+                                                     (reverse (cursor-prev c)))
+                                           (d ".")
+                                           (for-each elem (cursor-post c))
+                                           (d ">")))))))
+
+    (values cursor cursor-nonterm cursor-prev cursor-post))))
 
 ;; production->cursor : Production -> ProductionCursor
 (define (production->cursor p)
-  (list (production-lhs p)
-        '()
-        (production-rhs p)))
+  (cursor (production-lhs p)
+          '()
+          (production-rhs p)))
 
 ;; root->cursor : Nonterminal -> ProductionCursor
 (define (root->cursor r)
-  (list #t '() (list r #\nul)))
-
-(define (cursor-nonterm c) (list-ref c 0))
-(define (cursor-prev c) (list-ref c 1))
-(define (cursor-post c) (list-ref c 2))
+  (cursor #t '() (list r #\nul)))
 
 ;; cursor-next : ProductionCursor -> ESym
 (define (cursor-next c)
@@ -272,18 +324,56 @@
   (let* ((p (cursor-post c))
          (s (prodseq-first p))
          (r (prodseq-rest p)))
-    (list (cursor-nonterm c) (cons s (cursor-prev c)) r)))
+    (cursor (cursor-nonterm c) (cons s (cursor-prev c)) r)))
+
+;; (Char -> Char) String -> String
+(define (string-mapchar f s)
+  (let* ((len (string-length s))
+         (r (make-string len)))
+    (let loop ((i 0))
+      (cond ((= i len) r)
+            (else
+             (string-set! r i (f (string-ref s i)))
+             (loop (+ i 1)))))))
 
 ;; A Position is a Nat
 ;; (may consider making it a (cons String Nat), but for now lets get by with Nat
 
 ;; A State is a (list ProductionCursor Position Lookahead)
 
-(define (state cursor pos termseq)
-  (list cursor pos termseq))
-(define (state-cursor s) (list-ref s 0))
-(define (state-input-position s) (list-ref s 1))
-(define (state-successor s) (list-ref s 2))
+(define-values (state state-cursor state-input-position state-successor)
+  (let ()
+    (define (state cursor pos termseq)
+      (list cursor pos termseq))
+    (define (state-cursor s) (list-ref s 0))
+    (define (state-input-position s) (list-ref s 1))
+    (define (state-successor s) (list-ref s 2))
+
+    (let* ((state-rtd (make-record-type 'state '(cursor pos termseq)))
+           (state (record-constructor state-rtd))
+           (state-cursor (record-accessor state-rtd 'cursor))
+           (state-input-position (record-accessor state-rtd 'pos))
+           (state-successor (record-accessor state-rtd 'termseq))
+           (_ (rtd-printer-set! state-rtd
+                                (lambda (s port)
+                                  (let ((d (lambda (x) (display x port)))
+                                        (w (lambda (x) (write x port))))
+                                    (d "#<state")
+                                    (begin
+                                      (d " ")
+                                      (d (state-cursor s))
+                                      (d " at:")
+                                      (d (state-input-position s))
+                                      (d " succ:")
+                                      (d (string-mapchar
+                                          (lambda (c)
+                                            (case c
+                                              ((#\nul) left-tack-char)
+                                              (else c)))
+                                          (state-successor s))))
+                                    (display ">" port))))))
+
+    (values state state-cursor state-input-position state-successor))))
 
 (define (state-final? s)
   (null? (cursor-post (state-cursor s))))
@@ -298,18 +388,41 @@
          (state-input-position s)
          (state-successor s)))
 
-;; A [Worksetof X] is a (cons [Listof X] [Listof X])
-;; interpretation: A workset (todo . done) represents the set (todo U
-;; done), where the elements of done have already been processed.
-
 ;; workset: [Listof X] -> [Worksetof X]
 ;; workset: [Listof X] [Listof X] -> [Worksetof X]
-(define (workset todo . args)
-  (let ((done (if (null? args) '() (car args))))
-    (list todo done)))
+;; workset-todo: [Worksetof X] -> [Listof X]
+;; workset-done: [Worksetof X] -> [Listof X]
+(define-values (workset workset-todo workset-done)
+  (let ()
 
-(define (workset-todo w) (car w))
-(define (workset-done w) (cadr w))
+    ;; A [Worksetof X] is a (cons [Listof X] [Listof X])
+    ;; interpretation: A workset (todo . done) represents the set (todo U
+    ;; done), where the elements of done have already been processed.
+    (define (workset todo . args)
+      (let ((done (if (null? args) '() (car args))))
+        (list todo done)))
+
+    (define (workset-todo w) (car w))
+    (define (workset-done w) (cadr w))
+
+    ;; This uses Larceny's records to make results more printable at repl.
+    (let* ((workset-rtd (make-record-type 'workset '(todo done)))
+           (ctor (record-constructor workset-rtd))
+           (workset (lambda (todo . args)
+                      (let ((done (if (null? args) '() (car args))))
+                        (ctor todo done))))
+           (workset-todo (record-accessor workset-rtd 'todo))
+           (workset-done (record-accessor workset-rtd 'done))
+
+           (_ (rtd-printer-set! workset-rtd
+                                (lambda (w port)
+                                  (display "#<workset todo:" port)
+                                  (write (workset-todo w) port)
+                                  (display " done:" port)
+                                  (write (workset-done w) port)
+                                  (display ">" port)))))
+
+      (values workset workset-todo workset-done))))
 
 ;; workset-more-todo? : [Worksetof X] -> Boolean
 (define (workset-more-todo? s) (not (null? (workset-todo s))))
@@ -354,47 +467,103 @@
 (define (state-set-add/! set state)
   (workset-add/! set state))
 
-;; An EarleyComputation is a (vector grammar lookahead input index states map)
-;; where grammar is a Grammar
-;;       lookahead is a Nat
-;;       input is a String
-;;       index is a Nat
-;;       states is a [Vectorof StateSet]
-;;       map is a [Maybe ExpansionMap]
-;; Invariant: if map non-false, then map = (build-expansion-map grammar k)
-;; interpretation: A computation (vector G K STR STR-IDX STATESETS M) is
-;; parsing STR with repsect to G, using K characters of look-ahead.
-;; It has built up STATESETSEQ, is currently looking at STR[STR-IDX],
-;; and is processing workset STATESETS[STR-IDX].
-
-(define (ec g k str idx states mmap)
-  (vector g k str idx states mmap))
-
-(define (ec-grammar c)          (vector-ref c 0))
-(define (ec-lookahead c)        (vector-ref c 1))
-(define (ec-input c)            (vector-ref c 2))
-(define (ec-input-index c)      (vector-ref c 3))
-(define (ec-states-vector c)    (vector-ref c 4))
-(define (ec-expansion-map c)    (vector-ref c 5))
-
-(define (ec-stateset c)
-  (vector-ref (ec-states-vector c) (ec-input-index c)))
-
+;; earleycomp-maker : Grammar Nat -> (String -> EarleyComputation)
 ;; ec-stateset-update/! : EarleyComputation Nat StateSet -> EarleyComputation
-(define (ec-stateset-update/! c i states)
-  (ec (ec-grammar c) (ec-lookahead c)
-      (ec-input c) (ec-input-index c)
-      (vector-replace/! (ec-states-vector c) i states)
-      (ec-expansion-map c)))
-
 ;; ec-next-token/! : EarleyComputation -> EarleyComputation
-(define (ec-next-token/! c)
-  (ec (ec-grammar c)
-      (ec-lookahead c)
-      (ec-input c)
-      (+ 1 (ec-input-index c))
-      (ec-states-vector c)
-      (ec-expansion-map c)))
+(define-values (earleycomp-maker
+                ec-grammar ec-lookahead ec-input ec-input-index
+                ec-states-vector ec-expansion-map
+                ec-stateset ec-stateset-update/! ec-next-token/!)
+  (let ()
+
+    ;; An EarleyComputation is a
+    ;;
+    ;;     (vector grammar lookahead input index states map)
+    ;;
+    ;; where grammar is a Grammar
+    ;;       lookahead is a Nat
+    ;;       input is a String
+    ;;       index is a Nat
+    ;;       states is a [Vectorof StateSet]
+    ;;       map is a [Maybe ExpansionMap]
+    ;;
+    ;; Invariant: if map non-false, then map = (build-expansion-map grammar k)
+    ;;
+    ;; Interpretation: A computation (vector G K STR STR-IDX STATESETS
+    ;; M) is parsing STR with repsect to G, using K characters of
+    ;; look-ahead.  It has built up STATESETSEQ, is currently looking
+    ;; at STR[STR-IDX], and is processing workset STATESETS[STR-IDX].
+
+    (define (ec g k str idx states mmap)
+      (vector g k str idx states mmap))
+
+    (define (ec-grammar c)          (vector-ref c 0))
+    (define (ec-lookahead c)        (vector-ref c 1))
+    (define (ec-input c)            (vector-ref c 2))
+    (define (ec-input-index c)      (vector-ref c 3))
+    (define (ec-states-vector c)    (vector-ref c 4))
+    (define (ec-expansion-map c)    (vector-ref c 5))
+
+    (let* ((ec-rtd (make-record-type 'earley-computation '(grammar
+                                                           lookahead
+                                                           input
+                                                           input-index
+                                                           states-vector
+                                                           expansion-map)))
+           (ec (record-constructor ec-rtd))
+           (ec-grammar (record-accessor ec-rtd 'grammar))
+           (ec-lookahead (record-accessor ec-rtd 'lookahead))
+           (ec-input (record-accessor ec-rtd 'input))
+           (ec-input-index (record-accessor ec-rtd 'input-index))
+           (ec-states-vector (record-accessor ec-rtd 'states-vector))
+           (ec-expansion-map (record-accessor ec-rtd 'expansion-map))
+           (_ (rtd-printer-set! ec-rtd
+                                (lambda (e port)
+                                  (let ((d (lambda (x) (display x port)))
+                                        (w (lambda (x) (write x port))))
+                                    (d "#<earley-computation")
+                                    (d " input:")
+                                    (w (ec-input e))
+                                    (d " ")
+                                    (d (ec-states-vector e))
+                                    (d ">")))))
+           )
+
+      (define (ec-stateset c)
+        (vector-ref (ec-states-vector c) (ec-input-index c)))
+
+      ;; ec-stateset-update/! :
+      ;;     EarleyComputation Nat StateSet -> EarleyComputation
+      (define (ec-stateset-update/! c i states)
+        (ec (ec-grammar c) (ec-lookahead c)
+            (ec-input c) (ec-input-index c)
+            (vector-replace/! (ec-states-vector c) i states)
+            (ec-expansion-map c)))
+
+      ;; ec-next-token/! : EarleyComputation -> EarleyComputation
+      (define (ec-next-token/! c)
+        (ec (ec-grammar c)
+            (ec-lookahead c)
+            (ec-input c)
+            (+ 1 (ec-input-index c))
+            (ec-states-vector c)
+            (ec-expansion-map c)))
+
+      (define (earley g k m str)
+        (let ((v (make-vector (string-length str) '()))
+              (root (grammar-root g)))
+          (vector-set! v 0 (state-set (state (root->cursor root) 0 (make-string k #\nul))))
+          (ec g k str 0 v m)))
+
+      (define (earleycomp-maker g k)
+        (let ((m (build-expansion-map g k)))
+          (lambda (str)
+            (earley g k m str))))
+
+      (values earleycomp-maker
+              ec-grammar ec-lookahead ec-input ec-input-index ec-states-vector
+              ec-expansion-map
+              ec-stateset ec-stateset-update/! ec-next-token/!))))
 
 ;; vector-replace/! : &l/[Vectorof X] X nat -> &l/[Vectorof X]
 (define (vector-replace/! vec i val)
@@ -711,17 +880,20 @@
 
   (define (writln x) '(begin (write x) (newline)))
 
+  (writln `(find-prefixes gamma: ,gamma k: ,k em: ,em))
+
   (let ((strings
          (let loop ((prefixes '(""))
                     (gamma gamma))
+           (writln `(loop prefixes: ,prefixes gamma: ,gamma))
            (let* ((c (prodseq-first gamma))
                   (r (prodseq-rest gamma))
                   (c-additions
                    (cond ((char? c) (list (string c)))
                          ((symbol? c) (expansion-map-sentences-for em c)))))
-             (writln `(loop prefixes: ,prefixes c: ,c r: ,r))
+             (writln `(loop prefixes: ,prefixes c: ,c r: ,r c-additions: ,c-additions))
              (cond
-              ((null? r) ;; last symbol in gamma
+              ((prodseq-null? r) ;; last symbol in gamma
                (let ((c-prefixes
                       (cond ((char? c) '())
                             ((symbol? c) (expansion-map-prefixes-for em c)))))
@@ -737,16 +909,14 @@
             strings)))
 
 (define (h-follow comp gamma)
+  ;; (write `(h-follow comp: ,comp gamma: ,gamma)) (newline)
   (find-prefixes (ec-expansion-map comp)
                  (ec-lookahead comp)
                  gamma))
 
 ;; Grammar Nat String -> EarleyComputation
 (define (earley g k str)
-  (let ((v (make-vector (string-length str) '()))
-        (root (grammar-root g)))
-    (vector-set! v 0 (state-set (state (root->cursor root) 0 (make-list k #f))))
-    (ec g k str 0 v (build-expansion-map g k))))
+  ((earleycomp-maker g k) str))
 
 ;; earley-step : EarleyComputation -> EarleyComputation
 (define (earley-step comp)
@@ -776,7 +946,7 @@
                   (let* ((c (cursor-next (state-cursor s)))
                          (rules (filter (lambda (p) (eq? c (cursor-nonterm j))) g))
                          (suffix (cursor-post (cursor-shift (state-cursor s))))
-                         (h (h-follow comp (append suffix alpha)))
+                         (h (h-follow comp (append suffix (list alpha))))
                          (S_i* (foldr (lambda (beta set)
                                         (foldr (lambda (rule set)
                                                  (state-set-add/!
