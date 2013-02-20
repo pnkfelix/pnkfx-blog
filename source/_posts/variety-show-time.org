@@ -739,6 +739,8 @@ sys	0m0.080s
    CLOCK: [2013-02-17 Sun 21:16]--[2013-02-17 Sun 21:26] =>  0:10
 
 ** Larceny
+   CLOCK: [2013-02-20 Wed 10:04]--[2013-02-20 Wed 12:47] =>  2:43
+   CLOCK: [2013-02-20 Wed 08:46]--[2013-02-20 Wed 09:51] =>  1:05
    CLOCK: [2013-02-19 Tue 10:42]--[2013-02-19 Tue 11:49] =>  1:07
    CLOCK: [2013-02-19 Tue 08:59]--[2013-02-19 Tue 10:34] =>  1:35
    CLOCK: [2013-02-18 Mon 11:42]--[2013-02-18 Mon 16:35] =>  4:53
@@ -760,3 +762,6 @@ sys	0m0.080s
      doc comments is even trickier.
 
    * Tue: Redoing build-prefix-map to be more "obviously correct"
+
+   * Wed: Using build-prefix-map (now build-expansion-map) to implement
+     H_k aka find-prefixes.
