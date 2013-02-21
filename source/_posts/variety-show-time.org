@@ -739,6 +739,11 @@ sys	0m0.080s
    CLOCK: [2013-02-17 Sun 21:16]--[2013-02-17 Sun 21:26] =>  0:10
 
 ** Larceny
+   CLOCK: [2013-02-21 Thu 11:22]--[2013-02-21 Thu 11:31] =>  0:09
+   CLOCK: [2013-02-21 Thu 09:13]--[2013-02-21 Thu 11:22] =>  2:09
+   CLOCK: [2013-02-21 Thu 09:01]--[2013-02-21 Thu 09:03] =>  0:02
+   CLOCK: [2013-02-21 Thu 08:58]--[2013-02-21 Thu 08:58] =>  0:00
+   CLOCK: [2013-02-21 Thu 08:33]--[2013-02-21 Thu 08:58] =>  0:25
    CLOCK: [2013-02-20 Wed 10:04]--[2013-02-20 Wed 12:47] =>  2:43
    CLOCK: [2013-02-20 Wed 08:46]--[2013-02-20 Wed 09:51] =>  1:05
    CLOCK: [2013-02-19 Tue 10:42]--[2013-02-19 Tue 11:49] =>  1:07
@@ -765,3 +770,18 @@ sys	0m0.080s
 
    * Wed: Using build-prefix-map (now build-expansion-map) to implement
      H_k aka find-prefixes.
+
+   * Thu: Finally seeing earley-predictor in operation.
+     But am now worried because my records currently don't have
+     structural equality, so the member calls won't work; does
+     Larceny's record system support that?
+
+     Apparently not.  So I changed my code to use predicated membership.
+
+     I also refactored the code so that predictor/scanner/completor
+     are available as separate top-level procedures, for ease of
+     experimentation.
+     Then I fixed all sorts of bugs in scanner and completor.
+
+   * Something plausible now put together.  But it still is not correct;
+     getting errors on the simple UBDA grammar: A -> x | AA
