@@ -256,18 +256,17 @@
 
 ;; lookahead-matches? : Lookahead String Nat -> Boolean
 (define (lookahead-matches? alpha input i)
-  (let* ((first-nul (let loop ((i 0)) (cond ((= i (string-length alpha))
-                                             #f)
-                                            ((char=? nul-char (string-ref alpha i))
-                                             i)
-                                            (else
-                                             (loop (+ i 1))))))
-         (alpha (cond (first-nul (substring alpha 0 first-nul)) (else alpha)))
-         (k (string-length alpha))
-         (l (string-length input)))
-    (and (<= (+ i k) l)
-         (string=? alpha (substring input i (+ i k))))))
-
+  (let ((len (string-length alpha)))
+    (let loop ((j 0))
+      (cond ((= j len)
+             #t)
+            (else
+             (let ((c (string-ref alpha j)))
+               (or (and (char=? nul-char c)
+                        (= (+ i j) (string-length input)))
+                   (and (< (+ i j) (string-length input))
+                        (char=? c (string-ref input (+ i j)))
+                        (loop (+ j 1))))))))))
 
 (define-values (cursor cursor-nonterm cursor-prev cursor-post cursor-equal?)
   (let ()
@@ -352,22 +351,25 @@
 ;; A Position is a Nat
 ;; (may consider making it a (cons String Nat), but for now lets get by with Nat
 
-;; A State is a (list ProductionCursor Position Lookahead)
+;; A Source is an S-exp describing when a state is added.
+;; A State is a (list ProductionCursor Position Lookahead Source)
 
-(define-values (state state-cursor state-input-position state-successor
+(define-values (state state-cursor state-input-position state-successor state-source
                       state-equal?)
   (let ()
-    (define (state cursor pos termseq)
-      (list cursor pos termseq))
+    (define (state cursor pos termseq source)
+      (list cursor pos termseq source))
     (define (state-cursor s) (list-ref s 0))
     (define (state-input-position s) (list-ref s 1))
     (define (state-successor s) (list-ref s 2))
+    (define (state-source s) (list-ref s 3))
 
-    (let* ((state-rtd (make-record-type 'state '(cursor pos termseq)))
+    (let* ((state-rtd (make-record-type 'state '(cursor pos termseq source)))
            (state (record-constructor state-rtd))
            (state-cursor (record-accessor state-rtd 'cursor))
            (state-input-position (record-accessor state-rtd 'pos))
            (state-successor (record-accessor state-rtd 'termseq))
+           (state-source (record-accessor state-rtd 'source))
            (_ (rtd-printer-set! state-rtd
                                 (lambda (s port)
                                   (let ((d (lambda (x) (display x port)))
@@ -384,7 +386,9 @@
                                              (else c)))
                                           (state-successor s)))
                                       (d " at:")
-                                      (d (state-input-position s)))
+                                      (d (state-input-position s))
+                                      (d " source: ")
+                                      (d (state-source s)))
                                     (display ">" port))))))
 
       (define (state-equal? a b)
@@ -392,7 +396,8 @@
              (equal? (state-input-position a) (state-input-position b))
              (equal? (state-successor a) (state-successor b))))
 
-      (values state state-cursor state-input-position state-successor state-equal?))))
+      (values state state-cursor state-input-position state-successor state-source
+              state-equal?))))
 
 (define (state-final? s)
   (prodseq-null? (cursor-post (state-cursor s))))
@@ -402,10 +407,11 @@
 (define (state-position-index s)
   (list-ref s 1))
 
-(define (state-cursor-shift/! s)
+(define (state-cursor-shift/! s source)
   (state (cursor-shift (state-cursor s))
          (state-input-position s)
-         (state-successor s)))
+         (state-successor s)
+         source))
 
 ;; An [EquivPred X] is a (X X -> Boolean) that is an equivalence relation.
 
@@ -601,7 +607,7 @@
         ;; Not really happy about the +2 here; seems like n+1 statesets should suffice.
         (let ((v (make-vector (+ 2 (string-length str)) (state-set)))
               (root (grammar-root g)))
-          (vector-set! v 0 (state-set (state (root->cursor root) 0 (make-string k nul-char))))
+          (vector-set! v 0 (state-set (state (root->cursor root) 0 (make-string k nul-char) 'initial)))
           (ec g k str 0 v m)))
 
       (define (earleycomp-maker g k)
@@ -1059,7 +1065,7 @@
                                             (writln `(earley-predictor add rule: ,rule i: ,i beta: ,beta))
                                             (state-set-add/!
                                              set
-                                             (state (production->cursor rule) i beta)))
+                                             (state (production->cursor rule) i beta 'predictor)))
                                           set
                                           rules))
                                  S_i
@@ -1093,10 +1099,11 @@
                     (let* ((S_f (vector-ref (ec-states-vector comp) f))
                            (D_p (cursor-nonterm (state-cursor s)))
                            (S_i* (foldr (lambda (s* set)
-                                          (let ((s** (state-cursor-shift/! s*)))
-                                            (writln `(earley-completor consider ,(cursor-post (state-cursor s*)) D_p: ,D_p for i: ,i))
+                                          (let ((s** (state-cursor-shift/! s* 'completor)))
+                                            (writln `(earley-completor consider ,s* D_p: ,D_p alpha: ,alpha for i: ,i))
                                             (cond ((and (not (prodseq-null? (cursor-post (state-cursor s*))))
                                                         (eq? D_p (prodseq-first (cursor-post (state-cursor s*)))))
+                                                   (writln `(earley-completor add ,s** to i: ,i))
                                                    (state-set-add/! set s**))
                                                   (else
                                                    set))))
@@ -1136,10 +1143,10 @@
                                     ;; 1-indexed strings; so we use (string-ref X i).
                                     (input-ref X i))
                  (begin
-                   (writln `(earley-scanner add ,(state-cursor-shift/! s) to: ,(+ i 1)))
+                   (writln `(earley-scanner add ,(state-cursor-shift/! s 'scanner) to: ,(+ i 1)))
                    (ec-stateset-update/! comp (+ i 1) (state-set-add/!
                                                        (vector-ref (ec-states-vector comp) (+ i 1))
-                                                       (state-cursor-shift/! s))))
+                                                       (state-cursor-shift/! s 'scanner))))
                  comp))))))
 
 (display "Hello World")
