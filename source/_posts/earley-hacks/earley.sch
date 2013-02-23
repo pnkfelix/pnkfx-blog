@@ -263,9 +263,9 @@
             (else
              (let ((c (string-ref alpha j)))
                (or (and (char=? nul-char c)
-                        (= (+ i j) (string-length input)))
-                   (and (< (+ i j) (string-length input))
-                        (char=? c (string-ref input (+ i j)))
+                        (= (+ i -1 j) (string-length input)))
+                   (and (< (+ i -1 j) (string-length input))
+                        (char=? c (string-ref input (+ i -1 j)))
                         (loop (+ j 1))))))))))
 
 (define-values (cursor cursor-nonterm cursor-prev cursor-post cursor-equal?)
@@ -508,16 +508,92 @@
 (define (workset-add-all/! set l)
   (foldr (lambda (x set) (workset-add/! set x)) set l))
 
-;; A StateSet is a [Worksetof State]
+;; A StateSet is a (state-set [Worksetof State]), with an associated
+;; [Listof Nonterminal] that are the nonterminal N that
+;; been found to produce the empty string, i.e. N =>* "".
 
-(define state-set
-  (let ((workset (workset-maker state-equal?)))
-    (define (state-set . states) (workset states '()))
-    state-set))
+(define-values (state-set state-set-null-nonterms
+                          state-set-add/! state-set-add-null-nonterm/!
+                          state-set-more-todo?
+                          state-set-next/! state-set-contents)
+  (let ()
 
-;; state-set-add/! : l/StateSet State -> l/StateSet
-(define (state-set-add/! set state)
-  (workset-add/! set state))
+    (define (writln x) '(begin (write x) (newline)))
+
+    (let* ((stateset-rtd (make-record-type 'state-set '(nonterms
+                                                        workset)))
+           (workset (workset-maker state-equal?))
+           (ctor (record-constructor stateset-rtd))
+           (stateset-nonterms (record-accessor stateset-rtd 'nonterms))
+           (stateset-workset (record-accessor stateset-rtd 'workset))
+           (_ (rtd-printer-set! stateset-rtd
+                                (lambda (s port)
+                                  (display "#<state-set" port)
+                                  (begin
+                                    (display " set:" port)
+                                    (write (stateset-workset s) port)
+                                    (display " nulls:" port)
+                                    (write (stateset-nonterms s) port))
+                                  (display ">" port)))))
+
+      (define (state-set . states) (ctor '() (workset states '())))
+
+      ;; state-set-add/! : l/StateSet State [Maybe Nonterminal] -> l/StateSet
+      ;; Adds state to this; if maybe-nt is non-false, then adds
+      ;; maybe-nt to associated nonterms.
+      (define (state-set-add/! set state maybe-nt)
+        (let* ((set
+                (ctor (stateset-nonterms set)
+                      (workset-add/! (stateset-workset set) state)))
+               (set (if maybe-nt
+                        (state-set-add-nonterm/! set maybe-nt)
+                        set))
+               (set (let* ((null-nonterms (stateset-nonterms set))
+                           (c (state-cursor state))
+                           (post (cursor-post c)))
+                      (cond ((and (not (prodseq-null? post))
+                                  (symbol? (prodseq-first post))
+                                  (memq (prodseq-first post) null-nonterms))
+                             (let ((state* (state-cursor-shift/! state 'null-recur)))
+                               (writln `(state-set-add/! ==> recur ,(state-cursor state*)))
+                               (state-set-add/! set state* #f)))
+                            (else
+                             set)))))
+          set))
+
+      ;; state-set-add-null-nonterm/! : l/StateSet Nonterminal -> l/StateSet
+      (define (state-set-add-nonterm/! set nt)
+        (let ((nts (stateset-nonterms set)))
+          (cond ((memq nt nts)
+                 set)
+                (else
+                 (ctor (cons nt nts) (stateset-workset set))))))
+
+      (define (state-set-more-todo? set)
+        (workset-more-todo? (stateset-workset set)))
+
+      (define (state-set-next/! set)
+        (writln `(state-set-next/! ,set))
+        (let ((nts (stateset-nonterms set))
+              (wset (stateset-workset set)))
+          (call-with-values (lambda () (workset-next/! wset))
+            (lambda (x wset)
+              (values x (ctor nts wset))))))
+
+      (define (state-set-contents set)
+        (workset-contents (stateset-workset set)))
+
+      (define (state-set-null-nonterms set)
+        (workset-nonterms (stateset-workset set)))
+
+      (values state-set
+              state-set-null-nonterms
+              state-set-add/!
+              state-set-add-null-nonterm/!
+              state-set-more-todo?
+              state-set-next/!
+              state-set-contents
+              ))))
 
 ;; earleycomp-maker : Grammar Nat -> (String -> EarleyComputation)
 ;; ec-stateset-update/! : EarleyComputation Nat StateSet -> EarleyComputation
@@ -944,7 +1020,9 @@
 ;; find-prefixes : [Oneof Grammar ExpansionMap] Nat PProdSeq -> [Listof Lookahead]
 ;; returns list [alpha | alpha is terminal, |alpha| = k, and gamma =>* alpha ^ beta for some beta.
 (define (find-prefixes g-or-em k gamma)
-  (define em (if (symbol? (car (car g-or-em)))
+  (define em (if (and (not (null? g-or-em))
+                      (not (null? (car g-or-em)))
+                      (symbol? (car (car g-or-em))))
                  (build-expansion-map g-or-em k)
                  g-or-em))
 
@@ -953,33 +1031,36 @@
   (writln `(find-prefixes gamma: ,gamma k: ,k em: ,em))
 
   (let ((strings
-         (let loop ((prefixes '(""))
-                    (gamma gamma))
-           (writln `(loop prefixes: ,prefixes gamma: ,gamma))
-           (let* ((c (prodseq-first gamma))
-                  (r (prodseq-rest gamma))
-                  (c-additions
-                   (cond ((char? c) (list (string c)))
-                         ((symbol? c) (expansion-map-sentences-for em c)))))
-             (writln `(loop prefixes: ,prefixes c: ,c r: ,r c-additions: ,c-additions))
-             (cond
-              ((prodseq-null? r) ;; last symbol in gamma
-               (let ((c-prefixes
-                      (cond ((char? c) '())
-                            ((symbol? c) (expansion-map-prefixes-for em c)))))
-                 (cross-product string-append
-                                prefixes
-                                (append c-prefixes c-additions))))
-              (else
-               (loop (cross-product string-append
-                                    prefixes
-                                    c-additions)
-                     r)))))))
+         (cond ((prodseq-null? gamma)
+                '(""))
+               (else
+                (let loop ((prefixes '(""))
+                           (gamma gamma))
+                  (writln `(loop prefixes: ,prefixes gamma: ,gamma))
+                  (let* ((c (prodseq-first gamma))
+                         (r (prodseq-rest gamma))
+                         (c-additions
+                          (cond ((char? c) (list (string c)))
+                                ((symbol? c) (expansion-map-sentences-for em c)))))
+                    (writln `(loop prefixes: ,prefixes c: ,c r: ,r c-additions: ,c-additions))
+                    (cond
+                     ((prodseq-null? r) ;; last symbol in gamma
+                      (let ((c-prefixes
+                             (cond ((char? c) '())
+                                   ((symbol? c) (expansion-map-prefixes-for em c)))))
+                        (cross-product string-append
+                                       prefixes
+                                       (append c-prefixes c-additions))))
+                     (else
+                      (loop (cross-product string-append
+                                           prefixes
+                                           c-additions)
+                            r)))))))))
     (filter (lambda (x) (>= (string-length x) k))
             strings)))
 
 (define (h-follow comp gamma)
-  ;; (write `(h-follow comp: ,comp gamma: ,gamma)) (newline)
+  '(begin (write `(h-follow comp: ,comp gamma: ,gamma)) (newline))
   (let* ((k (ec-lookahead comp))
          (prefixes (find-prefixes (ec-expansion-map comp)
                                   k
@@ -1009,36 +1090,41 @@
 
 ;; earley-step : EarleyComputation -> EarleyComputation or 'accept or 'reject
 (define (earley-step comp)
-  (cond ((earley-acceptable? comp)
-         'accept)
-        ((earley-reject? comp)
-         'reject)
-        (else
-         (let ((comp* (or (earley-predictor comp)
-                          (earley-completor comp)
-                          (earley-scanner comp))))
-           (and comp*
-                (if (workset-more-todo? (ec-stateset comp*))
-                    comp*
-                    (ec-next-token/! comp*)))))))
+    (cond ((earley-acceptable? comp)
+           'accept)
+          ((and (state-set-more-todo? (ec-stateset comp))
+                (or (earley-predictor comp)
+                    (earley-completor comp)
+                    (earley-scanner comp)))
+           => (lambda (comp*) comp*))
+          ((earley-reject? comp)
+           'reject)
+          (else
+           (ec-next-token/! comp))))
+
+(define (report-visit x)
+  '(begin (write x) (newline)))
+
+(define (report-progress x)
+  '(begin (write x) (newline)))
 
 ;; EarleyComputation -> Boolean
 (define (earley-acceptable? comp)
-  (define (writln x) (begin (write x) (newline) #t))
+  (define (writln x) '(begin (write x) (newline) #t))
   (let ((X (ec-input comp))
         (i (ec-input-index comp)))
     (and (= i (string-length X))
          (let ((S_i+1 (vector-ref (ec-states-vector comp) (+ i 1))))
-           (and (workset-more-todo? S_i+1)
-                (let-values (((s S_i+1) (workset-next/! S_i+1)))
-                  (and (not (workset-more-todo? S_i+1))
+           (and (state-set-more-todo? S_i+1)
+                (let-values (((s S_i+1) (state-set-next/! S_i+1)))
+                  (and (not (state-set-more-todo? S_i+1))
                        (eqv? #t (cursor-nonterm (state-cursor s))))))))))
 
 (define (earley-reject? comp)
-  (let ((X (ec-input comp))
-        (i (ec-input-index comp))
-        (S_i (ec-stateset comp)))
-    (not (workset-more-todo? S_i))))
+  (let* ((X (ec-input comp))
+         (i (ec-input-index comp))
+         (S_i (vector-ref (ec-states-vector comp) (+ i 1))))
+    (not (state-set-more-todo? S_i))))
 
 ;; earley-predictor : EarleyComputation -> [Maybe EarleyComputation]
 (define (earley-predictor comp)
@@ -1047,7 +1133,7 @@
   (let ((X (ec-input comp))
         (i (ec-input-index comp))
         (S_i (ec-stateset comp)))
-    (let-values (((s S_i) (workset-next/! S_i)))
+    (let-values (((s S_i) (state-set-next/! S_i)))
       (let ((g (ec-grammar comp))
             (j (state-cursor s))
             (f (state-input-position s))
@@ -1055,17 +1141,18 @@
         (and (state-nonfinal? s)
              (nonterminal? (cursor-next (state-cursor s))) ;; C_p,j+1 is nonterminal
              ;; ==>
-             (and (writln `(earley-predictor i: ,i c: ,(cursor-next (state-cursor s)))) #t)
+             (and (report-visit `(earley-predict i: ,i ,(state-cursor s))) #t)
              (let* ((c (cursor-next (state-cursor s)))
                     (rules (filter (lambda (p) (eq? c (production-lhs p))) g))
                     (suffix (cursor-post (cursor-shift (state-cursor s))))
                     (h (h-follow comp (append suffix (list alpha))))
                     (S_i* (foldr (lambda (beta set)
                                    (foldr (lambda (rule set)
-                                            (writln `(earley-predictor add rule: ,rule i: ,i beta: ,beta))
+                                            (report-progress `(earley-predict ==> add ,(production->cursor rule) i: ,i beta: ,beta))
                                             (state-set-add/!
                                              set
-                                             (state (production->cursor rule) i beta 'predictor)))
+                                             (state (production->cursor rule) i beta 'predictor)
+                                             #f))
                                           set
                                           rules))
                                  S_i
@@ -1074,12 +1161,12 @@
 
 ;; earley-completor : EarleyComputation -> [Maybe EarleyComputation]
 (define (earley-completor comp)
-  (define (writln x) (begin (write x) (newline)))
+  (define (writln x) '(begin (write x) (newline)))
 
   (let ((X (ec-input comp))
         (i (ec-input-index comp))
         (S_i (ec-stateset comp)))
-    (let-values (((s S_i) (workset-next/! S_i)))
+    (let-values (((s S_i) (state-set-next/! S_i)))
       (let ((g (ec-grammar comp))
             (j (state-cursor s))
             (f (state-input-position s))
@@ -1087,7 +1174,7 @@
 
         (and (state-final? s)
              ;; ==>
-             (and (writln `(earley-completor i: ,i j: ,j f: ,f alpha: ,alpha)) #t)
+             (and (report-visit `(earley-complet i: ,i j: ,j f: ,f alpha: ,alpha)) #t)
 
              ;; earley70's phrasing makes it sound like lookahead
              ;; match is precondition for processing this state, but
@@ -1095,20 +1182,27 @@
              ;; still treat this state as processed and update cursors
              ;; accordingly (right?).
 
-             (cond ((lookahead-matches? alpha X i)
+             (cond ((lookahead-matches? alpha X (+ i 1))
                     (let* ((S_f (vector-ref (ec-states-vector comp) f))
                            (D_p (cursor-nonterm (state-cursor s)))
                            (S_i* (foldr (lambda (s* set)
-                                          (let ((s** (state-cursor-shift/! s* 'completor)))
-                                            (writln `(earley-completor consider ,s* D_p: ,D_p alpha: ,alpha for i: ,i))
-                                            (cond ((and (not (prodseq-null? (cursor-post (state-cursor s*))))
-                                                        (eq? D_p (prodseq-first (cursor-post (state-cursor s*)))))
-                                                   (writln `(earley-completor add ,s** to i: ,i))
-                                                   (state-set-add/! set s**))
-                                                  (else
-                                                   set))))
+                                          (cond
+                                           ((prodseq-null? (cursor-post (state-cursor s*)))
+                                            set)
+                                           (else
+                                            (let ((s** (state-cursor-shift/! s* 'completor)))
+                                              (writln `(earley-complet consider ,s* D_p: ,D_p alpha: ,alpha for i: ,i))
+                                              (cond ((and (not (prodseq-null? (cursor-post (state-cursor s*))))
+                                                          (eq? D_p (prodseq-first (cursor-post (state-cursor s*)))))
+                                                     (report-progress `(earley-complet ==> add ,s** to i: ,i))
+                                                     (state-set-add/! set s**
+                                                                      (if (= i f)
+                                                                          D_p
+                                                                          #f)))
+                                                    (else
+                                                     set))))))
                                         S_i
-                                        (workset-contents S_f))))
+                                        (state-set-contents S_f))))
                       (ec-stateset-update/! comp i S_i*)))
                    (else
                     (ec-stateset-update/! comp i S_i))))))))
@@ -1118,15 +1212,15 @@
   (define (writln x) (begin (write x) (newline)))
 
   (define (input-ref s i)
-    (cond ((< i (string-length s))
-           (string-ref s i))
+    (cond ((< (- i 1) (string-length s))
+           (string-ref s (- i 1)))
           (else
            nul-char)))
 
   (let ((X (ec-input comp))
         (i (ec-input-index comp))
         (S_i (ec-stateset comp)))
-    (let-values (((s S_i) (workset-next/! S_i)))
+    (let-values (((s S_i) (state-set-next/! S_i)))
       (let ((g (ec-grammar comp))
             (j (state-cursor s))
             (f (state-input-position s))
@@ -1137,16 +1231,17 @@
         (and (state-nonfinal? s)
              (terminal? (cursor-next (state-cursor s)))
              ;; ==>
-             (and (writln `(earley-scanner i: ,i j: ,j f: ,f alpha: ,alpha)) #t)
+             (and (report-visit `(earley-scanner i: ,i j: ,j f: ,f alpha: ,alpha)) #t)
              (if (terminal-matches? (cursor-next (state-cursor s))
                                     ;; earley70 uses X_{i+1} here, but it also uses
                                     ;; 1-indexed strings; so we use (string-ref X i).
-                                    (input-ref X i))
+                                    (input-ref X (+ i 1)))
                  (begin
-                   (writln `(earley-scanner add ,(state-cursor-shift/! s 'scanner) to: ,(+ i 1)))
+                   (report-progress `(earley-scanner ==> add ,(state-cursor-shift/! s 'scanner) to: ,(+ i 1)))
                    (ec-stateset-update/! comp (+ i 1) (state-set-add/!
                                                        (vector-ref (ec-states-vector comp) (+ i 1))
-                                                       (state-cursor-shift/! s 'scanner))))
+                                                       (state-cursor-shift/! s 'scanner)
+                                                       #f)))
                  comp))))))
 
 (display "Hello World")
@@ -1162,6 +1257,9 @@
   (display "Computing a*a 40 steps") (newline)
   (define a*a-40  ((iterated-transform earley-step 40) (earley AE 1 "a*a")))
   )
+
+(define (earley-iterate n grammar k str)
+  ((iterated-transform earley-step n) (earley grammar k str)))
 
 (define (earley-recognize grammar k str)
   ((iterated-transform-until earley-step symbol?)
