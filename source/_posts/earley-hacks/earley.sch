@@ -1097,7 +1097,7 @@
                                             (writln `(earley-completor consider ,(cursor-post (state-cursor s*)) D_p: ,D_p for i: ,i))
                                             (cond ((and (not (prodseq-null? (cursor-post (state-cursor s*))))
                                                         (eq? D_p (prodseq-first (cursor-post (state-cursor s*)))))
-                                                   (workset-add/! set s**))
+                                                   (state-set-add/! set s**))
                                                   (else
                                                    set))))
                                         S_i
@@ -1137,7 +1137,7 @@
                                     (input-ref X i))
                  (begin
                    (writln `(earley-scanner add ,(state-cursor-shift/! s) to: ,(+ i 1)))
-                   (ec-stateset-update/! comp (+ i 1) (workset-add/!
+                   (ec-stateset-update/! comp (+ i 1) (state-set-add/!
                                                        (vector-ref (ec-states-vector comp) (+ i 1))
                                                        (state-cursor-shift/! s))))
                  comp))))))
