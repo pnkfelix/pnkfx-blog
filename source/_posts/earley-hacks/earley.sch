@@ -252,6 +252,11 @@
 ;; A somewhat nicely rendered \phi
 (define phi-char #\x03d5)
 
+(let* ((load-directory (list->string (reverse (member #\/ (reverse (string->list (symbol->string (current-source-file))))))))
+       (named-chars-file (string-append load-directory "named-chars.sch")))
+  (cond ((file-exists? named-chars-file)
+         (load named-chars-file))))
+
 ;; A Lookahead is a String
 
 ;; lookahead-matches? : Lookahead String Nat -> Boolean
@@ -513,6 +518,8 @@
 ;; been found to produce the empty string, i.e. N =>* "".
 
 (define-values (state-set state-set-null-nonterms
+                          state-set-todo
+                          state-set-done
                           state-set-add/! state-set-add-null-nonterm/!
                           state-set-more-todo?
                           state-set-next/! state-set-contents)
@@ -572,6 +579,12 @@
       (define (state-set-more-todo? set)
         (workset-more-todo? (stateset-workset set)))
 
+      (define (state-set-todo set)
+        (workset-todo (stateset-workset set)))
+
+      (define (state-set-done set)
+        (workset-done (stateset-workset set)))
+
       (define (state-set-next/! set)
         (writln `(state-set-next/! ,set))
         (let ((nts (stateset-nonterms set))
@@ -588,6 +601,8 @@
 
       (values state-set
               state-set-null-nonterms
+              state-set-todo
+              state-set-done
               state-set-add/!
               state-set-add-null-nonterm/!
               state-set-more-todo?
@@ -1039,23 +1054,26 @@
                   (writln `(loop prefixes: ,prefixes gamma: ,gamma))
                   (let* ((c (prodseq-first gamma))
                          (r (prodseq-rest gamma))
+                         (c-prefixes (cond ((char? c) '())
+                                           ((symbol? c) (expansion-map-prefixes-for em c))))
+                         (c-sentences (expansion-map-sentences-for em c))
                          (c-additions
                           (cond ((char? c) (list (string c)))
-                                ((symbol? c) (expansion-map-sentences-for em c)))))
+                                ((symbol? c) c-sentences))))
                     (writln `(loop prefixes: ,prefixes c: ,c r: ,r c-additions: ,c-additions))
                     (cond
                      ((prodseq-null? r) ;; last symbol in gamma
-                      (let ((c-prefixes
-                             (cond ((char? c) '())
-                                   ((symbol? c) (expansion-map-prefixes-for em c)))))
-                        (cross-product string-append
-                                       prefixes
-                                       (append c-prefixes c-additions))))
+                      (cross-product string-append
+                                     prefixes
+                                     (append c-prefixes c-additions)))
                      (else
-                      (loop (cross-product string-append
-                                           prefixes
-                                           c-additions)
-                            r)))))))))
+                      (append (cross-product string-append
+                                             prefixes
+                                             c-prefixes)
+                              (loop (cross-product string-append
+                                                   prefixes
+                                                   c-additions)
+                                    r))))))))))
     (filter (lambda (x) (>= (string-length x) k))
             strings)))
 
@@ -1105,8 +1123,15 @@
 (define (report-visit x)
   '(begin (write x) (newline)))
 
-(define (report-progress x)
-  '(begin (write x) (newline)))
+(define (report-progress x old new)
+  '(begin (write x) (newline))
+  new)
+
+(define (report-progress-if-changed x old new)
+  (cond ((not (eq? old new))
+         (report-progress x old new))
+        (else
+         new)))
 
 ;; EarleyComputation -> Boolean
 (define (earley-acceptable? comp)
@@ -1145,14 +1170,16 @@
              (let* ((c (cursor-next (state-cursor s)))
                     (rules (filter (lambda (p) (eq? c (production-lhs p))) g))
                     (suffix (cursor-post (cursor-shift (state-cursor s))))
-                    (h (h-follow comp (append suffix (list alpha))))
+                    (h (h-follow comp (append suffix (if (string? alpha) (list alpha) alpha))))
                     (S_i* (foldr (lambda (beta set)
                                    (foldr (lambda (rule set)
-                                            (report-progress `(earley-predict ==> add ,(production->cursor rule) i: ,i beta: ,beta))
-                                            (state-set-add/!
+                                            (report-progress
+                                             `(earley-predict ==> add ,(production->cursor rule) i: ,i beta: ,beta)
                                              set
-                                             (state (production->cursor rule) i beta 'predictor)
-                                             #f))
+                                             (state-set-add/!
+                                              set
+                                              (state (production->cursor rule) i beta 'predictor)
+                                              #f)))
                                           set
                                           rules))
                                  S_i
@@ -1194,11 +1221,13 @@
                                               (writln `(earley-complet consider ,s* D_p: ,D_p alpha: ,alpha for i: ,i))
                                               (cond ((and (not (prodseq-null? (cursor-post (state-cursor s*))))
                                                           (eq? D_p (prodseq-first (cursor-post (state-cursor s*)))))
-                                                     (report-progress `(earley-complet ==> add ,s** to i: ,i))
-                                                     (state-set-add/! set s**
-                                                                      (if (= i f)
-                                                                          D_p
-                                                                          #f)))
+                                                     (report-progress-if-changed
+                                                      `(earley-complet ==> add ,s** to i: ,i)
+                                                      set
+                                                      (state-set-add/! set s**
+                                                                       (if (= i f)
+                                                                           D_p
+                                                                           #f))))
                                                     (else
                                                      set))))))
                                         S_i
@@ -1237,11 +1266,13 @@
                                     ;; 1-indexed strings; so we use (string-ref X i).
                                     (input-ref X (+ i 1)))
                  (begin
-                   (report-progress `(earley-scanner ==> add ,(state-cursor-shift/! s 'scanner) to: ,(+ i 1)))
-                   (ec-stateset-update/! comp (+ i 1) (state-set-add/!
-                                                       (vector-ref (ec-states-vector comp) (+ i 1))
-                                                       (state-cursor-shift/! s 'scanner)
-                                                       #f)))
+                   (report-progress-if-changed
+                    `(earley-scanner ==> add ,(state-cursor-shift/! s 'scanner) to: ,(+ i 1))
+                    comp
+                    (ec-stateset-update/! comp (+ i 1) (state-set-add/!
+                                                        (vector-ref (ec-states-vector comp) (+ i 1))
+                                                        (state-cursor-shift/! s 'scanner)
+                                                        #f))))
                  comp))))))
 
 (display "Hello World")
@@ -1308,3 +1339,29 @@
     (map (lambda (pc*l) (let ((p (caar pc*l)) (c (cadar pc*l)) (l (cdr pc*l)))
                           (list c l p)))
          pcmap)))
+
+(define UBDA '((A -> "x") (A -> A A)))
+
+(define BK '((K -> ) (K -> K J)
+             (J -> F) (J -> I)
+             (F -> "x") (I -> "x")))
+
+(define PAL '((A -> "x") (A -> "x" A "x")))
+
+(define G-1 '((S -> A "b") (A -> "a") (A -> A "b")))
+(define G-2 '((S -> "a" B) (B -> "a" B) (B -> "b")))
+(define G-3 '((S -> "a" "b") (S -> "a" S "b")))
+(define G-4 '((S -> A B)
+              (A -> "a") (A -> A "b")
+              (B -> "b" "c") (B -> "b" B) (B -> "d")))
+
+(define propositional-calculus `((F -> C) (F -> S) (F -> P) (F -> U)
+                                 (C -> U supset U)
+                                 (U -> "(" F ")") (U -> "~" U) (U -> L)
+                                 (L -> L "'") (L -> "p") (L -> "q") (L -> "r")
+                                 (S -> U vee S) (S -> U vee U)
+                                 (P -> U wedge P) (P -> U wedge U)
+                                 (supset -> ,supset-char) (supset -> "=>")
+                                 (wedge  -> ,wedge-char)  (wedge -> "/\\") (wedge -> "&")
+                                 (vee    -> ,vee-char)    (vee -> "\\/")   (vee -> "|")
+                                 ))
