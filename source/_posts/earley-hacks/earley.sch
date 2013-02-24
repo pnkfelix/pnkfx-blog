@@ -245,6 +245,9 @@
                  (else
                   (cons (car s) (loop (cdr s)))))))))
 
+;; A nicely rendered vertically-centered dot
+(define centered-dot-char #\x2022) ; There is also #\x00B7 but it is relatively small
+
 ;; A nicely rendered -|
 (define left-tack-char #\x22a3)
 ;; A nicely rendered ->
@@ -316,7 +319,7 @@
                                                       #\space))
                                            (for-each elem
                                                      (reverse (cursor-prev c)))
-                                           (d ".")
+                                           (d centered-dot-char)
                                            (for-each elem (cursor-post c))
                                            (d ">")))))))
 
