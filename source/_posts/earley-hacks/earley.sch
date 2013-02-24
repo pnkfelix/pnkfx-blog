@@ -1371,3 +1371,12 @@
                                  (wedge  -> ,wedge-char)  (wedge -> "/\\") (wedge -> "&")
                                  (vee    -> ,vee-char)    (vee -> "\\/")   (vee -> "|")
                                  ))
+
+(define gre '((X -> "a") (X -> X "b") (X -> Y "a")
+              (Y -> "e") (Y -> Y "d" Y)))
+
+(define nse '((S -> A B) 
+              (A -> "a") (A -> S C)
+              (B -> "b") (B -> D B)
+              (C -> "c")
+              (D -> "d")))
