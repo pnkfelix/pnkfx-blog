@@ -1120,13 +1120,13 @@
 
 ;; earley-step : EarleyComputation -> EarleyComputation or 'accept or 'reject
 (define (earley-step comp)
-    (cond ((earley-acceptable? comp)
-           'accept)
-          ((and (state-set-more-todo? (ec-stateset comp))
+    (cond ((and (state-set-more-todo? (ec-stateset comp))
                 (or (earley-predictor comp)
                     (earley-completor comp)
                     (earley-scanner comp)))
            => (lambda (comp*) comp*))
+          ((earley-acceptable? comp)
+           'accept)
           ((earley-reject? comp)
            'reject)
           (else
