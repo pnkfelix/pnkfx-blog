@@ -398,8 +398,9 @@
                                           (state-successor s)))
                                       (d " at:")
                                       (d (state-input-position s))
-                                      (d " source: ")
-                                      (d (state-source s)))
+                                      (cond (#f
+                                             (d " source: ")
+                                             (d (state-source s)))))
                                     (display ">" port))))))
 
       (define (state-equal? a b)
@@ -471,10 +472,15 @@
 
            (_ (rtd-printer-set! workset-rtd
                                 (lambda (w port)
-                                  (display "#<workset todo:" port)
-                                  (write (workset-todo w) port)
-                                  (display " done:" port)
-                                  (write (workset-done w) port)
+                                  (display "#<workset" port)
+                                  (let ((todo (workset-todo w))
+                                        (done (workset-done w)))
+                                    (cond ((not (null? todo))
+                                           (display " todo:" port)
+                                           (write (workset-todo w) port)))
+                                    (cond ((not (null? done))
+                                           (display " done:" port)
+                                           (write (workset-done w) port))))
                                   (display ">" port)))))
 
       (define (workset-more-todo? s) (not (null? (workset-todo s))))
