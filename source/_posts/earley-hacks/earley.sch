@@ -251,6 +251,12 @@
 (define right-arrow-char #\x2192)
 ;; A somewhat nicely rendered \phi
 (define phi-char #\x03d5)
+;; A rendered sideways U (superset and also logical implication)
+(define supset-char #\x2283)
+;; A nicely rendered /\
+(define wedge-char #\x2227)
+;; A nicely rendered \/
+(define vee-char #\x2228)
 
 (let* ((load-directory (list->string (reverse (member #\/ (reverse (string->list (symbol->string (current-source-file))))))))
        (named-chars-file (string-append load-directory "named-chars.sch")))
