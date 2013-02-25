@@ -734,11 +734,40 @@ sys	0m0.080s
 
 * earley hacks
 ** General Earley notes
+   CLOCK: [2013-02-24 Sun 23:25]--[2013-02-25 Mon 02:00] =>  2:35
+   CLOCK: [2013-02-24 Sun 23:13]--[2013-02-24 Sun 23:25] =>  0:00
    CLOCK: [2013-02-17 Sun 21:31]--[2013-02-17 Sun 21:43] =>  0:12
    CLOCK: [2013-02-17 Sun 21:31]--[2013-02-17 Sun 21:31] =>  0:00
    CLOCK: [2013-02-17 Sun 21:16]--[2013-02-17 Sun 21:26] =>  0:10
 
+   * reading up on the follow-on's to Earley and on LL(k),
+     LR(k), the comparison between LL and LR (in particular
+     the point that LL(k+1) and LR(k) are incomparable was
+     interesting).
+
 ** Larceny
+   CLOCK: [2013-02-24 Sun 22:31]--[2013-02-24 Sun 23:13] =>  0:42
+   CLOCK: [2013-02-24 Sun 22:21]--[2013-02-24 Sun 22:31] =>  0:10
+   CLOCK: [2013-02-24 Sun 16:44]--[2013-02-24 Sun 17:25] =>  0:41
+   CLOCK: [2013-02-24 Sun 15:53]--[2013-02-24 Sun 16:42] =>  0:49
+   CLOCK: [2013-02-24 Sun 12:22]--[2013-02-24 Sun 12:45] =>  0:23
+   CLOCK: [2013-02-23 Sat 18:08]--[2013-02-23 Sat 19:28] =>  1:20
+   CLOCK: [2013-02-23 Sat 16:59]--[2013-02-23 Sat 17:36] =>  0:37
+   CLOCK: [2013-02-23 Sat 16:09]--[2013-02-23 Sat 16:45] =>  0:46
+   CLOCK: [2013-02-23 Sat 15:18]--[2013-02-23 Sat 15:40] =>  0:22
+   CLOCK: [2013-02-23 Sat 14:51]--[2013-02-23 Sat 15:07] =>  0:16
+   CLOCK: [2013-02-23 Sat 13:35]--[2013-02-23 Sat 14:23] =>  0:48
+   CLOCK: [2013-02-23 Sat 12:40]--[2013-02-23 Sat 13:16] =>  0:36
+   CLOCK: [2013-02-23 Sat 11:55]--[2013-02-23 Sat 12:20] =>  0:25
+   CLOCK: [2013-02-23 Sat 11:36]--[2013-02-23 Sat 11:37] =>  0:01
+   CLOCK: [2013-02-23 Sat 11:28]--[2013-02-23 Sat 11:28] =>  0:00
+   CLOCK: [2013-02-21 Thu 11:22]--[2013-02-21 Thu 11:31] =>  0:09
+   CLOCK: [2013-02-21 Thu 09:13]--[2013-02-21 Thu 11:22] =>  2:09
+   CLOCK: [2013-02-21 Thu 09:01]--[2013-02-21 Thu 09:03] =>  0:02
+   CLOCK: [2013-02-21 Thu 08:58]--[2013-02-21 Thu 08:58] =>  0:00
+   CLOCK: [2013-02-21 Thu 08:33]--[2013-02-21 Thu 08:58] =>  0:25
+   CLOCK: [2013-02-20 Wed 10:04]--[2013-02-20 Wed 12:47] =>  2:43
+   CLOCK: [2013-02-20 Wed 08:46]--[2013-02-20 Wed 09:51] =>  1:05
    CLOCK: [2013-02-19 Tue 10:42]--[2013-02-19 Tue 11:49] =>  1:07
    CLOCK: [2013-02-19 Tue 08:59]--[2013-02-19 Tue 10:34] =>  1:35
    CLOCK: [2013-02-18 Mon 11:42]--[2013-02-18 Mon 16:35] =>  4:53
@@ -747,7 +776,6 @@ sys	0m0.080s
    CLOCK: [2013-02-17 Sun 21:56]--[2013-02-17 Sun 23:57] =>  2:01
    CLOCK: [2013-02-17 Sun 21:54]--[2013-02-17 Sun 21:55] =>  0:01
    CLOCK: [2013-02-17 Sun 21:43]--[2013-02-17 Sun 21:52] =>  0:09
-
    * There's a lot of stuff in the Earley paper that implies
      "I like dynamic languages" -- e.g. the injection of extra values
      like `phi` or `eos` into the primitive domains of nontermanal and
@@ -761,7 +789,121 @@ sys	0m0.080s
 
    * Tue: Redoing build-prefix-map to be more "obviously correct"
 
+   * Wed: Using build-prefix-map (now build-expansion-map) to implement
+     H_k aka find-prefixes.
+
+   * Thu: Finally seeing earley-predictor in operation.
+     But am now worried because my records currently don't have
+     structural equality, so the member calls won't work; does
+     Larceny's record system support that?
+
+     Apparently not.  So I changed my code to use predicated membership.
+
+     I also refactored the code so that predictor/scanner/completor
+     are available as separate top-level procedures, for ease of
+     experimentation.
+     Then I fixed all sorts of bugs in scanner and completor.
+
+   * Something plausible now put together.  But it still is not correct;
+     getting errors on the simple UBDA grammar: A -> x | AA
+
+   * Reviewing results for AE on a+a*a
+
+   * Good thing I did this (I think): state S_3, according to Earley'70
+     carries:
+         P -> a.    -|, +, *   2
+         T -> P.    -|, +, *   2
+         E -> E+T.  -|, +      0
+         T -> T.*P  -|, +, *   2
+     but my construction has many more entries, such as
+         T -> T.*P  -|, +, *   0
+     (which is definitely wrong, since the first three characters "a+a"
+      can never be parsed as a single T.)
+
+   * Indeed, I had neglected to include the condition
+     "such that C_q,{l+1} = D_p" in my implmentation of earley-completor.
+
+   * Ah, and my `lookahead-matches?` procedure is buggy: when the
+     lookahead is the end-of-string, it is not checking if we have
+     actually hit the end of the string; it just returns true.
+     (That explains why I've been over-eagerly matching.)
+
+   * Looking into handling productions with an empty right-hand-side.
+
+   * Okay, uncovered some more bugs, fixed them, and now
+     it seems like build-expansion-map might be buggy with
+     respect to empty-rhs productions.
+
+   * Or maybe it is just the way that i am detecting the expansion
+     map that is buggy... yes, that is probably it.
+
+   * Sunday 24feb: lets see how we do on the examples from earley70 now
+     AE is good
+     UBDA is good (looks like it is O(n^2) as expected)
+     BK is good (may be O(n) as expected, or my choice of rep
+        may be causing us to get bogged down in GC and thus
+        might either have different complexity or merely
+        higher constant factors.)
+     PAL is good (looks like it is O(n^2) 
+     G-1 looks good
+     G-2 G-3 look good
+     G-4 looks good (I believe the intention is that it is ambiguous)
+
+   * afternoon 24feb: found problem trying to recognize "(p&q)" in
+     prop calc; earley-recognize is rejecting and I cannot tell why.
+     Fun, get to debug.
+
+     -- well, I *might* have mistranscribed the grammar.
+
+     -- yes, it was a set of transcription errors; I mistyped a few of
+        the symbol names, and left out the "<symbol> ->" portion from
+        one of the rules.
+
+     -- I can do better on this.  E.g. I can signal a warning if the
+        input contains unreferenced symbols, and error if an input
+        rule is malformed.
+
+   * Still having problems with prop calc; now rejecting "r&(r)" even
+     though "(r)&r" is accepted.
+
+   * Hmm.  Is this the bug:
+     > (h-follow (earley propositional-calculus 1 "r&(r)") '(U "⊣"))
+     ("p" "q" "r")
+
+   * night 24feb: lets fix the above bug in h-follow (certainly seems like bug)
+
+     And in turn, here we narrow the problem:
+
+     > (find-prefixes propositional-calculus 1 '(U))
+     ("(" "~" "p" "q" "r")
+
+     > (find-prefixes propositional-calculus 1 '(U "r"))
+     ("pr" "qr" "rr")
+
+   * Easily fixed in 10 minutes: find-prefixes
+
+   * Ironically, there is a typo in one of the propisitional calculus
+     examples from Earley '70; presumably the type-setter made a parse error:
+
+       p⊃((q⊃~(r'∨(p∧q)))
+         ⊃(q'∨r)
+
+     is missing a close paren.
+
+     (Unless these are deliberlately malformed terms, and the test is
+      that they will be rejected by the parser?)
+
 ** Rust
    CLOCK: [2013-02-20 Wed 22:55]--[2013-02-20 Wed 23:25] =>  0:30
    CLOCK: [2013-02-20 Wed 22:51]--[2013-02-20 Wed 22:53] =>  0:02
 
+
+* Unicode
+** Looking at various characters
+   CLOCK: [2013-02-24 Sun 14:45]--[2013-02-24 Sun 15:16] =>  0:31
+   * how they render in Monaco (current Emacs font)
+   * starting from wikipedia http://en.wikipedia.org/wiki/List_of_logic_symbols
+   * but now just downloading list to transcribe from unicode.org
+
+** Downloading more stuff from unicode.org
+   CLOCK: [2013-02-24 Sun 15:16]--[2013-02-24 Sun 15:53] =>  0:37
