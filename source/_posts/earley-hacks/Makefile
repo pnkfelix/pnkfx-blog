@@ -1,4 +1,4 @@
-test-one: test-larc
+test-one: test-rust
 test-all: test-larc test-rust test-cxx test-clj test-node
 
 clean:
@@ -6,7 +6,7 @@ clean:
 	rm -rf classes
 	rm -rf rust-earley.dSYM
 
-CLJJAR:=$(shell clj -e '(-> clojure.lang.Atom (.getProtectionDomain) (.getCodeSource) (.getLocation) (.getPath))')
+#CLJJAR:=$(shell clj -e '(-> clojure.lang.Atom (.getProtectionDomain) (.getCodeSource) (.getLocation) (.getPath))')
 
 test-node: earley.js
 	bash -c "time node $<"

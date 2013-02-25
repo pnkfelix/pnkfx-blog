@@ -760,3 +760,8 @@ sys	0m0.080s
      doc comments is even trickier.
 
    * Tue: Redoing build-prefix-map to be more "obviously correct"
+
+** Rust
+   CLOCK: [2013-02-20 Wed 22:55]--[2013-02-20 Wed 23:25] =>  0:30
+   CLOCK: [2013-02-20 Wed 22:51]--[2013-02-20 Wed 22:53] =>  0:02
+
