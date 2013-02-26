@@ -633,7 +633,7 @@
                 ec-states-vector ec-expansion-map
                 ec-back-pointers
                 ec-stateset
-                ec-stateset-update/! ec-next-token/! ec-add-back-pointer/!)
+                ec-stateset-update/! ec-next-token/! ec-add-back-pointers/!)
   (let ()
 
     ;; An EarleyComputation is a
@@ -708,14 +708,14 @@
             (ec-expansion-map c)
             (ec-back-pointers c)))
 
-      ;; ec-add-back-pointer/! :
-      ;;     EarleyComputation Any -> EarleyComputation
-      (define (ec-add-back-pointer/! c back-pointer)
+      ;; ec-add-back-pointers/! :
+      ;;     EarleyComputation [Listof Any] -> EarleyComputation
+      (define (ec-add-back-pointers/! c back-pointers)
         (ec (ec-grammar c) (ec-lookahead c)
             (ec-input c) (ec-input-index c)
-            (vector-replace/! (ec-states-vector c) i states)
+            (ec-states-vector c)
             (ec-expansion-map c)
-            (cons back-pointer (ec-back-pointers c))))
+            (append back-pointers (ec-back-pointers c))))
 
       ;; ec-next-token/! : EarleyComputation -> EarleyComputation
       (define (ec-next-token/! c)
@@ -742,7 +742,7 @@
       (values earleycomp-maker
               ec-grammar ec-lookahead ec-input ec-input-index ec-states-vector
               ec-expansion-map ec-back-pointers ec-stateset
-              ec-stateset-update/! ec-next-token/! ec-add-back-pointer/!))))
+              ec-stateset-update/! ec-next-token/! ec-add-back-pointers/!))))
 
 ;; vector-replace/! : &l/[Vectorof X] X nat -> &l/[Vectorof X]
 (define (vector-replace/! vec i val)
@@ -1255,27 +1255,47 @@
              (cond ((lookahead-matches? alpha X (+ i 1))
                     (let* ((S_f (vector-ref (ec-states-vector comp) f))
                            (D_p (cursor-nonterm (state-cursor s)))
-                           (S_i* (foldr (lambda (s* set)
-                                          (cond
-                                           ((prodseq-null? (cursor-post (state-cursor s*)))
-                                            set)
-                                           (else
-                                            (let ((s** (state-cursor-shift/! s* 'completor)))
-                                              (writln `(earley-complet consider ,s* D_p: ,D_p alpha: ,alpha for i: ,i))
-                                              (cond ((and (not (prodseq-null? (cursor-post (state-cursor s*))))
-                                                          (eq? D_p (prodseq-first (cursor-post (state-cursor s*)))))
-                                                     (report-progress-if-changed
-                                                      `(earley-complet ==> add ,s** to i: ,i)
-                                                      set
-                                                      (state-set-add/! set s**
-                                                                       (if (= i f)
-                                                                           D_p
-                                                                           #f))))
-                                                    (else
-                                                     set))))))
-                                        S_i
-                                        (state-set-contents S_f))))
-                      (ec-stateset-update/! comp i S_i*)))
+                           (S_i*-back-ptrs
+                            (foldr (lambda (s* set*back-ptrs)
+                                     (let ((set (car set*back-ptrs))
+                                           (back-ptrs (cadr set*back-ptrs)))
+                                       (cond
+                                        ((prodseq-null? (cursor-post (state-cursor s*)))
+                                         set*back-ptrs)
+                                        (else
+                                         (let ((s** (state-cursor-shift/! s* 'completor)))
+                                           (writln `(earley-complet consider ,s* D_p: ,D_p alpha: ,alpha for i: ,i))
+                                           (cond ((and (not (prodseq-null? (cursor-post (state-cursor s*))))
+                                                       (eq? D_p (prodseq-first (cursor-post (state-cursor s*)))))
+                                                  (list (report-progress-if-changed
+                                                         `(earley-complet ==> add ,s** to i: ,i)
+                                                         set
+                                                         (state-set-add/! set s**
+                                                                          (if (= i f)
+                                                                              D_p
+                                                                              #f)))
+
+                                                        ;; Note: This is going to miss the states that are
+                                                        ;; added during the null-recur that I currently have
+                                                        ;; built into state-set-add/!  :(
+                                                        ;;
+                                                        ;; I am not 100% sure what I will do about that yet;
+                                                        ;;
+                                                        ;; I am tempted to adopt some of the changes proposed
+                                                        ;; by Aycock and Horspool for dealing with null
+                                                        ;; productions anyway.
+
+                                                        (cons (list s** s)
+                                                              back-ptrs)))
+                                                 (else
+                                                  set*back-ptrs)))))))
+                                   (list S_i '())
+                                   (state-set-contents S_f)))
+                           (S_i* (car S_i*-back-ptrs))
+                           (back-ptrs (cadr S_i*-back-ptrs)))
+                      (ec-add-back-pointers/!
+                       (ec-stateset-update/! comp i S_i*)
+                       back-ptrs)))
                    (else
                     (ec-stateset-update/! comp i S_i))))))))
 
