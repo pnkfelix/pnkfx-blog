@@ -59,6 +59,10 @@
 (define (terminal? c)
   (or (char? c) (and (string? c) (not (zero? (string-length c))))))
 
+(define (terminal-length c)
+  (cond ((char? c) 1)
+        ((string? c) (string-length c))))
+
 ;; Terminal Char -> Boolean
 (define (terminal-matches? t c)
   (cond ((char? t) (char=? t c))
@@ -114,6 +118,27 @@
                   (cons (substring s 1 (string-length s)) (cdr ps)))))
           (else
            (cdr ps)))))
+
+;; ProdSeq ProdSeq -> Boolean
+(define (prodseq-equal? ps ps*)
+
+  ;; Maybe could implement as (prodseq-equal-upto ps ps* +inf.0; or
+  ;; better still, factor out common abstract generalization.
+
+  (let loop ((ps ps) (ps* ps*))
+    (let ((null (prodseq-null? ps))
+          (null* (prodseq-null? ps*)))
+      (cond ((or null null*) (and null null*))
+            ;; Special-case: short-cut when we have same token
+            ((equal? (car ps) (car ps*))
+             (loop (cdr ps) (cdr ps*)))
+            (else ;; Otherwise, fall through to generalized handler
+             (let ((q (prodseq-first ps))
+                   (qs (prodseq-rest ps))
+                   (r (prodseq-first ps*))
+                   (rs (prodseq-rest ps*)))
+               (and (equal? q r)
+                    (loop qs rs))))))))
 
 ;; ProdSeq ProdSeq Nat -> Boolean
 ;; If the ps and ps* have equal k-prefixes, returns true.
@@ -319,14 +344,14 @@
                                                       #\space))
                                            (for-each elem
                                                      (reverse (cursor-prev c)))
-                                           (d centered-dot-char)
+                                           (d centered-dot-char) ;; (d ".")
                                            (for-each elem (cursor-post c))
                                            (d ">")))))))
 
       (define (cursor-equal? a b)
         (and (equal? (cursor-nonterm a) (cursor-nonterm b))
-             (equal? (cursor-prev a) (cursor-prev b))
-             (equal? (cursor-post a) (cursor-post b))))
+             (prodseq-equal? (cursor-prev a) (cursor-prev b))
+             (prodseq-equal? (cursor-post a) (cursor-post b))))
 
       (values cursor cursor-nonterm cursor-prev cursor-post cursor-equal?))))
 
@@ -351,6 +376,13 @@
          (s (prodseq-first p))
          (r (prodseq-rest p)))
     (cursor (cursor-nonterm c) (cons s (cursor-prev c)) r)))
+
+;; cursor-unshift : ProductionCursor -> ProductionCursor
+(define (cursor-unshift c)
+  (let* ((o (cursor-prev c))
+         (m (prodseq-first o))
+         (n (prodseq-rest o)))
+    (cursor (cursor-nonterm c) n (cons m (cursor-post c)))))
 
 ;; (Char -> Char) String -> String
 (define (string-mapchar f s)
@@ -1285,7 +1317,8 @@
                                                         ;; by Aycock and Horspool for dealing with null
                                                         ;; productions anyway.
 
-                                                        (cons (list s** s)
+                                                        (cons (list (list (cursor-nonterm (state-cursor s**)) (state-cursor s**) (state-input-position s**) i)
+                                                                    (list (cursor-nonterm (state-cursor s)) (state-cursor s) (state-input-position s) i))
                                                               back-ptrs)))
                                                  (else
                                                   set*back-ptrs)))))))
@@ -1341,6 +1374,178 @@
                                                         (state-cursor-shift/! s 'scanner)
                                                         #f))))
                  comp))))))
+
+;; A DerivPtr is a (list Any Cursor Position Position)
+
+;; DerivPtr [Listof (list DerivPtr DerivPtr)] -> [Listof Sexp]
+(define (construct-derivation-trees back-pointers)
+  (define (ptr-cursor x) (cadr x))
+  (define (ptr-start-pos x) (caddr x))
+  (define (ptr-end-pos x) (cadddr x))
+
+  (define (ptr-equal? x y)
+    (and (cursor-equal? (cadr x) (cadr y))
+         (equal? (cddr x) (cddr y))))
+
+  ;; Search algorithm:
+  ;; Given a ptr e.g. (_ #<cursor E -> E+T.> 0 5), we want to find all
+  ;; the ptrs that led to this production being in our final tree.
+  ;;
+  ;; Walk backwards through the cursor's producion string, tracking
+  ;; the end-point as we go.
+  ;; 1. If walk points at nonterminal, do a query for it in the table/
+  ;;    (Visit recursively, if that's what we're doing.)
+  ;;    Then update our end-point according to the length of the lookup entry;
+  ;;    e.g. 1  (_ #<cursor E -> E+T.> 0 5)
+  ;;            look it up, yielding (_ #<cursor T -> T*P.> 2 5); recur
+  ;;            On return, entry := 2.
+  ;;
+  ;;    e.g. 2. (_ #<cursor E -> E.+T> 0 1)
+  ;;            looks up (_ #<cursor E → T.> 0 1); recur.
+  ;;            On return, entry := 0.
+  ;;
+  ;; 2. If walk points at terminal, skip it (but decrement end-point by its length).
+  ;;    e.g. (_ #<cursor E -> E+.T> 0 2)
+  ;;         ==> (_ #<cursor E.+T> 0 1)
+  ;;
+  ;; BUT: What if in step 1 above, we get two entries in the table,
+  ;; and they have different start points?  Seems like I would need to recur
+  ;; on both possibilities, and build up distinct parse-trees accordingly.
+
+  (define (writln x)
+    '(begin (write x) (newline)))
+
+  (define (tree node-ptr children)
+    ; (vector 'tree node children)
+    (cons (list (ptr-cursor node-ptr) (ptr-start-pos node-ptr) (ptr-end-pos node-ptr))
+          children))
+
+  (let* ((root-entry (car (memp (lambda (entry) (eqv? #t (car (car entry)))) back-pointers)))
+         (root-ptr (car root-entry)))
+    (let recur ((root root-ptr)
+                (max-calls 6))
+      (writln root)
+      (if (<= max-calls 0)
+          (list 'too-deep)
+          (let ((root-cursor (ptr-cursor root))
+                (root-start-pos (ptr-start-pos root))
+                (root-cur-pos (ptr-end-pos root)))
+            (let loop ((cursor root-cursor)
+                       (children '())
+                       (cur-pos root-cur-pos))
+              (writln `(loop cursor: ,cursor))
+              (let ((nt (cursor-nonterm cursor))
+                    (p (cursor-prev cursor))
+                    (q (cursor-post cursor)))
+                (cond ((prodseq-null? p)
+                       (list (tree root children)))
+                      ((terminal? (prodseq-first p))
+                       (loop (cursor-unshift cursor) children (- cur-pos (terminal-length (prodseq-first p)))))
+                      ((nonterminal? (prodseq-first p))
+                       (let* ((nt (prodseq-first p))
+                              (pred (lambda (entry) (let ((src (car entry))
+                                                          (tgt (cadr entry)))
+                                                      (ptr-equal? (list '_ cursor root-start-pos cur-pos) src))))
+                              (matches (filter pred back-pointers))
+                              (_ (writln `(matches for cursor: ,cursor matches: ,matches)))
+                              (targets (map cadr matches)))
+                         (let loop* ((targets targets)
+                                     (results '()))
+                           (writln `(loop* targets: ,targets results: ,results))
+                           (cond ((null? targets)
+                                  results)
+                                 (else
+                                  (let* ((tgt (car targets))
+                                         (tgt-start (ptr-start-pos tgt))
+                                         (subtrees (recur tgt (- max-calls 1)))
+                                         (_ (writln `(subtrees: ,subtrees)))
+                                         (prefixes (apply append
+                                                          (map (lambda (subtree)
+                                                                 (loop
+                                                                  (cursor-unshift cursor)
+                                                                  (cons subtree children)
+                                                                  tgt-start))
+                                                               subtrees))))
+                                    (loop* (cdr targets)
+                                           (append prefixes
+                                                   results))))))))))))))))
+
+;; DerivPtr [Listof (list DerivPtr DerivPtr)] -> Sexp
+;; (chooses first one it can build from the various ambig possibilities.
+(define (construct-derivation-tree back-pointers)
+  (define (ptr-cursor x) (cadr x))
+  (define (ptr-start-pos x) (caddr x))
+  (define (ptr-end-pos x) (cadddr x))
+
+  (define (ptr-equal? x y)
+    (and (cursor-equal? (cadr x) (cadr y))
+         (equal? (cddr x) (cddr y))))
+
+  ;; Search algorithm:
+  ;; Given a ptr e.g. (_ #<cursor E -> E+T.> 0 5), we want to find all
+  ;; the ptrs that led to this production being in our final tree.
+  ;;
+  ;; Walk backwards through the cursor's producion string, tracking
+  ;; the end-point as we go.
+  ;; 1. If walk points at nonterminal, do a query for it in the table/
+  ;;    (Visit recursively, if that's what we're doing.)
+  ;;    Then update our end-point according to the length of the lookup entry;
+  ;;    e.g. 1  (_ #<cursor E -> E+T.> 0 5)
+  ;;            look it up, yielding (_ #<cursor T -> T*P.> 2 5); recur
+  ;;            On return, entry := 2.
+  ;;
+  ;;    e.g. 2. (_ #<cursor E -> E.+T> 0 1)
+  ;;            looks up (_ #<cursor E → T.> 0 1); recur.
+  ;;            On return, entry := 0.
+  ;;
+  ;; 2. If walk points at terminal, skip it (but decrement end-point by its length).
+  ;;    e.g. (_ #<cursor E -> E+.T> 0 2)
+  ;;         ==> (_ #<cursor E.+T> 0 1)
+  ;;
+  ;; BUT: What if in step 1 above, we get two entries in the table,
+  ;; and they have different start points?  Seems like I would need to recur
+  ;; on both possibilities, and build up distinct parse-trees accordingly.
+
+  (define (writln x)
+    '(begin (write x) (newline)))
+
+  (let* ((root-entry (car (memp (lambda (entry) (eqv? #t (car (car entry)))) back-pointers)))
+         (root-ptr (car root-entry)))
+    (let recur ((root root-ptr)
+                (max-calls 6))
+      (writln root)
+      (if (<= max-calls 0)
+          'too-deep
+          (let ((root-cursor (ptr-cursor root))
+                (root-start-pos (ptr-start-pos root))
+                (root-cur-pos (ptr-end-pos root)))
+            (let loop ((cursor root-cursor)
+                       (children '())
+                       (cur-pos root-cur-pos))
+              (writln `(loop cursor: ,cursor))
+              (let ((nt (cursor-nonterm cursor))
+                    (p (cursor-prev cursor))
+                    (q (cursor-post cursor)))
+                (cond ((prodseq-null? p)
+                       (list root children))
+                      ((terminal? (prodseq-first p))
+                       (loop (cursor-unshift cursor) children (- cur-pos (terminal-length (prodseq-first p)))))
+                      ((nonterminal? (prodseq-first p))
+                       (let* ((pred (lambda (entry) (let ((src (car entry))
+                                                          (tgt (cadr entry)))
+                                                      (ptr-equal? (list '_ cursor root-start-pos cur-pos) src))))
+                              (matches (filter pred back-pointers))
+                              (_ (writln `(matches for cursor: ,cursor matches: ,matches)))
+                              (targets (map cadr matches))
+                              (tgt (car targets))
+                              (tgt-start (ptr-start-pos tgt))
+                              (subtree (recur tgt (- max-calls 1))))
+                         (loop
+                          (cursor-unshift cursor)
+                          (cons subtree children)
+                          tgt-start)))))))))))
+
+(begin (define bp (ec-back-pointers (earley-compute AE 0 "a+a*a"))) (define rc (car (cadr bp))))
 
 (display "Hello World")
 (newline)
