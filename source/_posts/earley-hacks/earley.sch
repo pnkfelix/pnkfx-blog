@@ -631,7 +631,9 @@
 (define-values (earleycomp-maker
                 ec-grammar ec-lookahead ec-input ec-input-index
                 ec-states-vector ec-expansion-map
-                ec-stateset ec-stateset-update/! ec-next-token/!)
+                ec-back-pointers
+                ec-stateset
+                ec-stateset-update/! ec-next-token/! ec-add-back-pointer/!)
   (let ()
 
     ;; An EarleyComputation is a
@@ -652,8 +654,8 @@
     ;; look-ahead.  It has built up STATESETSEQ, is currently looking
     ;; at STR[STR-IDX], and is processing workset STATESETS[STR-IDX].
 
-    (define (ec g k str idx states mmap)
-      (vector g k str idx states mmap))
+    (define (ec g k str idx states mmap back-ptrs)
+      (vector g k str idx states mmap back-ptrs))
 
     (define (ec-grammar c)          (vector-ref c 0))
     (define (ec-lookahead c)        (vector-ref c 1))
@@ -661,13 +663,15 @@
     (define (ec-input-index c)      (vector-ref c 3))
     (define (ec-states-vector c)    (vector-ref c 4))
     (define (ec-expansion-map c)    (vector-ref c 5))
+    (define (ec-back-pointers c)    (vector-ref c 6))
 
     (let* ((ec-rtd (make-record-type 'earley-computation '(grammar
                                                            lookahead
                                                            input
                                                            input-index
                                                            states-vector
-                                                           expansion-map)))
+                                                           expansion-map
+                                                           back-pointers)))
            (ec (record-constructor ec-rtd))
            (ec-grammar (record-accessor ec-rtd 'grammar))
            (ec-lookahead (record-accessor ec-rtd 'lookahead))
@@ -675,6 +679,7 @@
            (ec-input-index (record-accessor ec-rtd 'input-index))
            (ec-states-vector (record-accessor ec-rtd 'states-vector))
            (ec-expansion-map (record-accessor ec-rtd 'expansion-map))
+           (ec-back-pointers (record-accessor ec-rtd 'back-pointers))
            (_ (rtd-printer-set! ec-rtd
                                 (lambda (e port)
                                   (let ((d (lambda (x) (display x port)))
@@ -686,6 +691,8 @@
                                     (w (ec-input-index e))
                                     (d " ")
                                     (d (ec-states-vector e))
+                                    (d " ")
+                                    (d (ec-back-pointers e))
                                     (d ">")))))
            )
 
@@ -698,7 +705,17 @@
         (ec (ec-grammar c) (ec-lookahead c)
             (ec-input c) (ec-input-index c)
             (vector-replace/! (ec-states-vector c) i states)
-            (ec-expansion-map c)))
+            (ec-expansion-map c)
+            (ec-back-pointers c)))
+
+      ;; ec-add-back-pointer/! :
+      ;;     EarleyComputation Any -> EarleyComputation
+      (define (ec-add-back-pointer/! c back-pointer)
+        (ec (ec-grammar c) (ec-lookahead c)
+            (ec-input c) (ec-input-index c)
+            (vector-replace/! (ec-states-vector c) i states)
+            (ec-expansion-map c)
+            (cons back-pointer (ec-back-pointers c))))
 
       ;; ec-next-token/! : EarleyComputation -> EarleyComputation
       (define (ec-next-token/! c)
@@ -707,14 +724,15 @@
             (ec-input c)
             (+ 1 (ec-input-index c))
             (ec-states-vector c)
-            (ec-expansion-map c)))
+            (ec-expansion-map c)
+            (ec-back-pointers c)))
 
       (define (earley g k m str)
         ;; Not really happy about the +2 here; seems like n+1 statesets should suffice.
         (let ((v (make-vector (+ 2 (string-length str)) (state-set)))
               (root (grammar-root g)))
           (vector-set! v 0 (state-set (state (root->cursor root) 0 (make-string k nul-char) 'initial)))
-          (ec g k str 0 v m)))
+          (ec g k str 0 v m '())))
 
       (define (earleycomp-maker g k)
         (let ((m (build-expansion-map g k)))
@@ -723,8 +741,8 @@
 
       (values earleycomp-maker
               ec-grammar ec-lookahead ec-input ec-input-index ec-states-vector
-              ec-expansion-map
-              ec-stateset ec-stateset-update/! ec-next-token/!))))
+              ec-expansion-map ec-back-pointers ec-stateset
+              ec-stateset-update/! ec-next-token/! ec-add-back-pointer/!))))
 
 ;; vector-replace/! : &l/[Vectorof X] X nat -> &l/[Vectorof X]
 (define (vector-replace/! vec i val)
