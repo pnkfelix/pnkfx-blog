@@ -1168,6 +1168,11 @@
 
 ;; earley-predictor : EarleyComputation -> [Maybe EarleyComputation]
 (define (earley-predictor comp)
+
+  ;; Predictor; if s is nonfinal and C_p,{j+1} is nonterminal, then
+  ;; for each q such that C_p,{j+1} = D_q, and for each beta in
+  ;; H_k(C_p,{j+2} ... C_p,|p| alpha), add <q, 0, i, beta> to S_i .
+
   (define (writln x) (begin (write x) (newline)))
 
   (let ((X (ec-input comp))
@@ -1203,6 +1208,11 @@
 
 ;; earley-completor : EarleyComputation -> [Maybe EarleyComputation]
 (define (earley-completor comp)
+
+  ;; Completor: If s is final and alpha = X_{i+1} ... X_{i+k}, then
+  ;; for each <q, l, g, beta> in S_f (after all states have been added
+  ;; to S_f) such that C_q,{l+1} = D_p, add <q, l+1, g, beta> to S_i .
+
   (define (writln x) '(begin (write x) (newline)))
 
   (let ((X (ec-input comp))
@@ -1253,6 +1263,10 @@
 
 ;; earley-scanner : EarleyComputation -> [Maybe EarleyComputation]
 (define (earley-scanner comp)
+
+  ;; Scanner: If s is nonfinal and C_p,{j+1} is terminal, then if
+  ;; C_p,{j+1} = X_{i+1} , add <p, j+1, f, alpha> to S_{i+1} .
+
   (define (writln x) (begin (write x) (newline)))
 
   (define (input-ref s i)
