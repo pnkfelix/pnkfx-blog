@@ -746,6 +746,7 @@ sys	0m0.080s
      interesting).
 
 ** Larceny
+   CLOCK: [2013-02-26 Tue 09:32]--[2013-02-26 Tue 13:29] =>  3:57
    CLOCK: [2013-02-24 Sun 22:31]--[2013-02-24 Sun 23:13] =>  0:42
    CLOCK: [2013-02-24 Sun 22:21]--[2013-02-24 Sun 22:31] =>  0:10
    CLOCK: [2013-02-24 Sun 16:44]--[2013-02-24 Sun 17:25] =>  0:41
@@ -892,6 +893,18 @@ sys	0m0.080s
 
      (Unless these are deliberlately malformed terms, and the test is
       that they will be rejected by the parser?)
+
+   * After reviewing related literature, I am now interested in seeing
+     if I can compose a directly-executable earley parser (generator,
+     that is).
+
+     Better still if there is some way to express the construction via
+     `syntax-rules`, but I'm not so sure about the feasibility of
+     that; I can live with `eval` (really I can live with composing
+     MAL blocks.)
+
+   * But before I investigate direct-execution, I want to see about
+     reconstructing a parse-tree from a completed computation.
 
 * Unicode
 ** Looking at various characters
