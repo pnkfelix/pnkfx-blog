@@ -917,6 +917,11 @@ sys	0m0.080s
    * But before I investigate direct-execution, I want to see about
      reconstructing a parse-tree from a completed computation.
 
+** Rust
+   CLOCK: [2013-02-20 Wed 22:55]--[2013-02-20 Wed 23:25] =>  0:30
+   CLOCK: [2013-02-20 Wed 22:51]--[2013-02-20 Wed 22:53] =>  0:02
+
+
 * Unicode
 ** Looking at various characters
    CLOCK: [2013-02-24 Sun 14:45]--[2013-02-24 Sun 15:16] =>  0:31
