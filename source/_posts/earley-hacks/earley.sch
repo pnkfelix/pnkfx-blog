@@ -307,7 +307,7 @@
                         (char=? c (string-ref input (+ i -1 j)))
                         (loop (+ j 1))))))))))
 
-(define-values (cursor cursor-nonterm cursor-prev cursor-post cursor-equal?)
+(define-values (cursor cursor? cursor-nonterm cursor-prev cursor-post cursor-equal?)
   (let ()
 
     ;; A ProductionCursor is a
@@ -321,6 +321,7 @@
 
     (let* ((cursor-rtd (make-record-type 'cursor '(nonterm prev post)))
            (cursor (record-constructor cursor-rtd))
+           (cursor? (record-predicate cursor-rtd))
            (cursor-nonterm (record-accessor cursor-rtd 'nonterm))
            (cursor-prev (record-accessor cursor-rtd 'prev))
            (cursor-post (record-accessor cursor-rtd 'post))
@@ -353,7 +354,7 @@
              (prodseq-equal? (cursor-prev a) (cursor-prev b))
              (prodseq-equal? (cursor-post a) (cursor-post b))))
 
-      (values cursor cursor-nonterm cursor-prev cursor-post cursor-equal?))))
+      (values cursor cursor? cursor-nonterm cursor-prev cursor-post cursor-equal?))))
 
 ;; production->cursor : Production -> ProductionCursor
 (define (production->cursor p)
@@ -400,20 +401,22 @@
 ;; A Source is an S-exp describing when a state is added.
 ;; A State is a (list ProductionCursor Position Lookahead Source)
 
-(define-values (state state-cursor state-input-position state-successor state-source
+(define-values (state state-cursor state-input-position state-cursor-position state-successor state-source
                       state-equal?)
   (let ()
-    (define (state cursor pos termseq source)
-      (list cursor pos termseq source))
+    (define (state cursor start-pos cursor-pos termseq source)
+      (list cursor start-pos cursor-pos termseq source))
     (define (state-cursor s) (list-ref s 0))
     (define (state-input-position s) (list-ref s 1))
-    (define (state-successor s) (list-ref s 2))
-    (define (state-source s) (list-ref s 3))
+    (define (state-cursor-position s) (list-ref s 2))
+    (define (state-successor s) (list-ref s 3))
+    (define (state-source s) (list-ref s 4))
 
-    (let* ((state-rtd (make-record-type 'state '(cursor pos termseq source)))
+    (let* ((state-rtd (make-record-type 'state '(cursor pos cursor-pos termseq source)))
            (state (record-constructor state-rtd))
            (state-cursor (record-accessor state-rtd 'cursor))
            (state-input-position (record-accessor state-rtd 'pos))
+           (state-cursor-position (record-accessor state-rtd 'cursor-pos))
            (state-successor (record-accessor state-rtd 'termseq))
            (state-source (record-accessor state-rtd 'source))
            (_ (rtd-printer-set! state-rtd
@@ -433,6 +436,8 @@
                                           (state-successor s)))
                                       (d " at:")
                                       (d (state-input-position s))
+                                      (d "--")
+                                      (d (state-cursor-position s))
                                       (cond (#f
                                              (d " source: ")
                                              (d (state-source s)))))
@@ -443,7 +448,7 @@
              (equal? (state-input-position a) (state-input-position b))
              (equal? (state-successor a) (state-successor b))))
 
-      (values state state-cursor state-input-position state-successor state-source
+      (values state state-cursor state-input-position state-cursor-position state-successor state-source
               state-equal?))))
 
 (define (state-final? s)
@@ -457,6 +462,7 @@
 (define (state-cursor-shift/! s source)
   (state (cursor-shift (state-cursor s))
          (state-input-position s)
+         (state-cursor-position s)
          (state-successor s)
          source))
 
@@ -763,7 +769,7 @@
         ;; Not really happy about the +2 here; seems like n+1 statesets should suffice.
         (let ((v (make-vector (+ 2 (string-length str)) (state-set)))
               (root (grammar-root g)))
-          (vector-set! v 0 (state-set (state (root->cursor root) 0 (make-string k nul-char) 'initial)))
+          (vector-set! v 0 (state-set (state (root->cursor root) 0 0 (make-string k nul-char) 'initial)))
           (ec g k str 0 v m '())))
 
       (define (earleycomp-maker g k)
@@ -1248,7 +1254,7 @@
                                              set
                                              (state-set-add/!
                                               set
-                                              (state (production->cursor rule) i beta 'predictor)
+                                              (state (production->cursor rule) i i beta 'predictor)
                                               #f)))
                                           set
                                           rules))
@@ -1545,7 +1551,14 @@
                           (cons subtree children)
                           tgt-start)))))))))))
 
-(begin (define bp (ec-back-pointers (earley-compute AE 0 "a+a*a"))) (define rc (car (cadr bp))))
+'(define (deriv-tree->sym-tree x)
+  (let recur ((x x))
+    (cond ((cursor? x) (cursor-nonterm x))
+          ((and (pair? x) (cursor? (car x))) (cursor-nonterm (car x)))
+          ((pair? x) (cons (recur (car x))
+                           (recur (cdr x))))
+          ((vector? x) (list->vector (recur (vector->list x))))
+          (else x))))
 
 (display "Hello World")
 (newline)
@@ -1646,3 +1659,10 @@
               (B -> "b") (B -> D B)
               (C -> "c")
               (D -> "d")))
+
+(define scott-ss '((S -> S S)
+                   (S -> "b")))
+
+(define scott-sss '((S -> S S S)
+                    (S -> S S)
+                    (S -> "b")))

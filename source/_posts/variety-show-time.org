@@ -734,6 +734,11 @@ sys	0m0.080s
 
 * earley hacks
 ** General Earley notes
+   CLOCK: [2013-03-03 Sun 01:44]--[2013-03-03 Sun 02:26] =>  0:42
+   CLOCK: [2013-03-02 Sat 23:42]--[2013-03-02 Sat 23:58] =>  0:16
+   CLOCK: [2013-03-02 Sat 20:53]--[2013-03-02 Sat 22:35] =>  1:42
+   CLOCK: [2013-03-02 Sat 19:55]--[2013-03-02 Sat 20:02] =>  0:07
+   CLOCK: [2013-03-02 Sat 12:54]--[2013-03-02 Sat 13:23] =>  0:29
    CLOCK: [2013-02-24 Sun 23:25]--[2013-02-25 Mon 02:00] =>  2:35
    CLOCK: [2013-02-24 Sun 23:13]--[2013-02-24 Sun 23:25] =>  0:00
    CLOCK: [2013-02-17 Sun 21:31]--[2013-02-17 Sun 21:43] =>  0:12
@@ -744,6 +749,12 @@ sys	0m0.080s
      LR(k), the comparison between LL and LR (in particular
      the point that LL(k+1) and LR(k) are incomparable was
      interesting).
+
+   * Reading Elizabeth Scott's "SPPF-Style Parsing From Earley Recognizers"
+
+   * But quickly distracted into looking up references on *parallelizing* Earley
+     (now *that* is the way to get this to be relevant to my day job... or
+      even *both* of my day jobs!)
 
 ** Larceny
    CLOCK: [2013-02-26 Tue 09:32]--[2013-02-26 Tue 13:29] =>  3:57

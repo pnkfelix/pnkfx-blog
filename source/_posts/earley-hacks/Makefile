@@ -1,6 +1,8 @@
 test-one: test-larc
 test-all: test-larc test-rust test-cxx test-clj test-node
 
+LARCENY_CTRLC_MUST_EXIT=(keyboard-interrupt-handler (lambda args (display \"Ctrl-C\") (newline) (exit 124)))
+
 clean:
 	rm -f *.fasl rust-earley cxx-earley
 	rm -rf classes
@@ -15,8 +17,8 @@ test-clj: classes/earley.class
 	bash -c "time java -cp $(CLJJAR):classes earley"
 
 test-larc: earley.fasl unsafe-earley.fasl
-	bash -c "time larceny -unsafe -nobanner -- unsafe-$<"
-	bash -c "time larceny -nobanner -- $<"
+	bash -c "time larceny -unsafe -nobanner -- -e '$(LARCENY_CTRLC_MUST_EXIT)'  unsafe-$<"
+	bash -c "time larceny -nobanner -- -e '$(LARCENY_CTRLC_MUST_EXIT)' $<"
 
 test-rust: rust-earley
 	bash -c "time ./$<"
@@ -31,10 +33,10 @@ classes:
 	mkdir classes
 
 unsafe-%.fasl: %.sch
-	bash -c "time larceny -- -e '(compiler-switches (quote fast-unsafe))' -e '(compile-file \"$<\" \"$@\")' -e '(exit)'"
+	bash -c "time larceny -- -e '$(LARCENY_CTRLC_MUST_EXIT)' -e '(compiler-switches (quote fast-unsafe))' -e '(compile-file \"$<\" \"$@\")' -e '(exit)'"
 
 %.fasl: %.sch
-	bash -c "time larceny -- -e '(compiler-switches (quote default))' -e '(compile-file \"$<\" \"$@\")' -e '(exit)'"
+	bash -c "time larceny -- -e '$(LARCENY_CTRLC_MUST_EXIT)' -e '(compiler-switches (quote default))' -e '(compile-file \"$<\" \"$@\")' -e '(exit)'"
 
 rust-%: %.rs
 	bash -c "time rustc -o $@ $<"
