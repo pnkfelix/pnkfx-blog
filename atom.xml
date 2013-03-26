@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/atom.xml" rel="self"/>
   <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/"/>
-  <updated>2013-01-31T15:01:06+01:00</updated>
+  <updated>2013-03-26T16:30:00+01:00</updated>
   <id>http://github.com.github.com/pnkfelix/pnkfx-blog/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -14,19 +14,261 @@
 
   
   <entry>
+    <title type="html"><![CDATA[Rusty Chain Puzzle 1.]]></title>
+    <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/03/26/rusty-chain-puzzle-1/"/>
+    <updated>2013-03-26T10:28:00+01:00</updated>
+    <id>http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/03/26/rusty-chain-puzzle-1</id>
+    <content type="html"><![CDATA[<p>I have been trying to get my feet wet programming in
+<a href="http://www.rust-lang.org/">Rust</a>.</p>
+
+<p>A month and a half ago, I thought &quot;Maybe I will hack up an Earley
+parser in a variety of languages, including Rust.&quot;  That sent me down
+a long path of learning about how Earley parsing works; I have not yet
+written up my results from that investigation, and I still have not
+written the Rust version of the code.</p>
+
+<p>Last weekend, I sat down and said, &quot;Let&#39;s try a simpler goal: A couple
+simple exercies, maybe taken from Knuth&#39;s
+<a href="http://www-cs-faculty.stanford.edu/%7Euno/taocp.html">TAOCP</a>&quot;
+This was indeed a much simpler goal, but it was more difficult than
+I had expected.</p>
+
+<p>So, here is a Rust hacking puzzle that I struggled with.</p>
+
+<p>I am representing piles of playing cards via linked structures.
+Here are the data structure declarations:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">enum</span> <span class="n">card_suit</span> <span class="p">{</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">hearts</span><span class="p">,</span> <span class="n">spades</span> <span class="p">}</span>
+</span><span class='line'><span class="n">struct</span> <span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">card_suit</span><span class="p">,</span>
+</span><span class='line'>              <span class="n">rank</span><span class="o">:</span> <span class="k">u8</span><span class="p">,</span> <span class="c1">// 1..13</span>
+</span><span class='line'>              <span class="n">next</span><span class="o">:</span> <span class="n">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span> <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p>Note that the <code>next</code> field is an (optional) <em>owned</em> pointer to the
+next card in the pile.  <code>Option&lt;~card&gt;</code> will be generally used to
+represent a potentially empty pile (or &quot;stack&quot;, &quot;deck&quot; or &quot;hand&quot;, as
+the context dictates), while <code>~card</code> is a non-empty pile (or, when its
+<code>next</code> is <code>None</code>, a single card, again as context dictates)</p>
+
+<h2>The goal</h2>
+
+<p>I want to write four functions: <code>place_top</code>, <code>place_bot</code>, <code>pop_top</code>,
+and <code>pop_bot</code>, which respectively:</p>
+
+<ul>
+<li><p><code>place_top(stack, c)</code> pushes a card <code>c</code> onto the top of the stack,
+represented by return the new top of the stack.</p></li>
+<li><p><code>place_bot(stack, c)</code> places a card beneath the stack.  For an empty
+stack, the placed card is returned as the top of the newly formed
+stack; otherwise, the old stack top is returned (since the stack is
+imperatively modified).</p></li>
+<li><p><code>pop_top(stack)</code> pops the top of the stack, returning a tuple of the
+popped card and the remaining, potentially empty stack.</p></li>
+<li><p><code>pop_bot(stack)</code> removes the bottom of the stack (i.e. &quot;deals from
+the bottom of the deck&quot;), returning a tuple of the removed card and
+the new, potentially empty stack.</p></li>
+</ul>
+
+<p>In code, here are the signatures for the desired functions,
+as well as one-line reminders of the behavior for each.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="c1">// [c1, ..., cN], cX -&gt; [cX, c1, ..., cN]</span>
+</span><span class='line'><span class="k">fn</span> <span class="n">place_top</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="n">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">newcard</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">card</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// [c1, ..., cN], cX -&gt; [c1, ..., cN, cX]</span>
+</span><span class='line'><span class="k">fn</span> <span class="n">place_bot</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="n">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">newcard</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">card</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// [c1, c2, ..., cN] -&gt; (c1, [c2, ..., cN])</span>
+</span><span class='line'><span class="k">fn</span> <span class="n">pop_top</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="o">~</span><span class="n">card</span><span class="p">,</span> <span class="n">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// [c1, ..., cN-1, cN] -&gt; (Some(cN), [c1, ..., cN-1])</span>
+</span><span class='line'><span class="k">fn</span> <span class="n">pop_bot</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="o">~</span><span class="n">card</span><span class="p">,</span> <span class="n">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<h2>(Some non-critical helper infrastructure follows, showing off Rust as language)</h2>
+
+<p>Here is some example code that puts together a hand and does
+a few manipulations using the above operations (as well as
+some printing routines to make looking at these cards nicer
+in the terminal output)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">make_hand</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">10</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="n">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">spades</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">3</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="n">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">2</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="n">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
+</span><span class='line'>    <span class="n">hand</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">hand</span> <span class="o">:</span> <span class="o">~</span><span class="n">card</span> <span class="o">=</span> <span class="n">make_hand</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;initial hand: &quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">AceD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">1</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="n">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="n">AceD</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;place top: &quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_top</span><span class="p">(</span><span class="n">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">AceD</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">SixD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">6</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="n">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="n">SixD</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;place bot: &quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_bot</span><span class="p">(</span><span class="n">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">SixD</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">let</span> <span class="p">(</span><span class="n">top</span><span class="p">,</span> <span class="n">rest</span><span class="p">)</span> <span class="o">=</span> <span class="n">pop_top</span><span class="p">(</span><span class="n">hand</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">top</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;popped top: &quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">rest</span><span class="p">.</span><span class="n">unwrap</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">let</span> <span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="n">rest</span><span class="p">)</span> <span class="o">=</span> <span class="n">pop_bot</span><span class="p">(</span><span class="n">hand</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">bot</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;popped bot: &quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">rest</span><span class="p">.</span><span class="n">unwrap</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Below are &quot;just&quot; some notation niceties that should not effect</span>
+</span><span class='line'><span class="c1">// the semantics of the code + algorithms above.</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">impl</span> <span class="n">ToStr</span> <span class="k">for</span> <span class="n">card_suit</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="n">to_str</span><span class="p">(</span><span class="o">&amp;</span><span class="n">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">str</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">match</span> <span class="n">self</span> <span class="p">{</span> <span class="o">&amp;</span><span class="n">spades</span>   <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;</span><span class="se">\u2664</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">hearts</span>   <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;</span><span class="se">\u2665</span><span class="s">&quot;</span><span class="p">,</span>
+</span><span class='line'>                     <span class="o">&amp;</span><span class="n">diamonds</span> <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;</span><span class="se">\u2666</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">clubs</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;</span><span class="se">\u2667</span><span class="s">&quot;</span> <span class="p">}</span> <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="n">r</span><span class="o">:</span><span class="k">u8</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">str</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">match</span> <span class="n">r</span> <span class="p">{</span>
+</span><span class='line'>        <span class="m">1</span>     <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;A&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">2.</span><span class="p">.</span><span class="m">10</span> <span class="o">=&gt;</span> <span class="n">r</span><span class="p">.</span><span class="n">to_str</span><span class="p">(),</span>
+</span><span class='line'>        <span class="m">11</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;J&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">12</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;Q&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">13</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;K&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="n">_</span>     <span class="o">=&gt;</span> <span class="k">fail</span><span class="o">!</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">impl</span> <span class="n">card</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="o">&amp;</span><span class="n">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">str</span> <span class="p">{</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">rank</span><span class="p">)</span> <span class="p">}</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="n">report</span><span class="p">(</span><span class="o">&amp;</span><span class="n">self</span><span class="p">,</span> <span class="n">prefix</span><span class="o">:</span> <span class="o">~</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span> <span class="n">io</span><span class="o">::</span><span class="n">println</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">self</span><span class="p">.</span><span class="n">to_str</span><span class="p">());</span> <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">impl</span> <span class="n">ToStr</span> <span class="k">for</span> <span class="n">card</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="n">to_str</span><span class="p">(</span><span class="o">&amp;</span><span class="n">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">str</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">let</span> <span class="k">mut</span> <span class="k">ret</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">rank_to_str</span><span class="p">()</span> <span class="o">+</span> <span class="n">self</span><span class="p">.</span><span class="n">suit</span><span class="p">.</span><span class="n">to_str</span><span class="p">();</span>
+</span><span class='line'>        <span class="n">match</span> <span class="o">&amp;</span><span class="n">self</span><span class="p">.</span><span class="n">next</span> <span class="p">{</span>
+</span><span class='line'>            <span class="o">&amp;</span><span class="n">None</span> <span class="o">=&gt;</span> <span class="p">(),</span>
+</span><span class='line'>            <span class="o">&amp;</span><span class="n">Some</span><span class="p">(</span><span class="n">ref</span> <span class="n">n</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="k">ret</span> <span class="o">=</span> <span class="k">ret</span> <span class="o">+</span> <span class="s">&quot;,&quot;</span> <span class="o">+</span> <span class="n">n</span><span class="p">.</span><span class="n">to_str</span><span class="p">()</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="k">ret</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p>In my terminal, I get the following output from the above <code>main</code>
+function:</p>
+
+<p>initial hand: 2&diams;,3&spades;,10&clubs;<br>
+place top: A&diams;<br>
+new hand: A&diams;,2&diams;,3&spades;,10&clubs;<br>
+place bot: 6&diams;<br>
+new hand: A&diams;,2&diams;,3&spades;,10&clubs;,6&diams;<br>
+popped top: A&diams;<br>
+new hand: 2&diams;,3&spades;,10&clubs;,6&diams;<br>
+popped bot: 6&diams;<br>
+new hand: 2&diams;,3&spades;,10&clubs;</p>
+
+<p>(I will post my initial &quot;solution&quot; to the puzzle in a follow-up post;
+ I wanted to share this first because I know my current solution
+ is non-optimal and wanted to see what others had to offer for how
+ to solve this first.)</p>
+]]></content>
+  </entry>
+  
+  <entry>
     <title type="html"><![CDATA[Implicit versus Explicit Finalization]]></title>
     <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/01/29/implicit-versus-explicit-finalization/"/>
     <updated>2013-01-29T22:47:00+01:00</updated>
     <id>http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/01/29/implicit-versus-explicit-finalization</id>
-    <content type="html"><![CDATA[<p>(This post is largely a response to Niko Matsakis&#8217;s blog post
+    <content type="html"><![CDATA[<p>(This post is largely a response to Niko Matsakis&#39;s blog post
 <a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">Destructors and Finalizers in Rust</a>.  I started composing it as a comment there,
 but eventually realized I needed more breathing room.)</p>
 
-<p>I agree wholeheartedly with Niko&#8217;s statement that the Boehm paper
-<a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">&#8220;Destructors, Finalizers, and Synchronization&#8221;</a> is a really nice
+<p>I agree wholeheartedly with Niko&#39;s statement that the Boehm paper
+<a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">&quot;Destructors, Finalizers, and Synchronization&quot;</a> is a really nice
 discussion of this topic.
 However, a significant portion of the destructor/finalizer design space is
-only briefly discussed in that paper, and I worry that Niko&#8217;s post overlooks
+only briefly discussed in that paper, and I worry that Niko&#39;s post overlooks
 it.</p>
 
 <p>There are designs that do not run finalizers directly from the garbage
@@ -41,7 +283,7 @@ to hang themselves with).</p>
 
 <h2>Explicit Cleanup</h2>
 
-<p>In the <a href="http://www.cs.indiana.edu/~dyb/pubs/guardians-pldi93.pdf">guardian</a> and <a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">reference-queue</a> family of systems (see
+<p>In the <a href="http://www.cs.indiana.edu/%7Edyb/pubs/guardians-pldi93.pdf">guardian</a> and <a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">reference-queue</a> family of systems (see
 also <a href="http://docs.racket-lang.org/reference/willexecutor.html">wills and executors</a>), resource cleanup code is no longer asynchronously
 run by the GC.  Instead, cleanup is the obligation of the
 mutator.  The only asynchronous cleanup action of the garbage collector
@@ -57,22 +299,22 @@ too terse.</p>
 plausibly reason about, in a single- or multi-threaded context.</p>
 
 <p>To be fair: Boehm <em>does</em> address these approaches briefly; see the beginning
-of section 3.5.1 of his paper, &#8220;Explicit Finalizer Invocation&#8221;.  However,
-he also mixes them in with Java&#8217;s <code>System.runFinalization()</code> and the motivation
-for that method.  Thus one must take care to distinguish which of Boehm&#8217;s complaints
-apply to all explicit finalization systems, and which apply solely to systems
+of section 3.5.1 of his paper, &quot;Explicit Finalizer Invocation&quot;.  However,
+he also mixes them in with Java&#39;s <code>System.runFinalization()</code> and the motivation
+for that method.  Thus one must take care to distinguish which of Boehm&#39;s complaints
+apply to all explicit finalization systems, and which apply solely to systems 
 such as Java with <code>runFinalization</code> that provide a mix of explicit and implicit finalization.</p>
 
 <h2>Passing the Buck</h2>
 
-<p>One important characteristic (some might say &#8220;drawback&#8221;) of explicit
+<p>One important characteristic (some might say &quot;drawback&quot;) of explicit
 finalization approaches is that the mutator does need to periodically process
 its associated guardians/reference queues.  After all, with the transfer of
 responsibility for cleanup from the collector to the mutator, the mutator must
 meet this obligation eventually.</p>
 
-<p>One standard way to do this is to sprinkle cleanup code (i.e. &#8220;check if
-guardian has entries; if so, process some of them&#8221;) at points in the control
+<p>One standard way to do this is to sprinkle cleanup code (i.e. &quot;check if
+guardian has entries; if so, process some of them&quot;) at points in the control
 flow of library routines using that guardian.  (In other words, in languages
 with guardians, library designers can hopefully isolate the cleanup code behind the interface of the library that
 requires such cleanup.)</p>
@@ -88,47 +330,48 @@ single finalization queue for the whole heap.</p>
 <ol>
 <li><p>ensuring that the necessary processing does <em>eventually</em> happen
 (i.e. prevent resource leaks when control does not often (or ever) flow back into the
-developer&#8217;s library utilizing the guardian), and</p></li>
+developer&#39;s library utilizing the guardian), and</p></li>
 <li><p>inserting finalizer invocations across the code of a library detracts
 from its readability; they are a clear example of a cross-cutting concern that
-should be factored into its own &#8220;aspect.&#8221;</p></li>
+should be factored into its own &quot;aspect.&quot;</p></li>
 </ol>
-
 
 <p>Boehm essentially covers both of the points above (though on first reading I
 only interpreted him as describing the second point):</p>
 
-<blockquote><p>This appears to be the safest way to handle finalization in single-threaded
+<blockquote>
+<p>This appears to be the safest way to handle finalization in single-threaded
 code, although it has some clear disadvantages in certain contexts:
 Potentially large amounts of code, especially long running routines, must be
-explicitly sprinkled with finalizer invocations.</p></blockquote>
+explicitly sprinkled with finalizer invocations.</p>
+</blockquote>
 
-<p>In the very worst case, in a &#8220;normal&#8221; imperative language with concurrent
+<p>In the very worst case, in a &quot;normal&quot; imperative language with concurrent
 threads, these last two drawbacks could be addressed by the client-developer:
 the client-developer can set their associated cleanup code to run on a
 distinct thread (that the <em>mutator</em> manages, not the garbage collector).  This
 avoids the ugly sprinkling/cross-cutting of concerns, and should ensure that
 cleanup does eventually occur (assuming correctly-written multi-threaded code,
-&#8220;ha ha&#8221;).</p>
+&quot;ha ha&quot;).</p>
 
-<p>Of course, that last suggestion is essentially reimplementing the GC&#8217;s
+<p>Of course, that last suggestion is essentially reimplementing the GC&#39;s
 finalizer thread as a mutator process.  But nonetheless, in principle this
 could be implemented as a library, as long as the appropriate primitives are
 available underneath.</p>
 
 <p>By making explicit finalization expressible as a library,
-the developer community would be free to propose competing API&#8217;s
+the developer community would be free to propose competing API&#39;s
 and implementations.  That seems like a good thing for a young
 experimental language.</p>
 
 <p>(One <em>might</em> even be able to develop finalization
-libraries that are &#8220;composable&#8221;, in the sense that different finalization
+libraries that are &quot;composable&quot;, in the sense that different finalization
 libraries could be used by distinct libraries in the same overall program.
 One could coin the term
-<a href="http://en.wikipedia.org/wiki/Decomposing_Composers">&#8220;composing decomposers&#8221;</a>
+<a href="http://en.wikipedia.org/wiki/Decomposing_Composers">&quot;composing decomposers&quot;</a>
 for such things.)</p>
 
-<h2>Wait, what was that about &#8220;normal&#8221; languages?</h2>
+<h2>Wait, what was that about &quot;normal&quot; languages?</h2>
 
 <p>I wrote the end of the previous section intending for it to apply to Rust.
 Then I realized that I do not have enough experience writing Rust programs to
@@ -145,7 +388,7 @@ types that would make it impossible for a separate thread to extract them from
 a guardian and be able to access their contents.</p>
 
 <p>There is also the serious problem that such a cleanup thread seems likely to require
-the use of mutex locks in order to coordinate with the &#8220;real&#8221; mutator; this in
+the use of mutex locks in order to coordinate with the &quot;real&quot; mutator; this in
 particular seems antithetical to the ideals of Rust.</p>
 
 <p>(Hopefully I will soon acquire sufficient experience with Rust itself to be
@@ -175,7 +418,6 @@ future.
 
 --->
 
-
 <h2>Conclusion</h2>
 
 <p>I am not saying this is easy, and I am not saying that the systems I am
@@ -187,7 +429,7 @@ asynchronous routines; but with explicit finalization, one has more options
 (yet still may be able to fall back on asynchrony if necessary).</p>
 
 <p>So, what does all of this mean for Rust?  Well, Niko already suggested
-limiting destructors solely to types that contain only &#8220;owned data.&#8221;</p>
+limiting destructors solely to types that contain only &quot;owned data.&quot;</p>
 
 <p>I have no problem with that, since it clearly deals with all of the issues
 that Boehm described.</p>
@@ -203,26 +445,25 @@ hit that crossroads.</p>
 <h2>References</h2>
 
 <ol>
-<li><a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">&#8220;Destructors and Finalizers in Rust&#8221;</a>
+<li><a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">&quot;Destructors and Finalizers in Rust&quot;</a>
 <br/>Niko Matsakis
 <br/>Blog post, 2013</li>
-<li><a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">&#8220;Destructors, Finalizers, and Synchronization&#8221;</a>
+<li><a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">&quot;Destructors, Finalizers, and Synchronization&quot;</a>
 <br/>Hans Boehm
 <br/>HP Tech Report; POPL 2003</li>
-<li><a href="http://www.cs.indiana.edu/~dyb/pubs/guardians-pldi93.pdf">&#8220;Guardians in a Generation-Based Garbage Collector&#8221;</a>
+<li><a href="http://www.cs.indiana.edu/%7Edyb/pubs/guardians-pldi93.pdf">&quot;Guardians in a Generation-Based Garbage Collector&quot;</a>
 <br/>Dybvig, Bruggeman, and Eby
 <br/>PLDI, 1993</li>
-<li><a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">&#8220;How to Handle Java Finalization&#8217;s Memory-Retention Issues&#8221;</a>
+<li><a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">&quot;How to Handle Java Finalization&#39;s Memory-Retention Issues&quot;</a>
 <br/>Tony Printezis
 <br/>Tech Report, 2007</li>
-<li><a href="http://docs.racket-lang.org/reference/willexecutor.html">&#8220;Wills and Executors&#8221;</a>
+<li><a href="http://docs.racket-lang.org/reference/willexecutor.html">&quot;Wills and Executors&quot;</a>
 <br/>PLT Racket Reference Documentation</li>
-<li><a href="http://repository.readscheme.org/ftp/papers/sw2010/02-hsu.pdf">&#8220;Implementing User-level Value-weak Hashtables&#8221;</a>
+<li><a href="http://repository.readscheme.org/ftp/papers/sw2010/02-hsu.pdf">&quot;Implementing User-level Value-weak Hashtables&quot;</a>
 <br/>Aaron Hsu
 <br/>Scheme Workshop 2010
 <br/>(I only properly appreciated the value (and difficulties) of using guardians for such purposes after I read this paper)</li>
 </ol>
-
 
 <h2>Appendix A. What are Guardians?</h2>
 
@@ -231,7 +472,7 @@ hit that crossroads.</p>
 procedure-arity-based-dispatch, as written by Hsu to match the Chez Scheme
 API, and I am rewriting his example with a new distinct named procedures .)</p>
 
-<p>One can construct as many guardian instances (or simply &#8220;guardians&#8221;) as one wants.
+<p>One can construct as many guardian instances (or simply &quot;guardians&quot;) as one wants.
 Each guardian is associated with two things:</p>
 
 <ol>
@@ -239,36 +480,33 @@ Each guardian is associated with two things:</p>
 <li><code>registry</code> : a set of objects scheduled to be eventually enqueued in the first set.</li>
 </ol>
 
-
 <p>Both of these sets are initially empty when the guardian is constructed.</p>
-
-<pre><code>&gt; (define g (make-guardian))
-&gt; (define v "VAL")
-&gt; (define p (weak-cons v '())
+<div class="highlight"><pre><code class="text">&gt; (define g (make-guardian))
+&gt; (define v &quot;VAL&quot;)
+&gt; (define p (weak-cons v &#39;())
 &gt; (guardian-register! g v)
 
-&gt; (set! v #f)                    ;; Now `"VAL"` is unreachable via strong-refs ...
+&gt; (set! v #f)                    ;; Now `&quot;VAL&quot;` is unreachable via strong-refs ...
 &gt; (guardian-fetch! g)            ;; ... but GC has not discovered that yet.
 #f
 
-&gt; (collect-garbage)              ;; `"VAL"` is still unreachable ...
+&gt; (collect-garbage)              ;; `&quot;VAL&quot;` is still unreachable ...
 &gt; p                              ;; ... though one can access via weak paths ...
-("VAL")
+(&quot;VAL&quot;)
 &gt; (define x (guardian-fetch! g)) ;; ... and the guardian held it in `reclaimable`
 &gt; x
-"VAL"
+&quot;VAL&quot;
 
-                                 ;; At this point, "VAL" is again strongly reachable
+                                 ;; At this point, &quot;VAL&quot; is again strongly reachable
                                  ;; (via `x`).  However, it is *not* in either of the
                                  ;; sets for the guardian `g`, and thus is not scheduled
                                  ;; to be enqueued in the `reclaimable` set.
 
-&gt; (set! x #f)                    ;; Now "VAL" is no longer strongly reachable...
+&gt; (set! x #f)                    ;; Now &quot;VAL&quot; is no longer strongly reachable...
 &gt; (collect-garbage)
 &gt; p                              ;; ... and thus can be reclaimed.
 (#!blank-weak-pointer)
-</code></pre>
-
+</code></pre></div>
 <p>So, what does this have to do with finalization?</p>
 
 <p>With the guardian API in hand, one could take care of closing individual
@@ -284,7 +522,6 @@ with G.</p></li>
 file descriptors.</p></li>
 </ol>
 
-
 <h2>Appendix B. Another peeve about guardians</h2>
 
 <p>One idiosyncrasy about a lot of the guardian-like systems is that they enqueue
@@ -293,7 +530,7 @@ given the effort that the GC went through to determine that the object was
 otherwise unreachable.</p>
 
 <p>Perhaps this could be addressed by using something like the model described at
-the start of section 3.1 of Boehm&#8217;s paper, &#8220;Alternatives&#8221;; namely, instead of
+the start of section 3.1 of Boehm&#39;s paper, &quot;Alternatives&quot;; namely, instead of
 enqueuing the unreachable object on a reference queue, the GC could instead
 enqueue an associated distinct cleanup object, and reclaim the originally
 registered object itself. (Boehm states that such a cleanup object falls
@@ -325,18 +562,20 @@ hack one up in the future.</p>
     <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/01/08/resurrected-hello-again-world/"/>
     <updated>2013-01-08T00:55:00+01:00</updated>
     <id>http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/01/08/resurrected-hello-again-world</id>
-    <content type="html"><![CDATA[<h2>It&#8217;s Clobbering Time</h2>
+    <content type="html"><![CDATA[<h2>It&#39;s Clobbering Time</h2>
 
 <p>Remember that thing I said back <a href="http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2012/12/31/hello-world">at the end of 2012</a>?
 That thing?
 That thing about the important detail that:</p>
 
-<blockquote><p>the <code>_deploy/</code> subdirectory is itself a clone of the targeted
-github repository, with the <code>gh-pages</code> branch checked out.</p></blockquote>
+<blockquote>
+<p>the <code>_deploy/</code> subdirectory is itself a clone of the targeted
+github repository, with the <code>gh-pages</code> branch checked out.</p>
+</blockquote>
 
 <p>It turns out this is really important detail.</p>
 
-<p>Here&#8217;s why: For my first blogging act of the new year, I inadvertently destroyed
+<p>Here&#39;s why: For my first blogging act of the new year, I inadvertently destroyed
 my own blog.</p>
 
 <p>I attempted to write a post from a computer other than the one out of
@@ -372,35 +611,37 @@ a blog if not to freely broadcast your mistakes?  :)</p>
 <p>So, directly from <a href="https://github.com/pnkfelix/pnkfx-blog/commit/f277b041de33a8e0eac02c6aecb3909231725db7">my commit message</a>, here is the description of how
 I clobbered my own blog:</p>
 
-<blockquote><p>The easy way to sum it up is: The model
-employed by octopress when deploying to github is this: Your <em>deploy/
+<blockquote>
+<p>The easy way to sum it up is: The model
+employed by octopress when deploying to github is this: Your _deploy/
 subdirectory must contain a checkout of the target repo, the one with
-the gh-pages branch, and you must have that </em>deploy/ subdirectory
-checked out and ready to go before running &#8216;rake deploy&#8217;.</p>
+the gh-pages branch, and you must have that _deploy/ subdirectory
+checked out and ready to go before running &#39;rake deploy&#39;.</p>
 
-<p>If you do not have a _deploy/ subdirectory at all and you let &#8216;rake
-deploy&#8217; create it for you but you also let &#8216;rake deploy&#8217; attempt to
+<p>If you do not have a _deploy/ subdirectory at all and you let &#39;rake
+deploy&#39; create it for you but you also let &#39;rake deploy&#39; attempt to
 push to github, and you are also managing the source itself on github,
 you will enter a world of pain where the rake invocation will push
 <em>this</em> root directory, presumably in the master branch (or in my case,
 blog.pnkfx.org branch) to the target repo in the gh-pages/ branch.
 Which will bust things terribly, especially if that causes the CNAME
-file to get deleted from the gh-pages/ branch of the target repo.</p></blockquote>
+file to get deleted from the gh-pages/ branch of the target repo.</p>
+</blockquote>
 
 <h2>A note on self-reference</h2>
 
 <p>Also, a quick half shout-out, or maybe corrective note, to
 <a href="http://www.seamusbradley.net/blog/blog/2012/04/24/how-to-link-to-your-own-blog-posts-in-octopress/">seamusbradley</a> for pointing out some details about linking back to
-one&#8217;s own blog posts.</p>
+one&#39;s own blog posts.</p>
 
-<p>It is only a half shout-out because Seamus&#8217;s note is only useful, I
+<p>It is only a half shout-out because Seamus&#39;s note is only useful, I
 think, if you have, like him, a customized setting for the <code>root:</code> in
 your <code>_config.yml</code>.  That, or Seamus has confused himself and changed
-his <code>root</code> setting in order to accommodate other url&#8217;s that he
+his <code>root</code> setting in order to accommodate other url&#39;s that he
 observed, but those urls are in fact actually generated by settings
 for properties other than <code>root</code>.</p>
 
-<p>Here&#8217;s the concrete details: I read (misread?) Seamus&#8217;s post at first
+<p>Here&#39;s the concrete details: I read (misread?) Seamus&#39;s post at first
 as saying that a customized setting of <code>root</code> to <code>/blog</code> is a
 prerequisite for linking to your own posts.  It seems to me that the
 relevant detail is what the <em>permalink</em> setting is, not the root.
@@ -410,19 +651,15 @@ Seamus suggested, it seems like doing so broke <code>rake preview</code>.)</p>
 
 <p>In my case, the <code>root</code> and <code>permalink</code> for my <code>_config.yml</code>
 are set as follows:</p>
-
-<pre><code>root: /
+<div class="highlight"><pre><code class="text">root: /
 permalink: /blog/:year/:month/:day/:title/
-</code></pre>
-
+</code></pre></div>
 <p>and I format links to my own posts, such as the one you are reading,
 like so:
 <a href="http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/01/08/resurrected-hello-again-world"><code>/blog/2013/01/08/resurrected-hello-again-world</code></a>
 as you can see from looking at the source for the line above,</p>
-
-<pre><code>[`/blog/2013/01/08/resurrected-hello-again-world`](/blog/2013/01/08/resurrected-hello-again-world)
-</code></pre>
-
+<div class="highlight"><pre><code class="text">[`/blog/2013/01/08/resurrected-hello-again-world`](/blog/2013/01/08/resurrected-hello-again-world)
+</code></pre></div>
 <p>A bit of quoted self-reference is a good place to stop for the night.</p>
 ]]></content>
   </entry>
@@ -443,21 +680,19 @@ based upon its default configuration file, which is very bare bones
 and does not illustrate anything near the full feature set that it
 offers.</p>
 
-<p>Instead, I recommend one at least read over Tristan Hume&#8217;e <a href="http://thume.ca/howto/2012/11/19/using-slate/" title="Tristan Hume: Using Slate">blog post</a>,
-which advertises Slate much more effectively than the project&#8217;s
+<p>Instead, I recommend one at least read over Tristan Hume&#39;e <a href="http://thume.ca/howto/2012/11/19/using-slate/" title="Tristan Hume: Using Slate">blog post</a>,
+which advertises Slate much more effectively than the project&#39;s
 github page.  The blog post describes some of the crucial features that are not
 exposed in the default configuration.  In particular, the
 window-switcher shortcut, which overlays each window with a
 letter to give that window focus, is much more tile-friendly
-if you also turn on</p>
-
-<pre><code>config windowHintsIgnoreHiddenWindows false
+if you also turn on </p>
+<div class="highlight"><pre><code class="text">config windowHintsIgnoreHiddenWindows false
 config windowHintsShowIcons true
-</code></pre>
-
+</code></pre></div>
 <p>You can see this and other custimzations I have made for myself
 in my own <code>.slate</code> file, which I keep with my other dotfiles in
-<a href="https://github.com/pnkfelix/DotFiles/blob/master/slate" title="Felix's DotFiles github repo">my public repository</a>.</p>
+<a href="https://github.com/pnkfelix/DotFiles/blob/master/slate" title="Felix&#39;s DotFiles github repo">my public repository</a>.</p>
 ]]></content>
   </entry>
   
@@ -470,14 +705,10 @@ in my own <code>.slate</code> file, which I keep with my other dotfiles in
 Apparently Markdown syntax does not have any shorthand for comments
 -->
 
-
-
-
 <!---
 First 7 lines of this file were generated by command invocation:
   % rake new_post["Hello World"]
 -->
-
 
 <p>First post!
 I am attempting to move my blog to GitHub Pages.</p>
@@ -494,14 +725,12 @@ and see how that goes.</p>
 <li><p>The first 7 lines of that file were originally generated via the
 <code>rake</code> command invocation:</p>
 
-<pre><code>% rake new_post["Hello World"]
-</code></pre></li>
+<p>% rake new_post[&quot;Hello World&quot;]</p></li>
 <li><p>The command <code>rake generate</code> will convert the source into static html pages.</p></li>
 <li><p>After generating the file (and during subsequent editting), one can preview
 the state locally in a local Ruby webserver via:</p>
 
-<pre><code>% rake preview
-</code></pre>
+<p>% rake preview</p>
 
 <p>and then <a href="http://localhost:4000/">browsing localhost port 4000</a>.
 The <code>rake preview</code> invocation will continuously monitor your post
@@ -514,28 +743,57 @@ already set up and integrated with github (or something similar) so that
 there would be no password prompts.</p>
 
 <ul>
-<li><p>But of course I have not done this yet.</p></li>
-<li><p>One important detail about <code>rake deploy</code> with github pages is that
+<li>But of course I have not done this yet.</li>
+<li>One important detail about <code>rake deploy</code> with github pages is that
 the <code>_deploy/</code> subdirectory is itself a clone of the targetted
 github repository, with the <code>gh-pages</code> branch checked out.
 This can be confusing if your main source tree (the parent
 directory of <code>_deploy/</code>) is itself the same repository as the
-targetted github repository.</p></li>
-</ul>
-</li>
+targetted github repository.</li>
+</ul></li>
 <li><p>Update: <code>rake deploy</code> just worked fine for me, password prompts and all.
 I think my earlier difficulty was an artifact of some previous bad
 state, one of either:</p>
 
 <ul>
-<li><p>I had put in a malformatted url for the target repository</p></li>
-<li><p>My target repository already had a <code>gh-pages</code> branch (from earlier
+<li>I had put in a malformatted url for the target repository</li>
+<li>My target repository already had a <code>gh-pages</code> branch (from earlier
 testing) that needed to be pulled-and-merged (or discarded in some
-fashion, which was what my merge amounted to).</p></li>
-</ul>
-</li>
-</ul>
+fashion, which was what my merge amounted to).</li>
+</ul></li>
+<li><p>Update (26 march 2012): there are still some hiccups with <code>rake deploy</code>;
+you need to be careful about what you store in the <code>source/</code> directory.
+In particular, I was working on a draft post and threw various
+source files that I was hacking on in the same directory, along with
+some <code>.gitignore</code> files so that <code>git</code> would ignore build products
+generated when I compiled the source (to binaries or jars or fasls&#8230;).</p>
 
+<p>The headache came when I did <code>rake deploy</code>, and hit this error:</p>
+<div class="highlight"><pre><code class="bash">% rake deploy
+cp -r <span class="nb">source</span>/_posts/.gitignore public/_posts/.gitignore
+rake aborted!
+No such file or directory - public/_posts/.gitignore
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:230:in <span class="sb">`</span>block <span class="o">(</span>2 levels<span class="o">)</span> in &lt;top <span class="o">(</span>required<span class="o">)</span>&gt;<span class="s1">&#39;</span>
+<span class="s1">/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:229:in `block in &lt;top (required)&gt;&#39;</span>
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:219:in <span class="sb">`</span>block in &lt;top <span class="o">(</span>required<span class="o">)</span>&gt;<span class="err">&#39;</span>
+Tasks: <span class="nv">TOP</span> <span class="o">=</span>&gt; copydot
+<span class="o">(</span>See full trace by running task with --trace<span class="o">)</span>
+%
+</code></pre></div>
+<p>The problem here, as far as I can tell, is that octopress
+is aggressively trying to copy over all dotfiles it can find
+(<a href="https://github.com/imathis/octopress/issues/104">Octopress Issue 104</a>)
+and that code was not written to create any subdirectories as
+necessary.</p>
+
+<p>My Ruby development knowledge is sufficiently under-developed that I
+am not going to try to fix this myself.  Instead I have simply
+moved all of the source code I was hacking <em>out</em> of the <code>source/</code>
+directory and into a separate <code>hacks/</code> directory.
+This seems to have addressed the problem; I have also filed
+<a href="https://github.com/imathis/octopress/issues/1151">an issue</a>
+for this with Octopress.</p></li>
+</ul>
 ]]></content>
   </entry>
   
