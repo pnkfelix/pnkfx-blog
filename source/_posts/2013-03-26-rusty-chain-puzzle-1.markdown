@@ -153,17 +153,15 @@ impl ToStr for card {
 In my terminal, I get the following output from the above `main`
 function:
 
-```
-initial hand: 2♦,3♤,10♧
-place top: A♦
-new hand: A♦,2♦,3♤,10♧
-place bot: 6♦
-new hand: A♦,2♦,3♤,10♧,6♦
-popped top: A♦
-new hand: 2♦,3♤,10♧,6♦
-popped bot: 6♦
-new hand: 2♦,3♤,10♧
-```
+initial hand: 2&diams;,3&spades;,10&clubs;  
+place top: A&diams;  
+new hand: A&diams;,2&diams;,3&spades;,10&clubs;  
+place bot: 6&diams;  
+new hand: A&diams;,2&diams;,3&spades;,10&clubs;,6&diams;  
+popped top: A&diams;  
+new hand: 2&diams;,3&spades;,10&clubs;,6&diams;  
+popped bot: 6&diams;  
+new hand: 2&diams;,3&spades;,10&clubs;
 
 
 (I will post my initial "solution" to the puzzle in a follow-up post;
