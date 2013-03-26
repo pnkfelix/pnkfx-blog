@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: wm | The {pnk}f(eli)x Blog]]></title>
-  <link href="http://blog.pnkfx.org//blog/categories/wm/atom.xml" rel="self"/>
-  <link href="http://blog.pnkfx.org//"/>
-  <updated>2013-03-26T16:32:07+01:00</updated>
-  <id>http://blog.pnkfx.org//</id>
+  <link href="http://blog.pnkfx.org/blog/categories/wm/atom.xml" rel="self"/>
+  <link href="http://blog.pnkfx.org/"/>
+  <updated>2013-03-26T16:32:45+01:00</updated>
+  <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[OS X tiled window management with Slate]]></title>
-    <link href="http://blog.pnkfx.org//blog/2013/01/02/osx-tiled-window-management/"/>
+    <link href="http://blog.pnkfx.org/blog/2013/01/02/osx-tiled-window-management/"/>
     <updated>2013-01-02T22:34:00+01:00</updated>
-    <id>http://blog.pnkfx.org//blog/2013/01/02/osx-tiled-window-management</id>
+    <id>http://blog.pnkfx.org/blog/2013/01/02/osx-tiled-window-management</id>
     <content type="html"><![CDATA[<p>I recently discovered <a href="https://github.com/jigish/slate" title="Slate: github repository">Slate</a>, an
 open-source window-management tool for Mac OS X.</p>
 
