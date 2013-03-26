@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: github | The {pnk}f(eli)x Blog]]></title>
-  <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/blog/categories/github/atom.xml" rel="self"/>
-  <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/"/>
-  <updated>2013-03-26T16:30:00+01:00</updated>
-  <id>http://github.com.github.com/pnkfelix/pnkfx-blog/</id>
+  <link href="http://blog.pnkfx.org//blog/categories/github/atom.xml" rel="self"/>
+  <link href="http://blog.pnkfx.org//"/>
+  <updated>2013-03-26T16:32:07+01:00</updated>
+  <id>http://blog.pnkfx.org//</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Resurrected (Hello Again World)]]></title>
-    <link href="http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/01/08/resurrected-hello-again-world/"/>
+    <link href="http://blog.pnkfx.org//blog/2013/01/08/resurrected-hello-again-world/"/>
     <updated>2013-01-08T00:55:00+01:00</updated>
-    <id>http://github.com.github.com/pnkfelix/pnkfx-blog/blog/2013/01/08/resurrected-hello-again-world</id>
+    <id>http://blog.pnkfx.org//blog/2013/01/08/resurrected-hello-again-world</id>
     <content type="html"><![CDATA[<h2>It&#39;s Clobbering Time</h2>
 
 <p>Remember that thing I said back <a href="/blog/2012/12/31/hello-world">at the end of 2012</a>?
