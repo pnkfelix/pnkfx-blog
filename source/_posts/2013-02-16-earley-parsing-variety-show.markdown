@@ -3,6 +3,7 @@ layout: post
 title: "Earley Parsing Variety Show"
 date: 2013-02-16 18:06
 comments: true
+published: false
 categories: 
 ---
 
@@ -39,7 +40,7 @@ function fib(n) {
 
 # Reminder of first thought on rust:
 # This:
-```transcript
+```text
 fib.rs:7:8: 7:28 error: unresolved name
 fib.rs:7     use std::time::get_time;
                  ^~~~~~~~~~~~~~~~~~~~
