@@ -1,4 +1,4 @@
-# test-one: test-node
+test-one: test-rust
 test-all: test-larc test-rust test-cxx test-clj test-node
 
 clean:

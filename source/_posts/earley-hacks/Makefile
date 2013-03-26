@@ -1,4 +1,4 @@
-test-one: test-rust
+test-one: test-clj
 test-all: test-larc test-rust test-cxx test-clj test-node
 
 LARCENY_CTRLC_MUST_EXIT=(keyboard-interrupt-handler (lambda args (display \"Ctrl-C\") (newline) (exit 124)))
@@ -8,7 +8,7 @@ clean:
 	rm -rf classes
 	rm -rf rust-earley.dSYM
 
-#CLJJAR:=$(shell clj -e '(-> clojure.lang.Atom (.getProtectionDomain) (.getCodeSource) (.getLocation) (.getPath))')
+CLJJAR:=$(shell clj -e '(-> clojure.lang.Atom (.getProtectionDomain) (.getCodeSource) (.getLocation) (.getPath))')
 
 test-node: earley.js
 	bash -c "time node $<"
