@@ -70,3 +70,39 @@ Just so I can remind myself of the Octopress basics in the immediate future:
   * My target repository already had a `gh-pages` branch (from earlier
     testing) that needed to be pulled-and-merged (or discarded in some
     fashion, which was what my merge amounted to).
+
+* Update (26 march 2012): there are still some hiccups with `rake deploy`;
+  you need to be careful about what you store in the `source/` directory.
+  In particular, I was working on a draft post and threw various
+  source files that I was hacking on in the same directory, along with
+  some `.gitignore` files so that `git` would ignore build products
+  generated when I compiled the source (to binaries or jars or fasls...).
+
+  The headache came when I did `rake deploy`, and hit this error:
+  
+  ```bash
+% rake deploy
+cp -r source/_posts/.gitignore public/_posts/.gitignore
+rake aborted!
+No such file or directory - public/_posts/.gitignore
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:230:in `block (2 levels) in <top (required)>'
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:229:in `block in <top (required)>'
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:219:in `block in <top (required)>'
+Tasks: TOP => copydot
+(See full trace by running task with --trace)
+%
+  ```
+
+  The problem here, as far as I can tell, is that octopress
+  is aggressively trying to copy over all dotfiles it can find
+  ([Octopress Issue 104](https://github.com/imathis/octopress/issues/104))
+  and that code was not written to create any subdirectories as
+  necessary.
+
+  My Ruby development knowledge is sufficiently under-developed that I
+  am not going to try to fix this myself.  Instead I have simply
+  moved all of the source code I was hacking *out* of the `source/`
+  directory and into a separate `hacks/` directory.
+  This seems to have addressed the problem; I have also filed
+  [an issue](https://github.com/imathis/octopress/issues/1151)
+  for this with Octopress.
