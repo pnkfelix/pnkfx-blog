@@ -1,9 +1,13 @@
 * `rake new_post["Title goes here."]`: creates template for a new post
   in `source/_posts/`.
 
-* `rake generate` converts post source into static html pages.
+* `rake generate` converts post source into static html pages,
+  rooted at `_deploy/index.html`.
 
 * `rake preview` starts a local webserver for previewing generated content;
   visit via http://localhost:4000/
+  Note that this preview version at port 4000 includes unpublished posts
+  (i.e. one's with `published: false`), while the pages in `_deploy/` will
+  not include unpublished posts.
 
 * `rake deploy` deploys the content to the target site (i.e.: takes it live).
