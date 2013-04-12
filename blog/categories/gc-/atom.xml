@@ -4,7 +4,7 @@
   <title><![CDATA[Category: gc, | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/gc-/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2013-03-26T16:32:45+01:00</updated>
+  <updated>2013-04-12T08:33:52-07:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Implicit versus Explicit Finalization]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/01/29/implicit-versus-explicit-finalization/"/>
-    <updated>2013-01-29T22:47:00+01:00</updated>
+    <updated>2013-01-29T22:47:00-08:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/01/29/implicit-versus-explicit-finalization</id>
     <content type="html"><![CDATA[<p>(This post is largely a response to Niko Matsakis&#39;s blog post
 <a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">Destructors and Finalizers in Rust</a>.  I started composing it as a comment there,

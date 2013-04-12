@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: osx | The {pnk}f(eli)x Blog]]></title>
+  <link href="http://blog.pnkfx.org/blog/categories/osx/atom.xml" rel="self"/>
+  <link href="http://blog.pnkfx.org/"/>
+  <updated>2013-04-12T08:33:52-07:00</updated>
+  <id>http://blog.pnkfx.org/</id>
+  <author>
+    <name><![CDATA[Felix S. Klock II]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Better command completion in bash on OS X]]></title>
+    <link href="http://blog.pnkfx.org/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy/"/>
+    <updated>2013-04-12T07:57:00-07:00</updated>
+    <id>http://blog.pnkfx.org/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy</id>
+    <content type="html"><![CDATA[<p>(This post started as a personal e-mail to Niko, and then I figured it
+was blog worthy.)</p>
+
+<p>There&#39;s plenty of problems when working atop &quot;OS X&quot;;
+but no need to be jealous of Shu&#39;s zsh setup
+(at least not for its tab-completion on git stuff),
+at least not if you are already using Homebrew.
+Just install
+<a href="http://blog.jeffterrace.com/2012/09/bash-completion-for-mac-os-x.html">brew&#39;s bash completion package</a>!</p>
+
+<p>Executive summary: </p>
+<div class="highlight"><pre><code class="bash">% brew install bash-completion
+
+% <span class="nb">echo</span> &gt;&gt; ~/.bash_profile <span class="s">&lt;&lt;END</span>
+<span class="s">  if [ -f $(brew --prefix)/etc/bash_completion ]; then</span>
+<span class="s">    . $(brew --prefix)/etc/bash_completion</span>
+<span class="s">  fi</span>
+<span class="s">END</span>
+</code></pre></div>
+<p>And voilà!</p>
+
+<p>See also potentially related topics from <a href="http://superuser.com/questions/288438/bash-completion-for-commands-in-mac-os">super user</a>, <a href="http://stackoverflow.com/questions/14970728/homebrews-git-not-using-completion">stack overflow</a>, <a href="http://milkbox.net/note/brace-completion-in-snow-leopard-upgrading-bash/">milkbox blog</a>.</p>
+
+<hr>
+
+<p>Note also that I did burn myself by trying to get too smart: In
+particular, after reading <a href="http://stackoverflow.com/questions/14970728/homebrews-git-not-using-completion">stack overflow</a>, I over-eagerly
+attempted to address a purported problem by installing the homebrew
+newer git instead of the default (older) built-in git installed by
+Apple.</p>
+
+<p>This was a little more painful than I expected, because there were a
+bunch of git-related commands already in my <code>/usr/local/bin</code>, probably
+I had likely already copied git to there once before by hand, and so
+brew kept aborting the installation because it did not want to
+overwrite the binaries that it was not already managing.  I think brew
+was aborting the install in a sound transactional manner, but I am not
+100% sure of that, because at least one point the command completion
+stopped working and at that point I just</p>
+
+<ol>
+<li>gave up on understanding where everything came from,</li>
+<li>moved the non-brew git-related material
+in <code>/usr/local/bin/</code> out of the way, and</li>
+<li>redid the <code>brew install git</code></li>
+</ol>
+
+<hr>
+
+<p>Anyway, I should also give a shout-out to Axel Hecht; his post
+on Mozilla&#39;s Yammer instance is what got me to the point of even
+attempting to install this piece of marvelousness.</p>
+
+<p>(Also, further posts on yammer are lightly pushing for readers to consider
+zsh as an alternative to bash.  I do not think I am ready to switch to zsh,
+but I can at least link to the <a href="http://friedcpu.wordpress.com/2007/07/24/zsh-the-last-shell-youll-ever-need/">blog post arguing for zsh</a>.)</p>
+]]></content>
+  </entry>
+  
+</feed>

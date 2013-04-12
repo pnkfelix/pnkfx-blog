@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2013-03-26T16:32:45+01:00</updated>
+  <updated>2013-04-12T08:33:52-07:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Rusty Chain Puzzle 1.]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/03/26/rusty-chain-puzzle-1/"/>
-    <updated>2013-03-26T10:28:00+01:00</updated>
+    <updated>2013-03-26T10:28:00-07:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/03/26/rusty-chain-puzzle-1</id>
     <content type="html"><![CDATA[<p>I have been trying to get my feet wet programming in
 <a href="http://www.rust-lang.org/">Rust</a>.</p>

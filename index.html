@@ -9,9 +9,8 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="I have been trying to get my feet wet programming in
-Rust. A month and a half ago, I thought &quot;Maybe I will hack up an Earley
-parser in a variety &hellip;">
+  <meta name="description" content="(This post started as a personal e-mail to Niko, and then I figured it
+was blog worthy.) There&#39;s plenty of problems when working atop &quot;OS X& &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -72,6 +71,106 @@ parser in a variety &hellip;">
       
   <header>
     
+      <h1 class="entry-title"><a href="/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy/">Better Command Completion in Bash on OS X</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-04-12T07:57:00-07:00" pubdate data-updated="true">12 April 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>(This post started as a personal e-mail to Niko, and then I figured it
+was blog worthy.)</p>
+
+<p>There&#39;s plenty of problems when working atop &quot;OS X&quot;;
+but no need to be jealous of Shu&#39;s zsh setup
+(at least not for its tab-completion on git stuff),
+at least not if you are already using Homebrew.
+Just install
+<a href="http://blog.jeffterrace.com/2012/09/bash-completion-for-mac-os-x.html">brew&#39;s bash completion package</a>!</p>
+
+<p>Executive summary: </p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>% brew install bash-completion
+</span><span class='line'>
+</span><span class='line'>% <span class="nb">echo</span> &gt;&gt; ~/.bash_profile <span class="s">&lt;&lt;END</span>
+</span><span class='line'><span class="s">  if [ -f $(brew --prefix)/etc/bash_completion ]; then</span>
+</span><span class='line'><span class="s">    . $(brew --prefix)/etc/bash_completion</span>
+</span><span class='line'><span class="s">  fi</span>
+</span><span class='line'><span class="s">END</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p>And voilà!</p>
+
+<p>See also potentially related topics from <a href="http://superuser.com/questions/288438/bash-completion-for-commands-in-mac-os">super user</a>, <a href="http://stackoverflow.com/questions/14970728/homebrews-git-not-using-completion">stack overflow</a>, <a href="http://milkbox.net/note/brace-completion-in-snow-leopard-upgrading-bash/">milkbox blog</a>.</p>
+
+<hr>
+
+<p>Note also that I did burn myself by trying to get too smart: In
+particular, after reading <a href="http://stackoverflow.com/questions/14970728/homebrews-git-not-using-completion">stack overflow</a>, I over-eagerly
+attempted to address a purported problem by installing the homebrew
+newer git instead of the default (older) built-in git installed by
+Apple.</p>
+
+<p>This was a little more painful than I expected, because there were a
+bunch of git-related commands already in my <code>/usr/local/bin</code>, probably
+I had likely already copied git to there once before by hand, and so
+brew kept aborting the installation because it did not want to
+overwrite the binaries that it was not already managing.  I think brew
+was aborting the install in a sound transactional manner, but I am not
+100% sure of that, because at least one point the command completion
+stopped working and at that point I just</p>
+
+<ol>
+<li>gave up on understanding where everything came from,</li>
+<li>moved the non-brew git-related material
+in <code>/usr/local/bin/</code> out of the way, and</li>
+<li>redid the <code>brew install git</code></li>
+</ol>
+
+<hr>
+
+<p>Anyway, I should also give a shout-out to Axel Hecht; his post
+on Mozilla&#39;s Yammer instance is what got me to the point of even
+attempting to install this piece of marvelousness.</p>
+
+<p>(Also, further posts on yammer are lightly pushing for readers to consider
+zsh as an alternative to bash.  I do not think I am ready to switch to zsh,
+but I can at least link to the <a href="http://friedcpu.wordpress.com/2007/07/24/zsh-the-last-shell-youll-ever-need/">blog post arguing for zsh</a>.)</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/blog/2013/03/26/rusty-chain-puzzle-1/">Rusty Chain Puzzle 1.</a></h1>
     
     
@@ -88,7 +187,7 @@ parser in a variety &hellip;">
   
 
 
-<time datetime="2013-03-26T10:28:00+01:00" pubdate data-updated="true">26 March 2013</time>
+<time datetime="2013-03-26T10:28:00-07:00" pubdate data-updated="true">26 March 2013</time>
         
       </p>
     
@@ -357,7 +456,7 @@ new hand: 2&diams;,3&spades;,10&clubs;</p>
   
 
 
-<time datetime="2013-01-29T22:47:00+01:00" pubdate data-updated="true">29 January 2013</time>
+<time datetime="2013-01-29T22:47:00-08:00" pubdate data-updated="true">29 January 2013</time>
         
       </p>
     
@@ -686,7 +785,7 @@ hack one up in the future.</p>
   
 
 
-<time datetime="2013-01-08T00:55:00+01:00" pubdate data-updated="true">08 January 2013</time>
+<time datetime="2013-01-08T00:55:00-08:00" pubdate data-updated="true">08 January 2013</time>
         
       </p>
     
@@ -820,7 +919,7 @@ as you can see from looking at the source for the line above,</p>
   
 
 
-<time datetime="2013-01-02T22:34:00+01:00" pubdate data-updated="true">02 January 2013</time>
+<time datetime="2013-01-02T22:34:00-08:00" pubdate data-updated="true">02 January 2013</time>
         
       </p>
     
@@ -879,7 +978,7 @@ in my own <code>.slate</code> file, which I keep with my other dotfiles in
   
 
 
-<time datetime="2012-12-31T14:34:00+01:00" pubdate data-updated="true">31 December 2012</time>
+<time datetime="2012-12-31T14:34:00-08:00" pubdate data-updated="true">31 December 2012</time>
         
       </p>
     
@@ -999,6 +1098,10 @@ for this with Octopress.</p></li>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy/">Better command completion in bash on OS X</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/03/26/rusty-chain-puzzle-1/">Rusty Chain Puzzle 1.</a>
       </li>
     
@@ -1012,10 +1115,6 @@ for this with Octopress.</p></li>
     
       <li class="post">
         <a href="/blog/2013/01/02/osx-tiled-window-management/">OS X tiled window management with Slate</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/12/31/hello-world/">Hello World</a>
       </li>
     
   </ul>
