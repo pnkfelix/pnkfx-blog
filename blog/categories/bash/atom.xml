@@ -4,7 +4,7 @@
   <title><![CDATA[Category: bash | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/bash/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2013-04-22T14:28:47+02:00</updated>
+  <updated>2013-04-22T14:31:05+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -95,7 +95,8 @@ bash setup.  In particular, it seems like the Elisp code
 for bash-complete.el assumes that one is setting one&#39;s
 prompt via the <code>PS1</code> environment variable, while mine is often
 set via the <code>PROMPT_COMMAND</code> environment variable.
-It is easy enough to fix this, once I determined what was
+It is easy enough to fix this (and has even been filed as an
+<a href="https://github.com/szermatt/emacs-bash-completion/pull/2">issue in the github repo</a>, once I determined what was
 going on.</p>
 ]]></content>
   </entry>
