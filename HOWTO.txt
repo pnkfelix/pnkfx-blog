@@ -4,6 +4,15 @@
 * `rake generate` converts post source into static html pages,
   rooted at `_deploy/index.html`.
 
+  * One might need to use `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 rake generate`
+    or `LC_CTYPE=en_US.UTF-8 rake generate` to get around encoding issues.
+    For some reason I think my older laptop does not need this but the newer
+    one does.
+
+  * https://github.com/imathis/octopress/issues/267 recommends setting this
+    in one's `~/.profile`, which I suppose I will consider doing eventually
+    if I encounter similar problems.
+
 * `rake preview` starts a local webserver for previewing generated content;
   visit via http://localhost:4000/
   Note that this preview version at port 4000 includes unpublished posts

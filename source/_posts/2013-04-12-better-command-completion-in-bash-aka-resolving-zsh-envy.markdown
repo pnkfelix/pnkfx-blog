@@ -65,7 +65,29 @@ attempting to install this piece of marvelousness.
 zsh as an alternative to bash.  I do not think I am ready to switch to zsh,
 but I can at least link to the [blog post arguing for zsh][5].)
 
+----
 
+Update (written 2013 april 16): Now that I have decent command/context
+sensitive completion in bash in my terminal, of *course* I
+want to have it in my Emacs `M-x shell` as well.  At first I
+was dismayed that I did not just get that "out of the box";
+then I was happy after some googling to discover:
+[bash-completion.el][6], which forwards the completion
+requests onto a separate bash process, so that one inherits
+the same completions that bash provides in the terminal,
+with no Emacs hacking.
+
+Well, at least, not very much Emacs hacking.
+
+It turns out that I had to do a little bit of Emacs hacking
+in order to get the setup working, at least for my idiosyncratic
+bash setup.  In particular, it seems like the Elisp code
+for bash-complete.el assumes that one is setting one's
+prompt via the `PS1` environment variable, while mine is often
+set via the `PROMPT_COMMAND` environment variable.
+After determining what is going on, it is easy enough to fix this (and
+the corresponding solution has even been filed as a [pull request in
+the github repo][7]).
 
  [1]: http://superuser.com/questions/288438/bash-completion-for-commands-in-mac-os
 
@@ -76,3 +98,7 @@ but I can at least link to the [blog post arguing for zsh][5].)
  [4]: http://blog.jeffterrace.com/2012/09/bash-completion-for-mac-os-x.html
 
  [5]: http://friedcpu.wordpress.com/2007/07/24/zsh-the-last-shell-youll-ever-need/
+
+ [6]: https://github.com/szermatt/emacs-bash-completion
+
+ [7]: https://github.com/szermatt/emacs-bash-completion/pull/2
