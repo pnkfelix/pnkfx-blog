@@ -4,7 +4,7 @@
   <title><![CDATA[Category: osx | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/osx/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2013-04-12T08:42:59-07:00</updated>
+  <updated>2013-04-22T14:28:47+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Better command completion in bash on OS X]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy/"/>
-    <updated>2013-04-12T07:57:00-07:00</updated>
+    <updated>2013-04-12T07:57:00+02:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy</id>
     <content type="html"><![CDATA[<p>(This post started as a personal e-mail to Niko, and then I figured it
 was blog worthy.)</p>
@@ -74,6 +74,29 @@ attempting to install this piece of marvelousness.</p>
 <p>(Also, further posts on yammer are lightly pushing for readers to consider
 zsh as an alternative to bash.  I do not think I am ready to switch to zsh,
 but I can at least link to the <a href="http://friedcpu.wordpress.com/2007/07/24/zsh-the-last-shell-youll-ever-need/">blog post arguing for zsh</a>.)</p>
+
+<hr>
+
+<p>Update (written 2013 april 16): Now that I have decent command/context
+sensitive completion in bash in my terminal, of <em>course</em> I
+want to have it in my Emacs <code>M-x shell</code> as well.  At first I
+was dismayed that I did not just get that &quot;out of the box&quot;;
+then I was happy after some googling to discover:
+<a href="https://github.com/szermatt/emacs-bash-completion">bash-completion.el</a>, which forwards the completion
+requests onto a separate bash process, so that one inherits
+the same completions that bash provides in the terminal,
+with no Emacs hacking.</p>
+
+<p>Well, at least, not very much Emacs hacking.</p>
+
+<p>It turns out that I had to do a little bit of Emacs hacking
+in order to get the setup working, at least for my idiosyncratic
+bash setup.  In particular, it seems like the Elisp code
+for bash-complete.el assumes that one is setting one&#39;s
+prompt via the <code>PS1</code> environment variable, while mine is often
+set via the <code>PROMPT_COMMAND</code> environment variable.
+It is easy enough to fix this, once I determined what was
+going on.</p>
 ]]></content>
   </entry>
   

@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2013-04-12T08:42:59-07:00</updated>
+  <updated>2013-04-22T14:28:47+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Better command completion in bash on OS X]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy/"/>
-    <updated>2013-04-12T07:57:00-07:00</updated>
+    <updated>2013-04-12T07:57:00+02:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy</id>
     <content type="html"><![CDATA[<p>(This post started as a personal e-mail to Niko, and then I figured it
 was blog worthy.)</p>
@@ -83,13 +83,36 @@ attempting to install this piece of marvelousness.</p>
 <p>(Also, further posts on yammer are lightly pushing for readers to consider
 zsh as an alternative to bash.  I do not think I am ready to switch to zsh,
 but I can at least link to the <a href="http://friedcpu.wordpress.com/2007/07/24/zsh-the-last-shell-youll-ever-need/">blog post arguing for zsh</a>.)</p>
+
+<hr>
+
+<p>Update (written 2013 april 16): Now that I have decent command/context
+sensitive completion in bash in my terminal, of <em>course</em> I
+want to have it in my Emacs <code>M-x shell</code> as well.  At first I
+was dismayed that I did not just get that &quot;out of the box&quot;;
+then I was happy after some googling to discover:
+<a href="https://github.com/szermatt/emacs-bash-completion">bash-completion.el</a>, which forwards the completion
+requests onto a separate bash process, so that one inherits
+the same completions that bash provides in the terminal,
+with no Emacs hacking.</p>
+
+<p>Well, at least, not very much Emacs hacking.</p>
+
+<p>It turns out that I had to do a little bit of Emacs hacking
+in order to get the setup working, at least for my idiosyncratic
+bash setup.  In particular, it seems like the Elisp code
+for bash-complete.el assumes that one is setting one&#39;s
+prompt via the <code>PS1</code> environment variable, while mine is often
+set via the <code>PROMPT_COMMAND</code> environment variable.
+It is easy enough to fix this, once I determined what was
+going on.</p>
 ]]></content>
   </entry>
   
   <entry>
     <title type="html"><![CDATA[Rusty Chain Puzzle 1.]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/03/26/rusty-chain-puzzle-1/"/>
-    <updated>2013-03-26T10:28:00-07:00</updated>
+    <updated>2013-03-26T10:28:00+01:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/03/26/rusty-chain-puzzle-1</id>
     <content type="html"><![CDATA[<p>I have been trying to get my feet wet programming in
 <a href="http://www.rust-lang.org/">Rust</a>.</p>
@@ -331,7 +354,7 @@ new hand: 2&diams;,3&spades;,10&clubs;</p>
   <entry>
     <title type="html"><![CDATA[Implicit versus Explicit Finalization]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/01/29/implicit-versus-explicit-finalization/"/>
-    <updated>2013-01-29T22:47:00-08:00</updated>
+    <updated>2013-01-29T22:47:00+01:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/01/29/implicit-versus-explicit-finalization</id>
     <content type="html"><![CDATA[<p>(This post is largely a response to Niko Matsakis&#39;s blog post
 <a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">Destructors and Finalizers in Rust</a>.  I started composing it as a comment there,
@@ -633,7 +656,7 @@ hack one up in the future.</p>
   <entry>
     <title type="html"><![CDATA[Resurrected (Hello Again World)]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world/"/>
-    <updated>2013-01-08T00:55:00-08:00</updated>
+    <updated>2013-01-08T00:55:00+01:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world</id>
     <content type="html"><![CDATA[<h2>It&#39;s Clobbering Time</h2>
 
@@ -740,7 +763,7 @@ as you can see from looking at the source for the line above,</p>
   <entry>
     <title type="html"><![CDATA[OS X tiled window management with Slate]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/01/02/osx-tiled-window-management/"/>
-    <updated>2013-01-02T22:34:00-08:00</updated>
+    <updated>2013-01-02T22:34:00+01:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/01/02/osx-tiled-window-management</id>
     <content type="html"><![CDATA[<p>I recently discovered <a href="https://github.com/jigish/slate" title="Slate: github repository">Slate</a>, an
 open-source window-management tool for Mac OS X.</p>
@@ -772,7 +795,7 @@ in my own <code>.slate</code> file, which I keep with my other dotfiles in
   <entry>
     <title type="html"><![CDATA[Hello World]]></title>
     <link href="http://blog.pnkfx.org/blog/2012/12/31/hello-world/"/>
-    <updated>2012-12-31T14:34:00-08:00</updated>
+    <updated>2012-12-31T14:34:00+01:00</updated>
     <id>http://blog.pnkfx.org/blog/2012/12/31/hello-world</id>
     <content type="html"><![CDATA[<!---
 Apparently Markdown syntax does not have any shorthand for comments
