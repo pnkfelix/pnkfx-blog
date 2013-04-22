@@ -4,7 +4,7 @@ title: "Earley Parsing Variety Show"
 date: 2013-02-16 18:06
 comments: true
 published: false
-categories: 
+categories: parsing proglang
 ---
 
 I have been meaning to explore how one might implement a paritcular
