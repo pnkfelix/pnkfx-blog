@@ -27,12 +27,18 @@
         <lastmod>2013-04-22T14:32:22+02:00</lastmod>
     </url>
     <url>
+        <loc>
+            http://blog.pnkfx.org/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/
+        </loc>
+        <lastmod>2013-04-22T21:18:44+02:00</lastmod>
+    </url>
+    <url>
         <loc>http://blog.pnkfx.org/blog/archives/</loc>
-        <lastmod>2013-04-22T14:32:22+02:00</lastmod>
+        <lastmod>2013-04-22T21:18:44+02:00</lastmod>
     </url>
     <url>
         <loc>http://blog.pnkfx.org/</loc>
-        <lastmod>2013-04-22T14:32:22+02:00</lastmod>
+        <lastmod>2013-04-22T21:18:44+02:00</lastmod>
     </url>
     <url>
         <loc>http://blog.pnkfx.org/robots.txt</loc>

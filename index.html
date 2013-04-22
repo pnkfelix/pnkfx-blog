@@ -9,8 +9,9 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="(This post started as a personal e-mail to Niko, and then I figured it
-was blog worthy.) There&#39;s plenty of problems when working atop &quot;OS X& &hellip;">
+  <meta name="description" content="Background Encoding via parameters is unpalatable Rust-specific issues Niko&#39;s blog posts
+Simpler syntax: What about binding? Insight
+The &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -65,6 +66,697 @@ was blog worthy.) There&#39;s plenty of problems when working atop &quot;OS X& &
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing Syntax for Associated Items in Rust</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-04-22T14:37:00+02:00" pubdate data-updated="true">22 April 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><ul>
+<li><a href="#background">Background</a>
+
+<ul>
+<li><a href="#encodingunpalatable">Encoding via parameters is unpalatable</a></li>
+</ul></li>
+<li><a href="#rustspec">Rust-specific issues</a>
+
+<ul>
+<li><a href="#nikoposts">Niko&#39;s blog posts</a></li>
+<li><a href="#thinkbinding">Simpler syntax: What about binding?</a></li>
+</ul></li>
+<li><a href="#insight">Insight</a></li>
+<li><a href="#proposal">The proposed syntax for associated items in Rust</a></li>
+<li><a href="#futurework">What the proposal does not cover</a></li>
+</ul>
+
+<p>Executive summary: if you don&#39;t want or need the background information
+or the discussion motivating the proposal, then just jump
+straight to the <a href="#proposal">proposal</a> itself.</p>
+
+<h2><a id="background">Background</a></h2>
+
+<p>Early in my experimentation with Rust, I thought a reasonable exercise
+would be to take the simple C++ programs from
+<a href="http://www.elementsofprogramming.com/">Elements of Programming</a> (Stepanov and McJones), which make heavy yet
+disciplined use of abstraction and C++ templates to encode various
+mathematical concepts.  The early chapters of the book use templates
+rather than classes as the means of code reuse, so translating those
+examples seemed like a good way to exercise Rust&#39;s generic type and
+trait systems.</p>
+
+<p>However, almost immediately after starting the experiment, I encountered
+a problem: code that makes heavy use of C++ templates is quite likely
+to use particular features of C++ templates that are not a universal
+part of another language&#39;s generic type system.</p>
+
+<p>In particular, the code from Elements of Programming (hereby
+abbreviated &quot;EOP&quot; in this post) almost immediately makes use of
+&quot;associated types&quot;, such as in the following definition for <code>distance</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">F</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="n">requires</span><span class="p">(</span><span class="n">Transformation</span><span class="p">(</span><span class="n">F</span><span class="p">))</span>
+</span><span class='line'><span class="n">DistanceType</span><span class="p">(</span><span class="n">F</span><span class="p">)</span> <span class="n">distance</span><span class="p">(</span><span class="n">Domain</span><span class="p">(</span><span class="n">F</span><span class="p">)</span> <span class="n">x</span><span class="p">,</span> <span class="n">Domain</span><span class="p">(</span><span class="n">F</span><span class="p">)</span> <span class="n">y</span><span class="p">,</span> <span class="n">F</span> <span class="n">f</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="c1">// Precondition: $y$ is reachable from $x$ under $f$</span>
+</span><span class='line'>    <span class="k">typedef</span> <span class="n">DistanceType</span><span class="p">(</span><span class="n">F</span><span class="p">)</span> <span class="n">N</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">N</span> <span class="n">n</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">while</span> <span class="p">(</span><span class="n">x</span> <span class="o">!=</span> <span class="n">y</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">x</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">n</span> <span class="o">=</span> <span class="n">n</span> <span class="o">+</span> <span class="n">N</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">n</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p>The interesting thing about the above code is that it is parameterized
+over one type: <nobr><code>F</code>,</nobr> but it uses other type expressions within the body
+of the procedure, namely:</p>
+
+<ul>
+<li><p><code>Domain(F)</code>: this is a <code>type -&gt; type</code> operator that, given a
+Transformation (which we can think of as some type classifying a
+set of <code>T -&gt; T</code> functions for some type <code>T</code>), returns <code>T</code>.</p></li>
+<li><p><code>DistanceType(F)</code>: this is a <code>type -&gt; type</code> operator that, given a
+Transformation, returns a numeric type (think <code>uint8_t</code>,
+<code>uint32_t</code>, <code>uintptr_t</code>, <code>BigNum</code>, etc) suitable for counting the
+minimum number of applications of the transformation necessary to
+get from any particular <code>T</code> value to some other <code>T</code> value.</p></li>
+</ul>
+
+<p>(Operators like <code>DistanceType</code>, to my mind, only makes sense when you
+ look at things simultaneously in terms of bytes of memory in the
+ machine and also in terms of pure abstract mathematical values.  If
+ you omit either perspective, then the operator appears either
+ pointless or nonsensical.)</p>
+
+<p>It also requires that <code>F</code> obeys a constraint, specified in the
+<code>requires</code> clause; I am going to conveniently ignore this detail for
+now.  (The C++ code for EOP even macro-expands <code>requires(..)</code> into whitespace,
+so treating them as helpful comments for the time being is not absurd.)</p>
+
+<p>Type expressions like <code>triple&lt;A, B, C&gt;</code> (assuming three type expressions
+<code>A</code>, <code>B</code>, and <code>C</code>), are the bread-and-butter of any generic type
+system.  But these <code>type -&gt; type</code> operators are interesting.  How are
+they implemented?  Here is a snippet from <code>type_functions.h</code> in the
+EOP source code distribution:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">F</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="n">requires</span><span class="p">(</span><span class="n">Transformation</span><span class="p">(</span><span class="n">F</span><span class="p">))</span>
+</span><span class='line'><span class="k">struct</span> <span class="n">distance_type</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// If all transformations on a type T have the same distance type,</span>
+</span><span class='line'><span class="c1">// then DistanceType(T) is defined and returns that type.</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// For any fixed-size type T, there is an integral type of the same</span>
+</span><span class='line'><span class="c1">// size that is a valid distance type for T.</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#define DistanceType(T) typename distance_type&lt; T &gt;::type</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p>This code is making use of a C-style macro to define a easy-to-read
+interface for the <code>DistanceType</code> operator (the subset of C++ used
+for EOP&#39;s textbook examples is meant to be LL(1)), but the implementation
+of the operator is using C++&#39;s template system to define a partial
+mapping from types to (integral) types.  One can add new entries to
+this mapping by defining a new template instantiation of
+<code>struct distance_type&lt;F&gt;</code>, as illustrated in <code>tests.h</code> for the following
+transformation <code>gen_orbit</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">I</span><span class="p">,</span> <span class="k">typename</span> <span class="n">N</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="n">requires</span><span class="p">(</span><span class="n">Integer</span><span class="p">(</span><span class="n">I</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">Integer</span><span class="p">(</span><span class="n">N</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">DistanceType</span><span class="p">(</span><span class="n">I</span><span class="p">)</span> <span class="o">=</span> <span class="n">N</span><span class="p">)</span>
+</span><span class='line'><span class="k">struct</span> <span class="n">gen_orbit</span> <span class="c1">// transformation</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">gen_orbit_predicate</span><span class="o">&lt;</span><span class="n">I</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">gen_orbit</span><span class="p">(</span><span class="n">I</span> <span class="n">x_0</span><span class="p">,</span> <span class="n">N</span> <span class="n">h</span><span class="p">,</span> <span class="n">N</span> <span class="n">c</span><span class="p">)</span> <span class="o">:</span> <span class="n">p</span><span class="p">(</span><span class="n">x_0</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// Precondition: h &lt; N(MaximumValue(I)) &amp;&amp; c &lt; N(MaximumValue(I))</span>
+</span><span class='line'>        <span class="c1">// Precondition: !negative(h) &amp;&amp; !negative(c)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">I</span> <span class="k">operator</span><span class="p">()</span> <span class="p">(</span><span class="n">I</span> <span class="n">x</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">Assert</span><span class="p">(</span><span class="n">p</span><span class="p">(</span><span class="n">x</span><span class="p">));</span>
+</span><span class='line'>        <span class="n">x</span> <span class="o">=</span> <span class="n">successor</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="n">x</span> <span class="o">==</span> <span class="n">p</span><span class="p">.</span><span class="n">x_0</span> <span class="o">+</span> <span class="n">I</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">h</span><span class="p">)</span> <span class="o">+</span> <span class="n">I</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">c</span><span class="p">))</span> <span class="n">x</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">x_0</span> <span class="o">+</span> <span class="n">I</span><span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">h</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">x</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">I</span><span class="p">,</span> <span class="k">typename</span> <span class="n">N</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="n">requires</span><span class="p">(</span><span class="n">Integer</span><span class="p">(</span><span class="n">I</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">Integer</span><span class="p">(</span><span class="n">N</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">DistanceType</span><span class="p">(</span><span class="n">I</span><span class="p">)</span> <span class="o">=</span> <span class="n">N</span><span class="p">)</span>
+</span><span class='line'><span class="k">struct</span> <span class="n">distance_type</span><span class="o">&lt;</span> <span class="n">gen_orbit</span><span class="o">&lt;</span><span class="n">I</span><span class="p">,</span> <span class="n">N</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="k">typedef</span> <span class="n">N</span> <span class="n">type</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p>Thus, the definition of <code>gen_orbit</code> (including its instantiation of
+<code>distance_type</code>) collaborates with the definition of <code>DistanceType</code> to
+indicate that <code>DistanceType(gen_orbit&lt;I, N&gt;)</code> is <code>N</code>.  As one adds new
+structs (classes) representing other transformations, one is expected
+to instantiate <code>distance_type</code> (as well as a host of other
+template-abstracted structs) accordingly.</p>
+
+<hr>
+
+<p>So, what&#39;s the problem here?  Well, Rust, much like Java, does not
+provide a way to define general <code>type -&gt; type</code> mappings like
+<code>DistanceType(F)</code>.</p>
+
+<p>One can try to work around this via a code transformation and lift any
+type of interest up to a generic class&#39;s parameter list, like this
+example in Rust:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="n">trait</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DISTANCETYPE</span><span class="p">,</span> <span class="n">DOMAIN</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="n">apply</span><span class="p">(</span><span class="o">&amp;</span><span class="n">self</span><span class="p">,</span> <span class="n">elem</span><span class="o">:</span> <span class="n">DOMAIN</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DOMAIN</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+or if you prefer Java:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">interface</span> <span class="nc">Transformation</span><span class="o">&lt;</span><span class="n">DISTANCETYPE</span><span class="o">,</span> <span class="n">DOMAIN</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">DOMAIN</span> <span class="nf">apply</span><span class="o">(</span><span class="n">DOMAIN</span> <span class="n">elem</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>At first glance, one might think this does not look so bad; after all,
+the <code>gen_orbit</code> struct similarly was parameterized over a domain <code>I</code>
+and a distance type <code>N</code>.  However, the problem comes when one
+then attempts to write a function like distance:</p>
+
+<p>Rust:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">distance</span><span class="o">&lt;</span><span class="n">F</span><span class="o">:</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DT</span><span class="p">,</span> <span class="n">DOM</span><span class="o">&gt;</span> <span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="o">:</span> <span class="o">???</span><span class="p">,</span> <span class="n">y</span><span class="o">:</span> <span class="o">???</span><span class="p">,</span> <span class="n">f</span><span class="o">:</span> <span class="n">F</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">???</span> <span class="p">{</span>
+</span><span class='line'>    <span class="cm">/* ... */</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>Java:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">F</span> <span class="kd">extends</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DT</span><span class="o">,</span> <span class="n">DOM</span><span class="o">&gt;</span> <span class="o">???</span> <span class="n">distance</span><span class="o">(???</span> <span class="n">x</span><span class="o">,</span> <span class="o">???</span> <span class="n">y</span><span class="o">,</span> <span class="n">F</span> <span class="n">f</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="cm">/* ... */</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>What do we put in for the <code>???</code> portions?  We already established that
+we do not have general <code>type -&gt; type</code> operators, so we cannot just
+derive it form <code>F</code>.  And for that matter, where did <code>DT</code> and <code>DOM</code>
+come from?  In Rust and Java, we cannot just make up fresh type
+variables and then add constraints upon them after the fact.  The only
+option is to make any type we wish to use an additional type parameter
+to the generic method.</p>
+
+<p>Rust:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">distance</span><span class="o">&lt;</span><span class="n">DT</span><span class="p">,</span> <span class="n">DOM</span><span class="p">,</span> <span class="n">F</span><span class="o">:</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DT</span><span class="p">,</span> <span class="n">DOM</span><span class="o">&gt;</span> <span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="o">:</span> <span class="n">DOM</span><span class="p">,</span> <span class="n">y</span><span class="o">:</span> <span class="n">DOM</span><span class="p">,</span> <span class="n">f</span><span class="o">:</span> <span class="n">F</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DT</span> <span class="p">{</span>
+</span><span class='line'>    <span class="cm">/* ... */</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>Java:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">DT</span><span class="o">,</span> <span class="n">DOM</span><span class="o">,</span> <span class="n">F</span> <span class="kd">extends</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DT</span><span class="o">,</span> <span class="n">DOM</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+</span><span class='line'>    <span class="n">DT</span> <span class="nf">distance</span><span class="o">(</span><span class="n">DOM</span> <span class="n">x</span><span class="o">,</span> <span class="n">DOM</span> <span class="n">y</span><span class="o">,</span> <span class="n">F</span> <span class="n">f</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="cm">/* ... */</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<h3><a id="encodingunpalatable">Encoding via parameters is unpalatable</a></h3>
+
+<p>The Rust and Java results above are made barely readable by using
+short (obscure) parameter names.  More troubling is the fact that this
+pollution of the parameter list will bubble transitively backwards
+through the callers of <code>distance</code> until we reach the point where <code>F</code>
+is instantiated.  Any use of <code>Transformation</code> needs to be
+parameterized in the same manner.</p>
+
+<p>It also makes explicit instantiation of a parameterized method or
+class quite painful.  (This pain is somewhat alleviated in the
+presence of type-inference, at least in terms of what text ends up in
+the final code, but I argue that that in this case the pain has in
+fact been <em>shifted</em>: instead of having pain while reading the code,
+one instead suffers when trying to wade through type-errors that
+inevitably arise during the compile-edit cycle.)</p>
+
+<p>If anything, the above presentation <em>understates</em> the problem, since:</p>
+
+<ol>
+<li><code>Transformation</code> has only one argument in its domain, and its codomain
+ is the same as its domain; many real traits with associated types
+ are each likely to require multiple parameters.</li>
+<li>The above example has direct uses of <code>DOM</code> and <code>DT</code> in the domain
+ and codomain, respectively, of <code>distance</code>.  However, <em>every</em> client
+ of <code>Transformation</code> will be forced to be parameterized over <code>DOM</code>
+ and <code>DT</code>; while it is likely that any client of <code>Transformation</code> is likely
+ to need to refer to the type <code>DOM</code>, many are likely to not require
+ use of the distance type <code>DT</code> in their public interface or even in
+ the internals of their code.  Thus, our abstraction is not very abstract
+ at all.</li>
+<li>As a follow-on to the previous point: We are only illustrating
+ <em>one</em> added concept: <code>DistanceType</code>; each additional concept
+ would require a new type parameter to be threaded through the
+ parameter lists of all methods and classes.  This blows up to an
+ unmaintainable mess fairly quickly, discouraging use of generics
+ to define these abstractions (and instead relying on
+ e.g. separate class-hierarchies).</li>
+</ol>
+
+<hr>
+
+<h2><a id="rustspec">Rust-specific issues</a></h2>
+
+<p>I encountered this problem while porting EOP code to Rust.  After
+wrestling with the type parameter lists for a while, I eventually
+wised up and asked on the #rust IRC channel if there was a better
+option.  Tim Chevalier informed me of the relevant terminology:
+the feature I want is called &quot;associated types access&quot; (or often just
+&quot;associated types&quot;).
+An associated type specifies a mapping from some type to another type.</p>
+
+<p>&quot;Associated type access&quot; is listed as one of eight properties considered important in
+&quot;<a href="http://osl.iu.edu/publications/prints/2003/comparing_generic_programming03.pdf">A comparative study of language support for generic programming</a>&quot;
+(Garcia et al., 2003 <a href="http://dl.acm.org/citation.cfm?id=949317">ACM</a>).
+If you found <a href="#encodingunpalatable">the argument above</a> unconvincing,
+you should read the Garcia paper for a completely different example motivated by
+a Graph abstraction.</p>
+
+<p>After I read the Garcia paper, I promptly filed <a href="https://github.com/mozilla/rust/issues/5033">an RFC</a> on the
+Rust github repository requesting support for Associated Type
+Synonyms.  After this, I had several discussions with Niko Matsakis,
+both over IRC and in person, on the problems that associated types
+present for Rust.</p>
+
+<h3><a id="nikoposts">Niko&#39;s blog posts</a></h3>
+
+<p>You can see Niko&#39;s thorough overview of the matter,
+including his natural generalization of the topic from &quot;associated
+types&quot; to &quot;associated <em>items</em>&quot;, on his pair of blog posts (<a href="http://www.smallcultfollowing.com/babysteps/blog/2013/04/02/associated-items/">part
+I</a>, <a href="http://www.smallcultfollowing.com/babysteps/blog/2013/04/03/associated-items-continued/">part II</a>).  The generalization to &quot;associated items&quot;
+enables one to define, in addition to <code>type -&gt; type</code> mappings as
+illustrated <a href="#background">above</a>, also <code>type -&gt; function</code>
+mappings (called in some languages &quot;static&quot; functions) and <code>type -&gt;
+(constant) value</code> mappings, which may enable certain interesting
+coding patterns, such as allowing a type representing a vector in a
+multi-dimensional space to state, statically, how many dimensions
+it carries.</p>
+
+<p>The following are the specific points that Niko makes in his posts (some of 
+are just pointing out artifacts of current Rust language syntax).</p>
+
+<h3>Current Rust syntax focuses on deriving associated functions from traits</h3>
+
+<p>Rust does not currently offer general associated items, but it does
+offer a kind of associated function access.</p>
+
+<p>If a trait <code>T</code> defines a function <code>f</code> that returns <code>Self</code> (which means
+that implementations of <code>T</code> are obligated to provide an implementation
+of <code>f</code>), and one has a type <code>X</code> implementing that trait, then one can
+derive <code>f</code>.</p>
+
+<p>But in current Rust syntax, one does not write this derivation of <code>f</code>
+as something attached to the type <code>X</code>; instead, one writes <code>T::f(..)</code>,
+and the compiler is responsible for inferring which implementation of
+the function <code>f</code> one is referring to, by using type-inference on the
+context of the invocation <code>T::f(..)</code> to determine that the return type
+of <code>f</code> must be <code>X</code> (and thus the <code>f</code> in question must be the one that
+the type <code>X</code> implements to satisfy the obligation established by the
+trait <code>T</code>).</p>
+
+<h4><a id="nikoenctt1">Resolving ambiguities in general implies you need both the trait and type</a></h4>
+
+<p>The choice of deriving a function&#39;s implementation from the trait
+rather than the type is understandable when one considers that a
+software system may have multiple traits <code>T</code>, <code>U</code>, <code>V</code>, &#8230; that all
+define a function of the same name (say <code>f</code>), and a type may be
+specified as implementing more than one of these traits in a single
+piece of code.  (It would be anti-modular to require every trait to
+choose globally unique names for its set of associated functions).  So
+to handle this case, one must provide some way to disambiguate which
+<code>f</code> is being referenced.  Rust did so by making the trait expression
+part of the invocation syntax.  Niko points out that if one switches
+to a syntax where one derives <code>f</code> from the type
+<code>X</code> (e.g. <nobr>&quot;<code>X::f</code>&quot;</nobr>) then one must tackle this problem in
+some manner; in his first blog post, he suggests doing so by allowing
+one to encode both the type and the trait in the referencing syntax
+(e.g. <nobr>&quot;<code>X::(T::f)</code>&quot;</nobr> or <nobr>&quot;<code>X::(U::f)</code>&quot;</nobr>.</p>
+
+<p>I dislike this syntax because I think it
+would be confusing for a reader to comprehend the distinct roles of
+the <nobr>&quot;<code>::</code>&quot;</nobr> path operator, both when learning the language
+and when casually skimming Rust code in general.</p>
+
+<h4>Rust type expressions do not naturally fit into Rust path expressions</h4>
+
+<p>Niko also points out that when one wants to write <code>X::f</code> where <code>X</code> is
+a type, it is not always the case that <code>X</code> is a type parameter; it
+could be a concrete type known to the programmer, such as the type of
+owned vecs of ints, denoted by the type expression
+<nobr><code>~[int]</code>.</nobr> So it seems natural to want to substitute such
+a type expression for (the meta-variable) <code>X</code>.</p>
+
+<p>But the syntax <code>~[int]::f</code> is not legal, because <code>~[int]</code> is
+not a legitimate path component.  Niko describes a couple of
+work-arounds, e.g. allowing one to wrap a type expression that appears
+in a path expression with brackets, yielding: <code>&lt;~[int]&gt;::f</code>.</p>
+
+<p>All of the work-arounds presented by Niko do require allowing
+arbitrary type-expressions in some form to appear as a sub-expression,
+which would complicate the parser in the Rust compiler (there has been
+a slight push to try to <em>simplify</em> the path expression syntax, which
+this would conflict with).</p>
+
+<h4>Further syntactic exploration of encoding trait and type</h4>
+
+<p>In his second blog post, Niko provides some alternative syntactic forms
+for resolution:</p>
+
+<ul>
+<li><p><code>X::(T::f)</code>, as described <a href="#nikoenctt1">above</a>.</p></li>
+<li><p><code>T::f::&lt;X&gt;</code> (from &quot;Functional-style name resolution (take 1)&quot;); here
+<code>X</code> is a synthetic type parameter added to the type parameter list
+(if any) of <code>f</code>; so now we get to retain syntactic backwards
+compatibility.  Since Rust allows one to omit the explicit type
+instantiation <code>::&lt;X, ...&gt;</code> when the compiler is able to infer
+the instantiation, this would be a natural way to continue
+doing return-type based inference of the desired type, the way
+it does already.</p></li>
+<li><p><code>T::f::&lt;for X&gt;</code> as a way of distinguishing the synthetic parameter
+from other entries on the parameter list.</p></li>
+</ul>
+
+<p>I have already stated my problems with the first option.</p>
+
+<p>For the second option, I anticipate being personally confused by the
+synthetic type parameter being injected into the type parameter list.
+I understand the appeal of enabling the compiler to continue doing
+heavy lifting and lighten the programmers syntactic load.  <a href="http://www.smallcultfollowing.com/babysteps/blog/2013/04/03/associated-items-continued/">Niko&#39;s
+post</a> does a good job of laying out some of the unexpected
+interactions of the synthetic type parameter with the other forms of
+generic type parameterization.</p>
+
+<p>The third option would reduce confusion somewhat, since the
+synthetic parameter would receive special attention at points of type
+instantiation, but I still think it is an abuse of the parameter list.</p>
+
+<h3><a id="thinkbinding">Simpler syntax: What about binding?</a></h3>
+
+<p>So I set about trying to come up with another syntactic form
+for associated item access.  My primary focus initially was:
+all of these examples would be so much simpler, to my mind,
+if we were able to go back to using a single identifier
+for the relevant path component in the referencing form,
+the way that C++ uses <nobr><code>C::f</code>.</nobr>
+How can Rust make its own analogous <nobr><code>R::f</code></nobr> (the &quot;R&quot; is for Rust).</p>
+
+<p>Of course, we have already covered that this will be ambiguous if
+<code>R</code> is a mere type (and it is of course ambiguous if <code>R</code> is just a trait).</p>
+
+<p>But what if <code>R</code> is a way of referring to the type <code>X</code> and the trait <code>T</code>
+together: the (type, trait) pairing (X,T)?  Clearly once one specifies the
+pair, then it is easy to tell what items are associated with the pair.
+Even a human without a sophisticated IDE would know in that case to try
+invoking <code>grep</code>, searching for <code>impl T.* for X.*</code>; a compiler can do even better.</p>
+
+<p>Another way of looking at this: What if we could introduce local names
+for the impl that corresponds to the (type, trait) pairing.</p>
+
+<p>So I started working on ideas all centering around a declaration
+form like <code>let R = trait T for type X;</code> or <code>use impl R = T for X</code>
+and other variations (I think Patrick Walton actually deserves credit
+for that last one; we will revisit it later).  But Niko quickly pointed
+the huge failing of all of these declaration forms: a very common
+use case for associated <em>types</em> (remember, that was our original goal)
+is for function signatures, like:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">distance</span><span class="o">&lt;</span><span class="n">F</span><span class="o">:</span> <span class="n">Transformation</span><span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="o">:</span> <span class="n">Domain</span><span class="p">(</span><span class="n">F</span><span class="p">),</span> <span class="n">y</span><span class="o">:</span> <span class="n">Domain</span><span class="p">(</span><span class="n">F</span><span class="p">),</span> <span class="n">f</span><span class="o">:</span> <span class="n">F</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DistanceType</span><span class="p">(</span><span class="n">F</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">remove_edge</span><span class="o">&lt;</span><span class="n">G</span><span class="o">:</span> <span class="n">IncidenceGraph</span> <span class="o">+</span> <span class="n">EdgeCollection</span><span class="o">&gt;</span><span class="p">(</span><span class="n">g</span><span class="o">:</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">G</span><span class="p">,</span> <span class="n">e</span><span class="o">:</span> <span class="n">Edge</span><span class="p">(</span><span class="n">G</span><span class="p">));</span>
+</span></code></pre></td></tr></table></div></figure>
+where <code>Domain(F)</code>, <code>DistanceType(F)</code>, and <code>Edge(G)</code> are replaced
+with appropriately Rust-friendly syntactic forms.  There is no <em>place</em>
+there to put a declaration form <code>let ...</code> or <code>use ...</code> that refers to
+<code>F</code>.  The same applies for other parameterized forms, such as structs,
+enums, and traits.</p>
+
+<p>So, back to the drawing board.</p>
+
+<hr>
+
+<h2><a id="insight">An Insight</a></h2>
+
+<p>Even though my attempt to solve this problem via a declaration form had
+failed, I continued to focus on the fact that associated item access
+is all about the (type, trait) pairing.  So how could I surmount the
+parameterized signature wall?</p>
+
+<p>After reflecting on the parameterized signature itself, I said, &quot;where
+is a natural place to put a binding from an identifier to a (type,
+trait) pair?&quot;  And this reduced to &quot;where does the (type, trait) pair
+come from?&quot;  This was my insight: The parameterized signature
+<nobr><code>&lt;X: T&gt;</code></nobr> <em>itself</em> is where the pairing is defined;
+(or in the case of <nobr><code>&lt;X: T + U&gt;</code></nobr>: <em>pairings</em>).</p>
+
+<p>My only problem was to put the identifier binding in there.  Once I
+saw the pairing waiting right in the parameter list, the place for the
+identifier became clear: in-between the type and the trait:
+<nobr><code>&lt;X: R=T&gt;</code></nobr> binds <code>R</code> to the <code>impl T for X</code>;
+for multiple traits, we have <nobr><code>&lt;X: R=T + R2=U&gt;</code></nobr>,
+where <code>R</code> is bound as above, and <code>R2</code> is bound to the <code>impl U for X</code>.</p>
+
+<p>And now we can consider writing our examples like so:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">distance</span><span class="o">&lt;</span><span class="n">F</span><span class="o">:</span> <span class="n">T</span><span class="o">=</span><span class="n">Transformation</span><span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="o">:</span> <span class="n">T</span><span class="o">::</span><span class="n">Domain</span><span class="p">,</span> <span class="n">y</span><span class="o">:</span> <span class="n">T</span><span class="o">::</span><span class="n">Domain</span><span class="p">,</span> <span class="n">f</span><span class="o">:</span> <span class="n">F</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="o">::</span><span class="n">DistanceType</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">remove_edge</span><span class="o">&lt;</span><span class="n">G</span><span class="o">:</span> <span class="n">IncidenceGraph</span> <span class="o">+</span> <span class="n">EC</span><span class="o">=</span><span class="n">EdgeCollection</span> <span class="o">&gt;</span><span class="p">(</span><span class="n">g</span><span class="o">:</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">G</span><span class="p">,</span> <span class="n">e</span><span class="o">:</span> <span class="n">EC</span><span class="o">::</span><span class="n">Edge</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>The other cute insight is this: the only time we need to add these
+identifiers explicitly is when there are multiple trait bounds.
+When there is a single trait bound <nobr><code>&lt;X:R=T&gt;</code></nobr>, the
+identifier <code>X</code> is just as reasonable (or at least unambiguous) as <code>R</code>
+is as a way to reference the impl.  So why not treat
+<nobr><code>&lt;X:T&gt;</code></nobr> as an abbreviation for <nobr><code>&lt;X:X=T&gt;</code></nobr>:
+boom!  The biggest potential complaint with this extension (namely,
+the notational complexity of making people pepper their code with
+explicit bindings of the impls) goes away!  And our first example becomes:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">distance</span><span class="o">&lt;</span><span class="n">F</span><span class="o">:</span> <span class="n">Transformation</span><span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="o">:</span> <span class="n">F</span><span class="o">::</span><span class="n">Domain</span><span class="p">,</span> <span class="n">y</span><span class="o">:</span> <span class="n">F</span><span class="o">::</span><span class="n">Domain</span><span class="p">,</span> <span class="n">f</span><span class="o">:</span> <span class="n">F</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">F</span><span class="o">::</span><span class="n">DistanceType</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p>(our second example remains unchanged, since <code>G</code> has two trait bounds there, and
+so <code>G</code> alone cannot unambiguously denote a (type, trait) pair.</p>
+
+<p>Note also that this binding form does not suffice on its own; in
+particular, if one wants to introduce a binding for a (type,trait)
+pairing that does not appear in the generic parameter bounds of the
+signature.  But the latter is exactly the case that <em>is</em> handled by a
+declaration form such as those <a href="#thinkbinding">proposed earlier</a>!</p>
+
+<p>So neither solution suffices on its own, but the two together cover
+many use cases of interest.</p>
+
+<hr>
+
+<h2><a id="proposal">The proposed syntax for associated items in Rust</a></h2>
+
+<p>So, with that insight explained, here is my proposal for associated items:</p>
+
+<ol>
+<li><p>A trait can now declare names for things besides methods.
+ In terms of the grammar that John has been working on:</p>
+<div class="highlight"><pre><code class="text"> trait_decl: TRAIT ident
+                (generic_decls)? (COLON trait_list)?
+                LBRACE trait_method* RBRACE ;
+</code></pre></div>
+<p>is replaced with</p>
+<div class="highlight"><pre><code class="text"> trait_decl: TRAIT ident
+                (generic_decls)? (COLON trait_list)?
+                LBRACE trait_item* RBRACE ;
+ trait_item: trait_method | trait_constant | trait_type
+ trait_type: TYPE ident (generic_decls)? SEMI
+           | TYPE ident (generic_decls)? COLON boundseq SEMI ;
+ trait_const: STATIC ident COLON ty SEMI ;
+</code></pre></div></li>
+<li><p>The identifier bound by a trait types is in scope of its enclosing
+ trait; trait method declarations and trait const declarations
+ can reference it.</p></li>
+<li><p>Extend the Rust grammar to allow an optional binding of
+ an identifier to a (type, trait) pair in a type parameter bound.
+ In terms of the grammar:</p>
+<div class="highlight"><pre><code class="text"> bound : STATIC_LIFETIME | trait | obsoletekind ;
+</code></pre></div>
+<p>is replaced with:</p>
+<div class="highlight"><pre><code class="text"> bound : STATIC_LIFETIME | trait | ident = trait | obsoletekind ;
+</code></pre></div></li>
+<li><p>Extend the Rust grammar to allow a declaration binding 
+ an identifier to a (type, trait) pair.
+ In terms of the grammar, I <em>think</em> this is close to what I want:</p>
+<div class="highlight"><pre><code class="text"> view_item : attrs_vis use ;
+</code></pre></div>
+<p>is replaced with:</p>
+<div class="highlight"><pre><code class="text"> view_item : attrs_vis use | USE impl ident = trait for ty ;
+</code></pre></div>
+<p>Of potential interest, we do not allow visibility attributes
+ on <code>use impl R = T for X;</code>, because these definitions are always
+ local shorthands and thus private to the module.  (Maybe in
+ the future we will see motivation to allow the bindings to
+ be exposed, but I have not yet seen a motivation for this.)</p>
+
+<p>I am not attached to the particulars of the syntax above;
+ in particular, if someone wants to throw in the <code>trait</code>
+ and/or <code>type</code> keywords into the above to make the purpose
+ all the more clear, I will not object.  More so if it is
+ somehow <em>necessary</em> for disambiguation, but I do not
+ anticipate that being the case.</p></li>
+<li><p>A bound of the form <code>R=T</code> (<code>ident = ty</code>) in the context of a <code>ty_param</code>
+ production <code>X : ... [] ...</code> (<code>ident COLON bound + ... + [] + ... + bound</code>)
+ (where <code>[]</code> denotes the contextual hole that the <code>R=T</code> is plugged into)
+ is treated as binding <code>R</code> to the code defined by the <code>impl T for X</code>.
+ The scope of the binding for <code>R</code> encompasses: the rest of the boundseq
+ (to the right of the <nobr><code>&quot;R=T&quot;</code></nobr>) and the remainder of this decl
+ that follows the generic_decls within which the <nobr><code>R=T</code></nobr> bound appears.</p></li>
+<li><p>This binding of <code>R</code> can shadow earlier bindings of the same identifier
+ (either other impl-bindings, or module names).  It seems like this
+ should be a reasonable thing to signal via a lint-warning.</p></li>
+<li><p>A path identifier component can now be an <code>R</code>, binding an <code>impl T for X</code>.</p>
+
+<p>So one can access trait items (see trait_item above) as R::item.
+ Associated items can be type-parametric whenever the corresponding
+ item could be type-parameteric when exported from a module.</p></li>
+<li><p>A boundseq with a single bound of variant <code>ty</code> above, where ty is
+ itself of the form <code>ident</code> (i.e. the <code>&lt;X:T&gt;</code> case) is implicitly
+ expanded into <code>&lt;X:X=T&gt;</code>.</p></li>
+</ol>
+
+<hr>
+
+<h2><a id="futurework">What the proposal does not cover</a></h2>
+
+<p>There are cases of interest that are not covered by the above proposal.</p>
+
+<p>Most obvious to me are situations where one wants to describe mutual
+constraints <em>between</em> the items associated with type parameters.
+(An example of this is provided by the <code>gen_orbit</code> example with
+the constraint <code>DistanceType(I) = N</code>, and more generally much of the
+content of the <code>requires(..)</code> clauses from EOP that I deliberately
+ignored).  For the examples from EOP, C++ handles this by doing the
+template instantiation blindly and applying the type checker to
+code after concrete types have been substituted for the parameters;
+this approach is not compatible with Rust&#39;s design where we want to
+type-check a generic body of code in terms of the guarantees provided
+by the trait-bounds, <em>not</em> delaying those checks until after
+the concrete types have been plugged in.</p>
+
+<p>Also, in the changes I proposed above to the Rust grammar (and
+somewhat implicitly to its semantics), I deliberately constrained my
+focus to the cases Niko described in his blog posts: types, functions,
+and constants.  But one might consider further extensions, such as
+allowing traits to define <em>other</em> traits.  (I found that subject hard
+to wrap one&#39;s mind around, and I wanted to keep the focus limited for
+Rust 1.0; we can leave generalizations of this approach for after Rust
+1.0.)</p>
+
+<p>Also, I&#39;m not sure whether there is need and/or utility in further
+generalizing this topic to <a href="http://www.haskell.org/haskellwiki/GHC/Type_families#An_associated_data_type_example">associated data families</a>.  Again,
+I want to limit the scope of the work to something we believe we can
+accomplish for Rust 1.0.</p>
+
+<p>What else have I missed?  Let me know, leave a comment.  (Or look
+for me in the #rust irc channel.)</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1122,6 +1814,10 @@ for this with Octopress.</p></li>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing syntax for associated items in Rust</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy/">Better command completion in bash on OS X</a>
       </li>
     
@@ -1135,10 +1831,6 @@ for this with Octopress.</p></li>
     
       <li class="post">
         <a href="/blog/2013/01/08/resurrected-hello-again-world/">Resurrected (Hello Again World)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2013/01/02/osx-tiled-window-management/">OS X tiled window management with Slate</a>
       </li>
     
   </ul>
