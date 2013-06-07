@@ -128,7 +128,7 @@ represent a potentially empty pile (or &quot;stack&quot;, &quot;deck&quot; or &q
 the context dictates), while <code>~card</code> is a non-empty pile (or, when its
 <code>next</code> is <code>None</code>, a single card, again as context dictates)</p>
 
-<h2>The goal</h2>
+<h2 id="toc_0">The goal</h2>
 
 <p>I want to write four functions: <code>place_top</code>, <code>place_bot</code>, <code>pop_top</code>,
 and <code>pop_bot</code>, which respectively:</p>
@@ -174,7 +174,7 @@ as well as one-line reminders of the behavior for each.</p>
 </span><span class='line'><span class="k">fn</span> <span class="n">pop_bot</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="o">~</span><span class="n">card</span><span class="p">,</span> <span class="n">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">);</span>
 </span></code></pre></td></tr></table></div></figure>
 
-<h2>(Some non-critical helper infrastructure follows, showing off Rust as language)</h2>
+<h2 id="toc_1">(Some non-critical helper infrastructure follows, showing off Rust as language)</h2>
 
 <p>Here is some example code that puts together a hand and does
 a few manipulations using the above operations (as well as

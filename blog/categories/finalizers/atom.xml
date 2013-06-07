@@ -4,7 +4,7 @@
   <title><![CDATA[Category: finalizers | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/finalizers/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2013-06-07T19:29:10+02:00</updated>
+  <updated>2013-06-07T20:02:09+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -39,7 +39,7 @@ it seems to align with the spirit of giving the programmer access to the set of
 knobs they need for explicit sequencing and resource management (or rope
 to hang themselves with).</p>
 
-<h2>Explicit Cleanup</h2>
+<h2 id="toc_0">Explicit Cleanup</h2>
 
 <p>In the <a href="http://www.cs.indiana.edu/%7Edyb/pubs/guardians-pldi93.pdf">guardian</a> and <a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">reference-queue</a> family of systems (see
 also <a href="http://docs.racket-lang.org/reference/willexecutor.html">wills and executors</a>), resource cleanup code is no longer asynchronously
@@ -63,7 +63,7 @@ for that method.  Thus one must take care to distinguish which of Boehm&#39;s co
 apply to all explicit finalization systems, and which apply solely to systems 
 such as Java with <code>runFinalization</code> that provide a mix of explicit and implicit finalization.</p>
 
-<h2>Passing the Buck</h2>
+<h2 id="toc_1">Passing the Buck</h2>
 
 <p>One important characteristic (some might say &quot;drawback&quot;) of explicit
 finalization approaches is that the mutator does need to periodically process
@@ -129,7 +129,7 @@ One could coin the term
 <a href="http://en.wikipedia.org/wiki/Decomposing_Composers">&quot;composing decomposers&quot;</a>
 for such things.)</p>
 
-<h2>Wait, what was that about &quot;normal&quot; languages?</h2>
+<h2 id="toc_2">Wait, what was that about &quot;normal&quot; languages?</h2>
 
 <p>I wrote the end of the previous section intending for it to apply to Rust.
 Then I realized that I do not have enough experience writing Rust programs to
@@ -176,7 +176,7 @@ future.
 
 --->
 
-<h2>Conclusion</h2>
+<h2 id="toc_3">Conclusion</h2>
 
 <p>I am not saying this is easy, and I am not saying that the systems I am
 referencing get everything right either.  But implicit finalizers, even those invoked
@@ -200,7 +200,7 @@ finalizers, or adopt another approach?</p>
 <p>My goal is to make sure we remember to consider those other approaches when we
 hit that crossroads.</p>
 
-<h2>References</h2>
+<h2 id="toc_4">References</h2>
 
 <ol>
 <li><a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">&quot;Destructors and Finalizers in Rust&quot;</a>
@@ -223,7 +223,7 @@ hit that crossroads.</p>
 <br/>(I only properly appreciated the value (and difficulties) of using guardians for such purposes after I read this paper)</li>
 </ol>
 
-<h2>Appendix A. What are Guardians?</h2>
+<h2 id="toc_5">Appendix A. What are Guardians?</h2>
 
 <p>I here outline a concrete example of how this works in the case of Guardians
 (adapted from <a href="http://repository.readscheme.org/ftp/papers/sw2010/02-hsu.pdf">Hsu</a>).  (To aid readability, I have replaced the use of
@@ -280,7 +280,7 @@ with G.</p></li>
 file descriptors.</p></li>
 </ol>
 
-<h2>Appendix B. Another peeve about guardians</h2>
+<h2 id="toc_6">Appendix B. Another peeve about guardians</h2>
 
 <p>One idiosyncrasy about a lot of the guardian-like systems is that they enqueue
 the original object for processing, which is quite counter-intuitive to me

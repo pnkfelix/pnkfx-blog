@@ -4,7 +4,7 @@
   <title><![CDATA[Category: proglang | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/proglang/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2013-06-07T19:29:10+02:00</updated>
+  <updated>2013-06-07T20:02:09+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -52,7 +52,7 @@ always be intelligible.</p>
 something where I can see all the pieces at once, and discard the
 red herrings along the way.</p>
 
-<h2><a id="background_fns">Background: Closures (recurring and otherwise)</a></h2>
+<h2 id="toc_0"><a id="background_fns">Background: Closures (recurring and otherwise)</a></h2>
 
 <p>In Rust circa version 0.6, closures have three categories according to
 the type system (<code>&amp;fn</code>, <code>@fn</code>, and <code>~fn</code>), but <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">as Niko describes</a>,
@@ -94,7 +94,7 @@ struct R&lt;&#39;self&gt; {
     c: &amp;&#39;self fn(&amp;R)
 }</p>
 
-<p>fn innocent<em>looking</em>victim() {
+<p>fn innocent_looking_victim() {
     let mut vec = ~[1, 2, 3];
     conspirator(|f| {
         if vec.len() &lt; 100 {
@@ -206,7 +206,7 @@ U = [S]          // vectors
 (Note that the actual types assigned to expressions would be instances
 of</code>S` according to this grammar.)</p>
 
-<h2><a id="the_problem">The Problem: DST and Closures</a></h2>
+<h2 id="toc_1"><a id="the_problem">The Problem: DST and Closures</a></h2>
 
 <p>So, from the &quot;Case of the Recurring Closure&quot;, we saw that
 <code>&amp;fn</code> closures were to become non-copyable.
@@ -228,7 +228,7 @@ side-stepping the special treatment of <code>&amp;fn</code> versus <code>&amp;T<
 rid of <code>&amp;fn</code> and replacing it with <code>fn&amp;</code>.</li>
 </ul>
 
-<h3><a id="is_fn_too_ugly">Is fn~ too ugly?</a></h3>
+<h3 id="toc_2"><a id="is_fn_too_ugly">Is fn~ too ugly?</a></h3>
 
 <p>Niko at first favored the latter, then he wrote a second post,
 <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">&quot;Mutable Fn Alternatives&quot;</a> on 2013-05-13,
@@ -251,7 +251,7 @@ have to use an trait instead (i.e. an object or a record).
 (I personally am not thrilled about losing the option of using
 closures to express combinator libraries, a use case for <code>fn@</code>.)</p>
 
-<h3><a id="leveraging_proc">Leveraging a proc keyword/expression</a></h3>
+<h3 id="toc_3"><a id="leveraging_proc">Leveraging a proc keyword/expression</a></h3>
 
 <p>Then a third post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&quot;Procedures, Continued&quot;</a> from
 2013-05-15, refined the <code>proc</code> proposal a bit further.  As stated in
@@ -311,7 +311,7 @@ traits are objects carrying virtual method dispatch tables), and then
 expressing them via a <code>proc!</code> macro (which means they could be left
 out of the core language).</p>
 
-<h3><a id="other_ways_to_proc">Other ways to express proc</a></h3>
+<h3 id="toc_4"><a id="other_ways_to_proc">Other ways to express proc</a></h3>
 
 <p>In his next post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">&quot;Removing Procs&quot;</a>, Niko elaborates further
 on the idea that <code>proc</code> need not be supported in the language at all.
@@ -346,7 +346,7 @@ would go away.</p>
 macro to query an expression for its free variables, then that might
 help.</p>
 
-<h4><a id="digression_on_macros">A Personal Digression on Macros</a></h4>
+<h4 id="toc_5"><a id="digression_on_macros">A Personal Digression on Macros</a></h4>
 
 <p>Actually, this latter idea brings up a problem with the explicit list
 of captured variables that I had not thought of before: some macros
@@ -372,7 +372,7 @@ copying closures as a primitive linguistic construct.</p></li>
 
 <p>Okay, end of digression.</p>
 
-<h3><a id="more_followup_on_procs_and_fns">More followups on procs and fns</a></h3>
+<h3 id="toc_6"><a id="more_followup_on_procs_and_fns">More followups on procs and fns</a></h3>
 
 <p>A few days passed, then Niko had a fourth post,
 <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">&quot;More on Fns&quot;</a>, from 2013-06-03.
@@ -409,7 +409,7 @@ on whether the type parameter has an implicit <code>Sized</code> bound.
 affirm that it is.)</li>
 </ul>
 
-<h2><a id="where_are_we">So where are we?</a></h2>
+<h2 id="toc_7"><a id="where_are_we">So where are we?</a></h2>
 
 <p>The above summarizes the series of blog posts from Niko.  I had hoped
 to get through the actual proposals (and maybe also the team meeting
@@ -463,7 +463,7 @@ variables injected by macro invocations is addressed.</li>
 or the discussion motivating the proposal, then just jump
 straight to the <a href="#proposal">proposal</a> itself.</p>
 
-<h2><a id="background">Background</a></h2>
+<h2 id="toc_0"><a id="background">Background</a></h2>
 
 <p>Early in my experimentation with Rust, I thought a reasonable exercise
 would be to take the simple C++ programs from
@@ -643,7 +643,7 @@ fn distance&lt;DT, DOM, F: Transformation&lt;DT, DOM&gt; &gt;(x: DOM, y: DOM, f:
     }
 </code></p>
 
-<h3><a id="encodingunpalatable">Encoding via parameters is unpalatable</a></h3>
+<h3 id="toc_1"><a id="encodingunpalatable">Encoding via parameters is unpalatable</a></h3>
 
 <p>The Rust and Java results above are made barely readable by using
 short (obscure) parameter names.  More troubling is the fact that this
@@ -685,7 +685,7 @@ inevitably arise during the compile-edit cycle.)</p>
 
 <hr>
 
-<h2><a id="rustspec">Rust-specific issues</a></h2>
+<h2 id="toc_2"><a id="rustspec">Rust-specific issues</a></h2>
 
 <p>I encountered this problem while porting EOP code to Rust.  After
 wrestling with the type parameter lists for a while, I eventually
@@ -708,7 +708,7 @@ Synonyms.  After this, I had several discussions with Niko Matsakis,
 both over IRC and in person, on the problems that associated types
 present for Rust.</p>
 
-<h3><a id="nikoposts">Niko&#39;s blog posts</a></h3>
+<h3 id="toc_3"><a id="nikoposts">Niko&#39;s blog posts</a></h3>
 
 <p>You can see Niko&#39;s thorough overview of the matter,
 including his natural generalization of the topic from &quot;associated
@@ -725,7 +725,7 @@ it carries.</p>
 <p>The following are the specific points that Niko makes in his posts (some of 
 are just pointing out artifacts of current Rust language syntax).</p>
 
-<h3>Current Rust syntax focuses on deriving associated functions from traits</h3>
+<h3 id="toc_4">Current Rust syntax focuses on deriving associated functions from traits</h3>
 
 <p>Rust does not currently offer general associated items, but it does
 offer a kind of associated function access.</p>
@@ -744,7 +744,7 @@ of <code>f</code> must be <code>X</code> (and thus the <code>f</code> in questio
 the type <code>X</code> implements to satisfy the obligation established by the
 trait <code>T</code>).</p>
 
-<h4><a id="nikoenctt1">Resolving ambiguities in general implies you need both the trait and type</a></h4>
+<h4 id="toc_5"><a id="nikoenctt1">Resolving ambiguities in general implies you need both the trait and type</a></h4>
 
 <p>The choice of deriving a function&#39;s implementation from the trait
 rather than the type is understandable when one considers that a
@@ -767,7 +767,7 @@ would be confusing for a reader to comprehend the distinct roles of
 the <nobr>&quot;<code>::</code>&quot;</nobr> path operator, both when learning the language
 and when casually skimming Rust code in general.</p>
 
-<h4>Rust type expressions do not naturally fit into Rust path expressions</h4>
+<h4 id="toc_6">Rust type expressions do not naturally fit into Rust path expressions</h4>
 
 <p>Niko also points out that when one wants to write <code>X::f</code> where <code>X</code> is
 a type, it is not always the case that <code>X</code> is a type parameter; it
@@ -787,7 +787,7 @@ which would complicate the parser in the Rust compiler (there has been
 a slight push to try to <em>simplify</em> the path expression syntax, which
 this would conflict with).</p>
 
-<h4>Further syntactic exploration of encoding trait and type</h4>
+<h4 id="toc_7">Further syntactic exploration of encoding trait and type</h4>
 
 <p>In his second blog post, Niko provides some alternative syntactic forms
 for resolution:</p>
@@ -820,7 +820,7 @@ generic type parameterization.</p>
 synthetic parameter would receive special attention at points of type
 instantiation, but I still think it is an abuse of the parameter list.</p>
 
-<h3><a id="thinkbinding">Simpler syntax: What about binding?</a></h3>
+<h3 id="toc_8"><a id="thinkbinding">Simpler syntax: What about binding?</a></h3>
 
 <p>So I set about trying to come up with another syntactic form
 for associated item access.  My primary focus initially was:
@@ -864,7 +864,7 @@ enums, and traits.</p>
 
 <hr>
 
-<h2><a id="insight">An Insight</a></h2>
+<h2 id="toc_9"><a id="insight">An Insight</a></h2>
 
 <p>Even though my attempt to solve this problem via a declaration form had
 failed, I continued to focus on the fact that associated item access
@@ -917,7 +917,7 @@ many use cases of interest.</p>
 
 <hr>
 
-<h2><a id="proposal">The proposed syntax for associated items in Rust</a></h2>
+<h2 id="toc_10"><a id="proposal">The proposed syntax for associated items in Rust</a></h2>
 
 <p>So, with that insight explained, here is my proposal for associated items:</p>
 
@@ -990,7 +990,7 @@ many use cases of interest.</p>
 
 <hr>
 
-<h2><a id="futurework">What the proposal does not cover</a></h2>
+<h2 id="toc_11"><a id="futurework">What the proposal does not cover</a></h2>
 
 <p>There are cases of interest that are not covered by the above proposal.</p>
 
