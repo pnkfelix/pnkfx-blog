@@ -4,7 +4,7 @@
   <title><![CDATA[Category: proglang | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/proglang/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2013-06-07T19:09:08+02:00</updated>
+  <updated>2013-06-07T19:11:34+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -129,7 +129,7 @@ with other proposals, as we shall see.
 (Note that Rust does have a way of expressing a non-aliasable pointer
 to `T` for any `T`: `&amp;mut T`.)
 
-## &lt;a id=&quot;background_dst&quot;&gt;Background: DST&lt;a&gt;
+## &lt;a id=&quot;background_dst&quot;&gt;Background: DST&lt;/a&gt;
 
 The heart of the Dynamically Sized Types proposal is the discrepancy
 described in Niko&#39;s [DST, Revisited][2] post from 2013-04-30
