@@ -214,7 +214,7 @@ Niko's immediate proposals to resolve this were either:
   side-stepping the special treatment of `&fn` versus `&T` by getting
   rid of `&fn` and replacing it with `fn&`.
 
-### <a href="is_fn_too_ugly">Is fn~ too ugly?</a>
+### <a id="is_fn_too_ugly">Is fn~ too ugly?</a>
 
 Niko at first favored the latter, then he wrote a second post,
 ["Mutable Fn Alternatives"][4] on 2013-05-13,
