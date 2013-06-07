@@ -9,9 +9,10 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="I have recently been trying to keep myself abreast of a flurry of
-discussion about reforming the design of Rust closures. Niko has a
-series of blog &hellip;">
+  <meta name="description" content="Background: Closures (recurring and otherwise)
+Background: DST
+The Problem: DST and Closures Is fn~ too ugly?
+Leveraging a proc keyword/expression &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -92,7 +93,22 @@ series of blog &hellip;">
   </header>
 
 
-<div class="entry-content"><p>I have recently been trying to keep myself abreast of a flurry of
+<div class="entry-content"><ul>
+<li><a href="#background_fns">Background: Closures (recurring and otherwise)</a></li>
+<li><a href="#background_dst">Background: DST</a></li>
+<li><a href="#the_problem">The Problem: DST and Closures</a>
+
+<ul>
+<li><a href="#is_fn_too_ugly">Is fn~ too ugly?</a></li>
+<li><a href="#leveraging_proc">Leveraging a proc keyword/expression</a></li>
+<li><a href="#other_ways_to_proc">Other ways to express proc</a></li>
+<li><a href="#digression_on_macros">A Personal Digression on Macros</a></li>
+<li><a href="#more_followup_on_procs_and_fns">More followups on procs and fns</a></li>
+</ul></li>
+<li><a href="#where_are_we">So where are we?</a></li>
+</ul>
+
+<p>I have recently been trying to keep myself abreast of a flurry of
 discussion about reforming the design of Rust closures.  Niko has a
 series of blog posts (<a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">1</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">2</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/recurring-closures-and-dynamically-sized-types/">3</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">4</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">5</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">6</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">7</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">8</a>); the
 content of some of those posts were further discussed at Rust team
@@ -111,7 +127,7 @@ always be intelligible.</p>
 something where I can see all the pieces at once, and discard the
 red herrings along the way.</p>
 
-<h2>Background: Closures (recurring and otherwise)</h2>
+<h2><a id="background_fns">Background: Closures (recurring and otherwise)</a></h2>
 
 <p>In Rust circa version 0.6, closures have three categories according to
 the type system (<code>&amp;fn</code>, <code>@fn</code>, and <code>~fn</code>), but <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">as Niko describes</a>,
@@ -212,7 +228,7 @@ with other proposals, as we shall see.
 (Note that Rust does have a way of expressing a non-aliasable pointer
 to <code>T</code> for any <code>T</code>: <code>&amp;mut T</code>.)</p>
 
-<h2>Background: DST</h2>
+<h2><a id="background_dst">Background: DST<a></h2>
 
 <p>The heart of the Dynamically Sized Types proposal is the discrepancy
 described in Niko&#39;s <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">DST, Revisited</a> post from 2013-04-30
@@ -302,7 +318,7 @@ Rust&#39;s type hierarchy could be presented uniformly like so:
 (Note that the actual types assigned to expressions would be instances
 of <code>S</code> according to this grammar.)</p>
 
-<h2>The Problem: DST and Closures</h2>
+<h2><a id="the_problem">The Problem: DST and Closures</a></h2>
 
 <p>So, from the &quot;Case of the Recurring Closure&quot;, we saw that
 <code>&amp;fn</code> closures were to become non-copyable.
@@ -324,7 +340,7 @@ side-stepping the special treatment of <code>&amp;fn</code> versus <code>&amp;T<
 rid of <code>&amp;fn</code> and replacing it with <code>fn&amp;</code>.</li>
 </ul>
 
-<h3>Is fn~ too ugly?</h3>
+<h3><a href="is_fn_too_ugly">Is fn~ too ugly?</a></h3>
 
 <p>Niko at first favored the latter, then he wrote a second post,
 <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">&quot;Mutable Fn Alternatives&quot;</a> on 2013-05-13,
@@ -347,7 +363,7 @@ have to use an trait instead (i.e. an object or a record).
 (I personally am not thrilled about losing the option of using
 closures to express combinator libraries, a use case for <code>fn@</code>.)</p>
 
-<h3>Leveraging a proc keyword/expression</h3>
+<h3><a id="leveraging_proc">Leveraging a proc keyword/expression</a></h3>
 
 <p>Then a third post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&quot;Procedures, Continued&quot;</a> from
 2013-05-15, refined the <code>proc</code> proposal a bit further.  As stated in
@@ -419,7 +435,7 @@ traits are objects carrying virtual method dispatch tables), and then
 expressing them via a <code>proc!</code> macro (which means they could be left
 out of the core language).</p>
 
-<h3>Other ways to express proc</h3>
+<h3><a id="other_ways_to_proc">Other ways to express proc</a></h3>
 
 <p>In his next post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">&quot;Removing Procs&quot;</a>, Niko elaborates further
 on the idea that <code>proc</code> need not be supported in the language at all.
@@ -454,7 +470,7 @@ would go away.</p>
 macro to query an expression for its free variables, then that might
 help.</p>
 
-<h4>A Personal Digression on Macros</h4>
+<h4><a id="digression_on_macros">A Personal Digression on Macros</a></h4>
 
 <p>Actually, this latter idea brings up a problem with the explicit list
 of captured variables that I had not thought of before: some macros
@@ -480,7 +496,7 @@ copying closures as a primitive linguistic construct.</p></li>
 
 <p>Okay, end of digression.</p>
 
-<h3>More followups on procs and fns</h3>
+<h3><a id="more_followup_on_procs_and_fns">More followups on procs and fns</a></h3>
 
 <p>A few days passed, then Niko had a fourth post,
 <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">&quot;More on Fns&quot;</a>, from 2013-06-03.
@@ -517,7 +533,7 @@ on whether the type parameter has an implicit <code>Sized</code> bound.
 affirm that it is.)</li>
 </ul>
 
-<h2>So where are we?</h2>
+<h2><a id="where_are_we">So where are we?</a></h2>
 
 <p>The above summarizes the series of blog posts from Niko.  I had hoped
 to get through the actual proposals (and maybe also the team meeting
