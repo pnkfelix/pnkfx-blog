@@ -9,9 +9,9 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="Background Encoding via parameters is unpalatable Rust-specific issues Niko&#39;s blog posts
-Simpler syntax: What about binding? Insight
-The &hellip;">
+  <meta name="description" content="I have recently been trying to keep myself abreast of a flurry of
+discussion about reforming the design of Rust closures. Niko has a
+series of blog &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -66,6 +66,491 @@ The &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-07T10:17:00+02:00" pubdate data-updated="true">07 June 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>I have recently been trying to keep myself abreast of a flurry of
+discussion about reforming the design of Rust closures.  Niko has a
+series of blog posts (<a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">1</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">2</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/recurring-closures-and-dynamically-sized-types/">3</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">4</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">5</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">6</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">7</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">8</a>); the
+content of some of those posts were further discussed at Rust team
+meetings (<a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-04-30">11</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-07">12</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-14">13</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-21">14</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-28">15</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-06-04">16</a>), and there have been some
+more formalized proposals with their own set of discussions: (<a href="https://github.com/mozilla/rust/wiki/Proposal-for-closure-reform">9</a>,
+<a href="https://github.com/mozilla/rust/wiki/Proposal-for-closure-reform-%28specific%29">10</a>).</p>
+
+<p>There are also associated github issues (<a href="https://github.com/mozilla/rust/issues/2202">17</a>, <a href="https://github.com/mozilla/rust/issues/3569">18</a>, <a href="https://github.com/mozilla/rust/issues/6308">19</a>), though
+without sufficient context the discussion in the github issues may not
+always be intelligible.</p>
+
+<p>Some of the links above are more about &quot;Dynamically Sized Types&quot;
+(DST), a related topic, as we shall see.</p>
+
+<p>This post is my attempt to condense all of this information down into
+something where I can see all the pieces at once, and discard the
+red herrings along the way.</p>
+
+<h2>Background: Closures (recurring and otherwise)</h2>
+
+<p>In Rust circa version 0.6, closures have three categories according to
+the type system (<code>&amp;fn</code>, <code>@fn</code>, and <code>~fn</code>), but <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">as Niko describes</a>,
+they can be divided into two kinds: by-reference closures and copying
+closures.  By-reference closures are also referred to as
+stack-allocated closures or sometimes &quot;stack closure.&quot;
+(There is also a orthogonal division of <code>once</code> closures, versus
+closures that can be invoked more than once; some of these things are,
+to my knowledge, only part of planned future implementation.  Niko
+discusses them in the blog posts but I&#39;m mostly sidestep them here.)</p>
+
+<p>As Niko states in the first paragraph of <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">1</a>, a stack closure is
+allocated on the stack, and can refer to and manipulate the local
+variables of the enclosing stack frame (by reference).</p>
+
+<p>In Rust (as of version 0.6), one creates a stack-allocated closure by
+writing an expression <code>|x ...| { ... }</code> within an expression context
+dictating that it wants a closure of <code>&amp;fn</code> type.  Analogously, a
+closure allocated on the exchange-heap is expressed by putting the
+expression into a context of <code>~fn</code> type, et cetera.  Since a
+stack-allocated closure is currently expressed solely by use of <code>&amp;fn</code>
+type, Niko often uses the term <code>&amp;fn</code> closure synonymously with
+stack-allocated closure.</p>
+
+<p>(However, Niko also points out (first section of
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&quot;Procedures, Continued&quot;</a>) that one can borrow a <code>@fn</code> or <code>~fn</code> to
+a <code>&amp;fn</code>, so the type does <em>not</em> tell you whether you actually have a
+by-reference or a copying-closure.)</p>
+
+<p>Here is the example of an unsound function that Niko described in
+his <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">Case of the Recurring Closure</a> post from 2013-04-30,
+making use of higher-order functions to express a fixed-point
+combinator:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="n">struct</span> <span class="n">R</span><span class="o">&lt;</span><span class="err">&#39;</span><span class="n">self</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// This struct is needed to create the</span>
+</span><span class='line'>    <span class="c1">// otherwise infinite type of a fn that</span>
+</span><span class='line'>    <span class="c1">// accepts itself as argument:</span>
+</span><span class='line'>    <span class="n">c</span><span class="o">:</span> <span class="o">&amp;</span><span class="err">&#39;</span><span class="n">self</span> <span class="k">fn</span><span class="p">(</span><span class="o">&amp;</span><span class="n">R</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">innocent<em>looking</em>victim</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">let</span> <span class="k">mut</span> <span class="n">vec</span> <span class="o">=</span> <span class="o">~</span><span class="p">[</span><span class="m">1</span><span class="p">,</span> <span class="m">2</span><span class="p">,</span> <span class="m">3</span><span class="p">];</span>
+</span><span class='line'>    <span class="n">conspirator</span><span class="p">(</span><span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">vec</span><span class="p">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="m">100</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">vec</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="m">4</span><span class="p">);</span>
+</span><span class='line'>            <span class="k">for</span> <span class="n">vec</span><span class="p">.</span><span class="n">each</span> <span class="o">|</span><span class="n">i</span><span class="o">|</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">f</span><span class="p">.</span><span class="n">c</span><span class="p">(</span><span class="o">&amp;</span><span class="n">f</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">})</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">conspirator</span><span class="p">(</span><span class="n">f</span><span class="o">:</span> <span class="o">&amp;</span><span class="k">fn</span><span class="p">(</span><span class="o">&amp;</span><span class="n">R</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">r</span> <span class="o">=</span> <span class="n">R</span> <span class="p">{</span><span class="n">c</span><span class="o">:</span> <span class="n">f</span><span class="p">};</span>
+</span><span class='line'>    <span class="n">f</span><span class="p">(</span><span class="o">&amp;</span><span class="n">r</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>As Niko explains, the vector <code>vec</code> is mutated while being traversed by
+an iterator; this is illegal.  The closure <code>|f| { ... }</code> captures
+a reference to <code>vec</code>, and Rust&#39;s borrow checker is not treating the argument
+<code>f</code> as a potential source of aliases to <code>vec</code>, even though it does alias
+<code>vec</code> because <code>f</code> ends up being bound to the closure <code>|f| { ... }</code>.</p>
+
+<p>An important detail here is that the closure in question is
+a stack-allocated closure.</p>
+
+<p>Niko has described his solution to this problem in <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">1</a>; it would
+entail adding some new rules about how <code>&amp;fn</code> closures are invoked
+and passed as parameters.  One of the main changes imposed by his
+solution was that <code>&amp;fn</code> closures would become non-aliasable;
+this would ensure that one could not express the Y-combinator.
+The restriction to ensure <code>&amp;fn</code> closures are unaliasable interacts
+with other proposals, as we shall see.
+(Note that Rust does have a way of expressing a non-aliasable pointer
+to <code>T</code> for any <code>T</code>: <code>&amp;mut T</code>.)</p>
+
+<h2>Background: DST</h2>
+
+<p>The heart of the Dynamically Sized Types proposal is the discrepancy
+described in Niko&#39;s <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">DST, Revisited</a> post from 2013-04-30
+(published contemporaneously with <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">Case of the Recurring Closure</a>).
+Niko has been wrestling with the idea for a while, as one can see on
+his posts from <a href="http://smallcultfollowing.com/babysteps/blog/2012/04/23/vectors-strings-and-slices/">2012-04-23</a> and <a href="http://smallcultfollowing.com/babysteps/blog/2012/04/27/in-favor-of-types-of-unknown-size/">2012-04-27</a>.</p>
+
+<p>In Rust, vectors (and strings, which we will treat as a special case
+of vectors) come in the following forms:</p>
+
+<ul>
+<li>dynamic-length: heap-allocated, carries its length N as part of its
+record structure.  Consists of some amount of meta-data, including
+the length word, followed by the inline-allocated array of N
+elements.  Expressed as <code>~[T]</code> and <code>@[T]</code> in Rust.</li>
+<li>slice: represents a substring of a vector; consists of two words: a
+pointer to the payload, and a length bound.  Expressed as <code>&amp;[T]</code> in Rust.</li>
+<li>fixed-length: represents exactly N elements, where N is statically
+tracked at compile-time.  Consists of just the array of elements,
+<code>T[N]</code>, and nothing more.  Expressed as <code>[T, ..N]</code> in Rust.</li>
+</ul>
+
+<p>Niko points out that a slice&#39;s two-word representation is quite
+different from the representations of the other variants.  His
+proposal is to unify the first two representations, by laying out
+<code>~[T]</code> and <code>@[T]</code> as pairs of words (a pointer to the boxed elements
+array, and a length).
+(Niko claimed that this makes a <code>~[T]</code> and <code>@[T]</code> valid slices, &quot;apart
+from the box header&quot;; it seems to me like the box header is quite
+relevant here, unless the idea is that when you coerce a <code>@[T]</code> to a
+slice, you increment the pointer value accordingly&#8230;)</p>
+
+<p>Then, Niko classifies the types of Rust into two categories: Sized and
+Unsized; i.e., size is statically known, versus size is tracked at
+runtime (maybe the letters S and R would have been more appropriate
+than S and U&#8230;).  The &quot;unsized types&quot; cannot themselves be assigned
+as types of local variables, and you cannot have vectors of elements
+of unsized type; this all stems from the fact that &quot;unsized types&quot; do
+not have a static size.
+(The &quot;unsized types&quot; are arguably not actually types; we might be
+well-served by referring to them as &quot;pretypes&quot; or something).
+But pointers to unsized types are valid types.  Such pointers are the
+pairs of words discussed above, aka &quot;fat pointers&quot;: <code>(payload, meta)</code>,
+where <code>payload</code> is the pointer to the data, and <code>meta</code> is the
+descriptor that includes some way to determine the size of the payload
+(to support runtime bounds checks).</p>
+
+<p>The fact that &quot;unsized types&quot; need to be treated specially leads to a
+complication, discussed further in the post; how to differentiate
+between type-parameterized code that works on both kinds of types,
+versus typed-parameterized code that solely operates on sized types.
+The method proposed in the post is to express the distinction via a
+trait bound: the <code>Sized</code> bound would restrict the type parameter to
+one of statically-known size; you would not be able to express
+types like <code>[X, ..3]</code> (a fixed-length vector of 3 X&#39;es), unless you
+include the bound <code>X:Sized</code>.  (There is more on this restriction
+and ways to ease it further down.)</p>
+
+<p>One of the benefits of DST that Niko proposes early on is that
+Traits and closures are other instances of unsized types, so that
+Rust&#39;s type hierarchy could be presented uniformly like so:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="n">T</span> <span class="o">=</span> <span class="n">S</span>            <span class="c1">// sized types</span>
+</span><span class='line'>  <span class="o">|</span> <span class="n">U</span>            <span class="c1">// unsized types</span>
+</span><span class='line'><span class="n">S</span> <span class="o">=</span> <span class="o">&amp;</span><span class="err">&#39;</span><span class="n">r</span> <span class="n">T</span>        <span class="c1">// region ptr</span>
+</span><span class='line'>  <span class="o">|</span> <span class="o">@</span><span class="n">T</span>           <span class="c1">// managed ptr</span>
+</span><span class='line'>  <span class="o">|</span> <span class="o">~</span><span class="n">T</span>           <span class="c1">// unique ptr</span>
+</span><span class='line'>  <span class="o">|</span> <span class="p">[</span><span class="n">S</span><span class="p">,</span> <span class="p">..</span><span class="n">N</span><span class="p">]</span>     <span class="c1">// fixed-length array</span>
+</span><span class='line'>  <span class="o">|</span> <span class="k">uint</span>         <span class="c1">// scalars</span>
+</span><span class='line'>  <span class="o">|</span> <span class="p">...</span>
+</span><span class='line'><span class="n">U</span> <span class="o">=</span> <span class="p">[</span><span class="n">S</span><span class="p">]</span>          <span class="c1">// vectors</span>
+</span><span class='line'>  <span class="o">|</span> <span class="n">str</span>          <span class="c1">// string</span>
+</span><span class='line'>  <span class="o">|</span> <span class="n">Trait</span>        <span class="c1">// existential (&quot;exists S:Trait.S&quot;)</span>
+</span><span class='line'>  <span class="o">|</span> <span class="k">fn</span><span class="p">(</span><span class="n">S</span><span class="o">*</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>
+</span></code></pre></td></tr></table></div></figure>
+(Note that the actual types assigned to expressions would be instances
+of <code>S</code> according to this grammar.)</p>
+
+<h2>The Problem: DST and Closures</h2>
+
+<p>So, from the &quot;Case of the Recurring Closure&quot;, we saw that
+<code>&amp;fn</code> closures were to become non-copyable.
+But under the DST proposal, generic code should be able to treat <code>&amp;T</code>
+the same for all <code>T</code>, <em>including</em> when <code>T</code> is some <code>fn(S*) -&gt; S</code>.
+These two criteria are not compatible; Niko has lots more explanation
+in his corresponding post:
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/recurring-closures-and-dynamically-sized-types/">&quot;Recurring Closures and Dynamically Sized Types&quot;</a>,
+from 2013-05-13.</p>
+
+<p>Niko&#39;s immediate proposals to resolve this were either:</p>
+
+<ul>
+<li>we write <code>&amp;mut fn</code> instead of <code>&amp;fn</code>.  <code>&amp;mut T</code> for all <code>T</code>
+(including <code>fn (S ...) -&gt; S</code>) is forced to be unaliasable by the
+borrow-checker, and so the hole goes away, or,</li>
+<li>we change notation, and move the sigils for closures <em>after</em> the fn,
+side-stepping the special treatment of <code>&amp;fn</code> versus <code>&amp;T</code> by getting
+rid of <code>&amp;fn</code> and replacing it with <code>fn&amp;</code>.</li>
+</ul>
+
+<h3>Is fn~ too ugly?</h3>
+
+<p>Niko at first favored the latter, then he wrote a second post,
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">&quot;Mutable Fn Alternatives&quot;</a> on 2013-05-13,
+which reconsidered whether <code>fn~</code> is too ugly, and included
+new survey of the options:</p>
+
+<ul>
+<li>Maybe <code>&amp;mut fn</code> is not that bad, or</li>
+<li>Maybe make <em>all</em> closures borrowed (i.e. stack-allocated), removing
+the need for any sigil, or</li>
+<li>Make <code>fn</code> denote stack-allocated closures,
+and replace <code>fn~</code> with a new keyword, like <code>proc</code>.  (This is a variation
+on the previous bullet.)</li>
+</ul>
+
+<p>For the second and third bullets, the main point is: If you need to
+capture state in a manner that cannot be expressed via the available
+options (stack-allocated closure, or a <code>proc</code>, if present), then you
+have to use an trait instead (i.e. an object or a record).
+(I personally am not thrilled about losing the option of using
+closures to express combinator libraries, a use case for <code>fn@</code>.)</p>
+
+<h3>Leveraging a proc keyword/expression</h3>
+
+<p>Then a third post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&quot;Procedures, Continued&quot;</a> from
+2013-05-15, refined the <code>proc</code> proposal a bit further.  As stated in
+the background on closures, Rust has by-reference closures and copying
+closures; the choice of which variant to construct is based on the
+type expected by the context of the <code>|x ...| { ... }</code> expression.
+In this post, Niko proposed that the distinction here deserves a
+starker line between the two forms.  (In that post, he proposed both a
+revision to English jargon and also to the Rust syntax; I&#39;m going to
+focus solely on the Rust syntax changes, and let those guide the
+changes to my own jargon here.)</p>
+
+<p>So Niko proposes distinguishing a by-reference closure from a copying
+closure via keywords.  A stack-allocated closure would be constructed
+solely via <code>fn</code>, and a copying closure would be constructed solely via
+<code>proc</code>.  While discussing this proposal henceforth, I will refer to a
+by-reference closure as an <code>fn</code>-closure and a copying closure as a
+<code>proc</code>-closure.</p>
+
+<p>The type hierarchy that Niko then provides for this is:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="n">T</span> <span class="o">=</span> <span class="n">S</span>               <span class="c1">// sized types</span>
+</span><span class='line'>  <span class="o">|</span> <span class="n">U</span>               <span class="c1">// unsized types</span>
+</span><span class='line'><span class="n">S</span> <span class="o">=</span> <span class="k">fn</span><span class="p">(</span><span class="n">S</span><span class="o"><em></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>     <span class="c1">// closures (</em>)</span>
+</span><span class='line'>  <span class="o">|</span> <span class="o">&amp;</span><span class="err">&#39;</span><span class="n">r</span> <span class="n">T</span>           <span class="c1">// region ptr</span>
+</span><span class='line'>  <span class="o">|</span> <span class="o">@</span><span class="n">T</span>              <span class="c1">// managed ptr</span>
+</span><span class='line'>  <span class="o">|</span> <span class="o">~</span><span class="n">T</span>              <span class="c1">// unique ptr</span>
+</span><span class='line'>  <span class="o">|</span> <span class="p">[</span><span class="n">S</span><span class="p">,</span> <span class="p">..</span><span class="n">N</span><span class="p">]</span>        <span class="c1">// fixed-length array</span>
+</span><span class='line'>  <span class="o">|</span> <span class="k">uint</span>            <span class="c1">// scalars</span>
+</span><span class='line'>  <span class="o">|</span> <span class="p">...</span>
+</span><span class='line'><span class="n">U</span> <span class="o">=</span> <span class="p">[</span><span class="n">S</span><span class="p">]</span>             <span class="c1">// vectors</span>
+</span><span class='line'>  <span class="o">|</span> <span class="n">str</span>             <span class="c1">// string</span>
+</span><span class='line'>  <span class="o">|</span> <span class="n">Trait</span>           <span class="c1">// existential (&quot;exists S:Trait.S&quot;)</span>
+</span><span class='line'>  <span class="o">|</span> <span class="n">proc</span><span class="p">(</span><span class="n">S</span><span class="o"><em></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>   <span class="c1">// procedures (</em>)</span>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>Now, <code>fn</code>-closures are considered <em>sized types</em>, because they are
+always represented by two words: a (borrowed) environment pointer (to
+the stack in Niko&#39;s proposal, though perhaps it could be generalized
+to point elsewhere) and a function pointer.  <code>proc</code>-closures are
+<em>unsized types</em>, because their copied lexical environment is of some
+dynamically-determined size that they must carry in their record
+structure.</p>
+
+<p>In this version of the proposal, <code>proc</code> can now be allocated to either
+the exchange heap (<code>~proc</code>) or the task heap (<code>@proc</code>).  So this
+brings back the ability to express combinator libraries.</p>
+
+<p>Niko&#39;s post provides further detail, such as dissection of the <code>fn</code>
+and <code>proc</code> closure types (which include important details like the
+lifetime and trait <em>bounds</em> for the closed-over variables; this is
+important since with a separate keyword, it is now reasonable for
+different defaults to be chosen for two cases; useful for making the
+common case succinct).  He also describes a couple variations on the
+theme, including modeling <code>proc</code> closures via traits (i.e. boxed
+traits are objects carrying virtual method dispatch tables), and then
+expressing them via a <code>proc!</code> macro (which means they could be left
+out of the core language).</p>
+
+<h3>Other ways to express proc</h3>
+
+<p>In his next post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">&quot;Removing Procs&quot;</a>, Niko elaborates further
+on the idea that <code>proc</code> need not be supported in the language at all.
+Stack-allocated <code>fn</code>-closures would remain, expressed via <code>fn(S ...) -&gt; T</code>,
+and the language already supports raw (environment-less) function
+pointers via <code>extern &quot;ABI&quot; fn(S ...) -&gt; T</code>.
+Niko points out two ways to re-express copying closures:</p>
+
+<ol>
+<li>One could pass around function pointers along with
+records that carry the captured environment; this is basically
+<a href="http://matt.might.net/articles/closure-conversion/">lambda-lifting</a> (the variant that turns the free variables
+into fields of a single environment structure, rather than passing each
+variable as a separate parameter), or</li>
+<li>As stated earlier, (boxed) traits can used to express copying
+closures.</li>
+</ol>
+
+<p>Niko surveyed how these patterns would look in his post, by considered
+existing use cases of <code>@fn</code> and <code>~fn</code> in the standard libraries,
+namely task spawning and futures.  Without more language support, the
+lambda-lifting transformation requires that one list the captures
+variables (at least once, though further repetitions can be avoided
+via appropriate macro definitions).  I am personally hesistant to
+approve of removing non stack-allocated closures wholesale, though
+<em>if</em> it turns out that capture clauses are essentially unavoidable (or
+if understanding behavior without them is unworkable), then my main
+problem with the <code>proc!</code> macros (the explicit list of free variables)
+would go away.</p>
+
+<p>Alternatively, if the macro system were somehow extended to allow a
+macro to query an expression for its free variables, then that might
+help.</p>
+
+<h4>A Personal Digression on Macros</h4>
+
+<p>Actually, this latter idea brings up a problem with the explicit list
+of captured variables that I had not thought of before: some macros
+may intentionally inject references to free variables, where the
+injected free variables are not meant to be part of the public
+interface of the macro (i.e., the macro is enforcing some protocol of
+usage, and the variable is meant to be otherwise private to the module
+where the macro is defined).  I know we do not currently have macros
+exported from modules, but I thought it was supposed to be part of the
+long term plans for Rust.</p>
+
+<ul>
+<li><p>Do we intend to disallow the use of such macros within copying closures?</p></li>
+<li><p>Will we require the modules to expose those variable names, solely
+so that they can be included on the lists of free variables?</p></li>
+<li><p>Or, if a macro could query an expression for its free variables
+(where even module-private identifiers might be included on such
+a list), that might help impose a usage discipline that would
+support a <code>proc!</code> macro,</p></li>
+<li><p>Or, this whole example might serve as an argument for keeping
+copying closures as a primitive linguistic construct.</p></li>
+</ul>
+
+<p>Okay, end of digression.</p>
+
+<h3>More followups on procs and fns</h3>
+
+<p>A few days passed, then Niko had a fourth post,
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">&quot;More on Fns&quot;</a>, from 2013-06-03.
+This proposal renamed of a proposed <code>Task</code> trait to <code>Thunk</code>, since
+Niko felt that the concept at hand (an encapsulated function and the
+parameters it needs) is better reflected by that name.</p>
+
+<p>More importantly, given the immediately preceding digression, the form
+<code>thunk { ... }</code> would automatically determine the captured variables
+instead of requiring an explicit list; this sidesteps the whole question
+of how to handle macros that inject new free variable references.</p>
+
+<p>There is then much discussion of whether or not to support <code>once fn</code>s,
+which I won&#39;t summarize here.  The important detail of the post is
+that we do not necessarily have to list the captured variables
+explicitly.</p>
+
+<p>After a few more days, Niko had a followup on the related topic of
+dynamically sized types (DST), <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">&quot;Reducing DST Annotation&quot;</a>, from
+2013-06-06.  It took into account an <a href="https://github.com/mozilla/rust/issues/6308#issuecomment-18880575">investigation</a> by Ben Blum
+on the implications of a <code>Sized</code> trait bound.  This led to Niko
+exploring some alternatives to adopting DST with a <code>Sized</code> bound:</p>
+
+<ul>
+<li>Abandon DST altogether: Niko summarizes what DST still buys us, but
+also points out where it does not live up to its original promises.</li>
+<li>Make type parameters default to <code>Sized</code>, and adopt a different
+syntactic mechanism to distinguish <code>Sized</code> from <code>Unsized</code> (such as
+a keyword).</li>
+<li>Use some sort of inference: the type-checker can use properties
+of a function&#39;s parameter list to provide feedback
+on whether the type parameter has an implicit <code>Sized</code> bound.
+(Niko wonders if this approach is too clever; I am inclined to
+affirm that it is.)</li>
+</ul>
+
+<h2>So where are we?</h2>
+
+<p>The above summarizes the series of blog posts from Niko.  I had hoped
+to get through the actual proposals (and maybe also the team meeting
+notes), but at this point, it is late enough in the day and this post
+is long enough that I think I will stop here.</p>
+
+<p>The language is young, and I am a Rust novice.  So, grains of salt
+for everyone:</p>
+
+<ul>
+<li>My intuition is that we should leave in copying closures in some form.</li>
+<li>The <code>thunk { ... }</code> expression might suffice, but &#8230; I am not yet
+convinced that I would be satisfied using boxed traits
+to express the cases that need input arguments (like combinator
+libraries).</li>
+<li>I am not thrilled by the idea of writing out lists of free
+variables.  Of course, this is a systems programming language,
+and such a list may simply be the simplest way to accomplish
+certain goals (e.g. to indicate whether a referenced value
+is moved or copied).</li>
+<li>If we do require a list of free variables in our copying
+<code>proc</code>/<code>thunk</code>/etc, please ensure that the question of free
+variables injected by macro invocations is addressed.</li>
+</ul>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1814,6 +2299,10 @@ for this with Octopress.</p></li>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing syntax for associated items in Rust</a>
       </li>
     
@@ -1827,10 +2316,6 @@ for this with Octopress.</p></li>
     
       <li class="post">
         <a href="/blog/2013/01/29/implicit-versus-explicit-finalization/">Implicit versus Explicit Finalization</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2013/01/08/resurrected-hello-again-world/">Resurrected (Hello Again World)</a>
       </li>
     
   </ul>
