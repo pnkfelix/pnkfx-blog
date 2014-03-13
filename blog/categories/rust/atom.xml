@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2014-03-13T14:30:46+01:00</updated>
+  <updated>2014-03-13T14:36:12+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -136,7 +136,7 @@ to <code>&lt;type T:Sized+Bounds&gt;</code></p>
 <p>I admit, when I first wrote this, I said &quot;hmm, this looks a bit like
 C++, is that a problem?&quot;  But I&#39;m coming to like it.  The biggest
 problem I can foresee is that a developer might be confused about when
-they are suppposed to write foo<type T> versus foo<T>.  But chances
+they are suppposed to write <code>foo&lt;type T&gt;</code> versus <code>foo&lt;T&gt;</code>.  But chances
 are that someone who does not understand the distinction will <em>not</em>
 suffer if they just guess the answer; if they over-generalize, either:</p>
 
