@@ -123,7 +123,7 @@ to `<type T:Sized+Bounds>`
 I admit, when I first wrote this, I said "hmm, this looks a bit like
 C++, is that a problem?"  But I'm coming to like it.  The biggest
 problem I can foresee is that a developer might be confused about when
-they are suppposed to write foo<type T> versus foo<T>.  But chances
+they are suppposed to write `foo<type T>` versus `foo<T>`.  But chances
 are that someone who does not understand the distinction will *not*
 suffer if they just guess the answer; if they over-generalize, either:
 
@@ -134,9 +134,10 @@ suffer if they just guess the answer; if they over-generalize, either:
 
  * the compiler will flag a problem in their code, in which case
    hopefully our error messages will suggest to add a `:Sized` bound
-   or to just not use `type` in the binding for `T`.  If they
-   under-generalize, then they will discover the problem when they
-   apply `foo`.
+   or to just not use `type` in the binding for `T`.
+
+If they under-generalize, then they (or their library's clients) will
+discover the problem when they apply `foo`.
 
 For the trait case, it is a little less obvious what to do.
 I think we could likewise write:
