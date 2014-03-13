@@ -918,9 +918,31 @@ sys	0m0.080s
      reconstructing a parse-tree from a completed computation.
 
 ** Rust
+   CLOCK: [2013-07-07 Sun 19:12]
+   CLOCK: [2013-07-07 Sun 18:45]--[2013-07-07 Sun 19:12] =>  0:27
+   CLOCK: [2013-07-07 Sun 16:49]--[2013-07-07 Sun 18:00] =>  1:11
+   CLOCK: [2013-05-26 Sun 16:10]--[2013-05-26 Sun 17:21] =>  1:11
    CLOCK: [2013-02-20 Wed 22:55]--[2013-02-20 Wed 23:25] =>  0:30
    CLOCK: [2013-02-20 Wed 22:51]--[2013-02-20 Wed 22:53] =>  0:02
 
+   * getting self back into groove with earley.rs
+
+   * and remembering that I got hung up on wanting Associated Items before
+
+   * I keep encountering cyclic dependencies between the idealized
+     versions of the hacks I want to work on.
+
+** Lets learn curses (or ncurses or pdcurses)
+   CLOCK: [2013-05-26 Sun 23:41]--[2013-05-27 Mon 01:29] =>  1:48
+   CLOCK: [2013-05-26 Sun 20:12]--[2013-05-26 Sun 22:26] =>  2:14
+   CLOCK: [2013-05-26 Sun 18:55]--[2013-05-26 Sun 19:29] =>  0:34
+   CLOCK: [2013-05-26 Sun 17:21]--[2013-05-26 Sun 17:39] =>  0:18
+
+   * or even about hooking them up via the Rust FFI
+
+   * Sweet, I eventually managed to learn about both.
+     I've checkpointed that work at:
+       https://github.com/pnkfelix/rust-curses
 
 * Unicode
 ** Looking at various characters
