@@ -31,8 +31,6 @@ __docformat__ = 'restructuredtext'
 
 __all__ = ['lex', 'format', 'highlight']
 
-raise "Hell"
-
 import sys
 
 from pygments.util import StringIO, BytesIO
