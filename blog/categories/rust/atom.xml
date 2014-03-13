@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2014-03-13T14:37:55+01:00</updated>
+  <updated>2014-03-13T16:26:50+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -199,7 +199,8 @@ being that of a type to being some value within a type.)</p>
 <h2 id="toc_2"><a id="the_examples">Examples ported from DST, Take 5</a></h2>
 
 <p>Here are the ported definitions of <code>Rc</code> and <code>RcData</code>.
-```rust
+(Update: had to turn off syntax highlighting to work-around a rendering bug on <code>*</code>.)
+```text
 struct Rc<type T> {
     ptr: *RcData<T>,
     // (a dummy field, just for illustrative purposes)

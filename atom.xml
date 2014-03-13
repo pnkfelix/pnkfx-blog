@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2014-03-13T14:37:55+01:00</updated>
+  <updated>2014-03-13T16:26:50+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -208,6 +208,7 @@ being that of a type to being some value within a type.)</p>
 <h2 id="toc_2"><a id="the_examples">Examples ported from DST, Take 5</a></h2>
 
 <p>Here are the ported definitions of <code>Rc</code> and <code>RcData</code>.
+(Update: had to turn off syntax highlighting to work-around a rendering bug on <code>*</code>.)
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -229,27 +230,27 @@ being that of a type to being some value within a type.)</p>
 <span class='line-number'>19</span>
 <span class='line-number'>20</span>
 <span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">struct</span> <span class="n">Rc</span><span class="o">&lt;</span><span class="k">type</span> <span class="n">T</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">ptr</span><span class="o">:</span> <span class="o"><em></span><span class="n">RcData</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span>
-</span><span class='line'>    <span class="c1">// (a dummy field, just for illustrative purposes)</span>
-</span><span class='line'>    <span class="n">dummy</span><span class="o">:</span> <span class="kt">uint</span><span class="p">,</span>
-</span><span class='line'><span class="p">}</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>struct Rc&lt;type T&gt; {
+</span><span class='line'>    ptr: *RcData&lt;T&gt;,
+</span><span class='line'>    // (a dummy field, just for illustrative purposes)
+</span><span class='line'>    dummy: uint,
+</span><span class='line'>}
 </span><span class='line'>
-</span><span class='line'><span class="k">struct</span> <span class="n">RcData</span><span class="o">&lt;</span><span class="k">type</span> <span class="n">T</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">ref_count</span><span class="o">:</span> <span class="kt">uint</span><span class="p">,</span>
+</span><span class='line'>struct RcData&lt;type T&gt; {
+</span><span class='line'>    ref_count: uint,
 </span><span class='line'>
-</span><span class='line'>    <span class="cp">#[max_alignment]</span>
-</span><span class='line'>    <span class="n">data</span><span class="o">:</span> <span class="n">T</span>
-</span><span class='line'><span class="p">}</span>
+</span><span class='line'>    #[max_alignment]
+</span><span class='line'>    data: T
+</span><span class='line'>}
 </span><span class='line'>
-</span><span class='line'><span class="k">impl</span><span class="o">&lt;</span><span class="k">type</span> <span class="n">T</span><span class="o">&gt;</span> <span class="nb">Drop</span> <span class="k">for</span> <span class="n">Rc</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">fn</span> <span class="nb">drop</span><span class="o">&lt;</span><span class="nl">&#39;a</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">&#39;a</span> <span class="k">mut</span> <span class="bp">self</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">unsafe</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">intrinsics</span><span class="o">::</span><span class="nb">drop</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="p">(</span><span class="o"></em></span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">).</span><span class="n">data</span><span class="p">);</span>
-</span><span class='line'>            <span class="n">libc</span><span class="o">::</span><span class="n">free</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">);</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
+</span><span class='line'>impl&lt;type T&gt; Drop for Rc&lt;T&gt; {
+</span><span class='line'>    fn drop&lt;&#39;a&gt;(&amp;&#39;a mut self) {
+</span><span class='line'>        unsafe {
+</span><span class='line'>            intrinsics::drop(&amp;mut (*self.ptr).data);
+</span><span class='line'>            libc::free(self.ptr);
+</span><span class='line'>        }
+</span><span class='line'>    }
+</span><span class='line'>}
 </span></code></pre></td></tr></table></div></figure></p>
 
 <p>Here is the <code>ImmDeref</code> example:
