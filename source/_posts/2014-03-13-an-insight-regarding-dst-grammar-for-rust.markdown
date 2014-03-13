@@ -185,9 +185,10 @@ being that of a type to being some value within a type.)
 ## <a id="the_examples">Examples ported from DST, Take 5</a>
 
 Here are the ported definitions of `Rc` and `RcData`.
-```rust
+(Update: had to turn off syntax highlighting to work-around a rendering bug on `*`.)
+```text
 struct Rc<type T> {
-    ptr: *RcData<T>,
+    ptr: \*RcData<T>,
     // (a dummy field, just for illustrative purposes)
     dummy: uint,
 }
