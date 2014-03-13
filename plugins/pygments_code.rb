@@ -5,7 +5,7 @@ require 'digest/md5'
 PYGMENTS_CACHE_DIR = File.expand_path('../../.pygments-cache', __FILE__)
 FileUtils.mkdir_p(PYGMENTS_CACHE_DIR)
 
-Pygments.start('../custom-pygments/pygments')
+Pygments.start(File.expand_path('../../custom-pygments', __FILE__))
 
 module HighlightCode
   def highlight(str, lang)
