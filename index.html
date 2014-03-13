@@ -232,10 +232,11 @@ library when they may have wished they had imposed the <code>Sized</code>
 bound, or</p></li>
 <li><p>the compiler will flag a problem in their code, in which case
 hopefully our error messages will suggest to add a <code>:Sized</code> bound
-or to just not use <code>type</code> in the binding for <code>T</code>.  If they
-under-generalize, then they will discover the problem when they
-apply <code>foo</code>.</p></li>
+or to just not use <code>type</code> in the binding for <code>T</code>.</p></li>
 </ul>
+
+<p>If they under-generalize, then they (or their library&#39;s clients) will
+discover the problem when they apply <code>foo</code>.</p>
 
 <p>For the trait case, it is a little less obvious what to do.
 I think we could likewise write:

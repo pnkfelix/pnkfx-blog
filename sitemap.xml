@@ -17,16 +17,8 @@
         <lastmod>2013-01-31T14:55:33+01:00</lastmod>
     </url>
     <url>
-        <loc>http://blog.pnkfx.org/blog/2013/02/16/earley-parsing-variety-show/</loc>
-        <lastmod>2013-04-22T15:01:54+02:00</lastmod>
-    </url>
-    <url>
         <loc>http://blog.pnkfx.org/blog/2013/03/26/rusty-chain-puzzle-1/</loc>
         <lastmod>2013-03-26T16:27:33+01:00</lastmod>
-    </url>
-    <url>
-        <loc>http://blog.pnkfx.org/blog/2013/04/06/dialogue-1-with-rustc-count-cards/</loc>
-        <lastmod>2013-04-12T16:51:40+02:00</lastmod>
     </url>
     <url>
         <loc>
@@ -45,10 +37,6 @@
         <lastmod>2013-06-07T20:01:28+02:00</lastmod>
     </url>
     <url>
-        <loc>http://blog.pnkfx.org/blog/2013/06/19/codesigning-a-self-built-gdb-on-mac-os-x/</loc>
-        <lastmod>2014-03-13T12:04:33+01:00</lastmod>
-    </url>
-    <url>
         <loc>
             http://blog.pnkfx.org/blog/2014/03/13/meta-updating-octopress-post-mavericks-upgrade/
         </loc>
@@ -58,15 +46,15 @@
         <loc>
             http://blog.pnkfx.org/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/
         </loc>
-        <lastmod>2014-03-13T14:36:09+01:00</lastmod>
+        <lastmod>2014-03-13T14:37:35+01:00</lastmod>
     </url>
     <url>
         <loc>http://blog.pnkfx.org/blog/archives/</loc>
-        <lastmod>2014-03-13T14:36:09+01:00</lastmod>
+        <lastmod>2014-03-13T14:37:35+01:00</lastmod>
     </url>
     <url>
         <loc>http://blog.pnkfx.org/</loc>
-        <lastmod>2014-03-13T14:36:09+01:00</lastmod>
+        <lastmod>2014-03-13T14:37:35+01:00</lastmod>
     </url>
     <url>
         <loc>http://blog.pnkfx.org/robots.txt</loc>
