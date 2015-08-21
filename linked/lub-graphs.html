@@ -17,18 +17,17 @@
 
   <script>
     function r(t, x) {
-	var g = Viz(x, "svg");
-	var c = "<code>" + x.replace(/\>/g, "&gt;") + "</code>"
-	return "<p>" + t + " " + c + " " + g + "</p>";
-    }
+    return "<p>" + t + "<code>" + x.replace(/>/g, "&gt;") +
+        "</code>" + Viz(x, "svg") + "</p>";
+    } // <
   </script>
   <script>
     var graphs = [
-	"digraph { a -> c -> d; b -> d; }",
-	"digraph { a -> c -> d; d -> c; a -> d; b -> d; }",
-	"digraph { a -> c -> d; d -> c; b -> d; b -> c; }",
-	"digraph { a -> c -> d -> e -> c; b -> d; b -> e; }",
-	"digraph { a -> c -> d -> e -> c; a -> d; b -> e; }" 
+    "digraph { a -> c -> d; b -> d; }",
+    "digraph { a -> c -> d; d -> c; a -> d; b -> d; }",
+    "digraph { a -> c -> d; d -> c; b -> d; b -> c; }",
+    "digraph { a -> c -> d -> e -> c; b -> d; b -> e; }",
+    "digraph { a -> c -> d -> e -> c; a -> d; b -> e; }" 
     ];
 
     document.body.innerHTML += r("Sample 1", graphs[0]);
