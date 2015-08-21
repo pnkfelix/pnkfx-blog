@@ -16,12 +16,6 @@
   for it to do the rendering.)</p>
 
   <script>
-    function r(t, x) {
-    return "<p>" + t + "<code>" + x.replace(/>/g, "&gt;") +
-        "</code>" + Viz(x, "svg") + "</p>";
-    } // <
-  </script>
-  <script>
     var graphs = [
     "digraph { a -> c -> d; b -> d; }",
     "digraph { a -> c -> d; d -> c; a -> d; b -> d; }",
@@ -29,12 +23,17 @@
     "digraph { a -> c -> d -> e -> c; b -> d; b -> e; }",
     "digraph { a -> c -> d -> e -> c; a -> d; b -> e; }" 
     ];
-
-    document.body.innerHTML += r("Sample 1", graphs[0]);
-    document.body.innerHTML += r("Sample 2", graphs[1]);
-    document.body.innerHTML += r("Sample 3", graphs[2]);
-    document.body.innerHTML += r("Sample 4", graphs[3]);
-    document.body.innerHTML += r("Sample 5", graphs[4]);
+    document.body.innerHTML += "<p>Sample 1";
+    document.body.innerHTML += Viz(graphs[0], "svg");
+    document.body.innerHTML += "</p><p>Sample 2";
+    document.body.innerHTML += Viz(graphs[1], "svg");
+    document.body.innerHTML += "</p><p>Sample 3";
+    document.body.innerHTML += Viz(graphs[2], "svg");
+    document.body.innerHTML += "</p><p>Sample 4";
+    document.body.innerHTML += Viz(graphs[3], "svg");
+    document.body.innerHTML += "</p><p>Sample 5";
+    document.body.innerHTML += Viz(graphs[4], "svg");
+    document.body.innerHTML += "</p>";
   </script>
 
   <!--
