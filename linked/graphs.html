@@ -11,7 +11,8 @@ Hello world.
   After viz script load.
 
   <script>
-    document.body.innerHTML += "Sample addition.";
+    document.body.innerHTML += "<p>Sample addition.</p>";
+    document.body.innerHTML += Viz("digraph { a -> b; }", "svg");
   </script>
 
   <!--
