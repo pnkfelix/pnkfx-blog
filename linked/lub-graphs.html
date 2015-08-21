@@ -13,11 +13,11 @@
 
   <script>
     var graphs = [
-    "a -> c -> d; b -> d;",
-    "a -> c -> d; d -> c; a -> d; b -> d;",
-    "a -> c -> d; d -> c; b -> d; b -> c;",
-    "a -> c -> d -> e -> c; b -> d; b -> e;",
-    "a -> c -> d -> e -> c; a -> d; b -> e;"
+    "digraph { a -> c -> d; b -> d; }",
+    "digraph { a -> c -> d; d -> c; a -> d; b -> d; }",
+    "digraph { a -> c -> d; d -> c; b -> d; b -> c; }",
+    "digraph { a -> c -> d -> e -> c; b -> d; b -> e; }",
+    "digraph { a -> c -> d -> e -> c; a -> d; b -> e; }" 
     ];
     document.body.innerHTML += "<p>Sample 1";
     document.body.innerHTML += Viz(graphs[0], "svg");
