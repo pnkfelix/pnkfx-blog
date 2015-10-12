@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-10-12T14:19:39+02:00</updated>
+  <updated>2015-10-12T14:20:14+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,14 +12,6 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
-  
-  <entry>
-    <title type="html"><![CDATA[Drawing pictures of mountain tops]]></title>
-    <link href="http://blog.pnkfx.org/blog/2015/10/12/drawing-pictures-of-mountain-tops/"/>
-    <updated>2015-10-12T14:10:00+02:00</updated>
-    <id>http://blog.pnkfx.org/blog/2015/10/12/drawing-pictures-of-mountain-tops</id>
-    <content type="html"><![CDATA[]]></content>
-  </entry>
   
   <entry>
     <title type="html"><![CDATA[Detective Work on Rust Closures]]></title>
