@@ -1,0 +1,615 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Updating Octopress post-Mavericks upgrade. - The {pnk}f(eli)x Blog</title>
+  <meta name="author" content="Felix S. Klock II">
+
+  
+  <meta name="description" content="I decided this morning to write a blog post related to Rust. I have
+not posted to this blog in months, and in the meantime I had upgraded
+this &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://blog.pnkfx.org/blog/2014/03/13/meta-updating-octopress-post-mavericks-upgrade/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="The {pnk}f(eli)x Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">The {pnk}f(eli)x Blog</a></h1>
+  
+    <h2>The informal ramblings of an ex-pat PL enthusiast</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:blog.pnkfx.org" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Updating Octopress post-Mavericks Upgrade.</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-03-13T06:18:00+01:00" pubdate data-updated="true">13 March 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I decided this morning to write a blog post related to Rust.  I have
+not posted to this blog in months, and in the meantime I had upgraded
+this computer at home to Mac OS X Mavericks (10.9.2).</p>
+
+<p>So of course my existing set of commands for Octopress workflow did
+not work.</p>
+
+<p>At first there were dependencies like <code>chunky_png-1.2.7</code> that had to
+be satisfied (re-installed, I assume; I am pretty sure I blew away my
+previous Homebrew setup during the upgrade; I do not know how much
+that overlaps with Ruby&#39;s package management system).</p>
+
+<p>The few step was just blind following of the suggestions made by my
+tools: <code>rake</code> suggests to run <code>bundle install</code>, and I comply.  And the results
+seem promising:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>% rake generate
+</span><span class='line'>Could not find chunky_png-1.2.7 in any of the sources
+</span><span class='line'>Run `bundle install` to install missing gems.
+</span><span class='line'>% bundle install
+</span><span class='line'>Fetching gem metadata from <a href="http://rubygems.org/">http://rubygems.org/</a>.......
+</span><span class='line'>Fetching gem metadata from <a href="http://rubygems.org/">http://rubygems.org/</a>..
+</span><span class='line'>Using rake (0.9.6)
+</span><span class='line'>Using RedCloth (4.2.9)
+</span><span class='line'>Installing chunky_png (1.2.7)
+</span><span class='line'>Using fast-stemmer (1.0.2)
+</span><span class='line'>Using classifier (1.3.3)
+</span><span class='line'>Using fssm (0.2.10)
+</span><span class='line'>Installing sass (3.2.5)
+</span><span class='line'>Using compass (0.12.2)
+</span><span class='line'>Using directory_watcher (1.4.1)
+</span><span class='line'>Installing haml (3.1.8)
+</span><span class='line'>Installing kramdown (0.13.8)
+</span><span class='line'>Installing liquid (2.3.0)
+</span><span class='line'>Using syntax (1.0.0)
+</span><span class='line'>Using maruku (0.6.1)
+</span><span class='line'>Using posix-spawn (0.3.6)
+</span><span class='line'>Using yajl-ruby (1.1.0)
+</span><span class='line'>Installing pygments.rb (0.3.7)
+</span><span class='line'>Installing jekyll (0.12.0)
+</span><span class='line'>Installing rack (1.4.5)
+</span><span class='line'>Installing rack-protection (1.3.2)
+</span><span class='line'>Using rb-fsevent (0.9.3)
+</span><span class='line'>Using rdiscount (1.6.8)
+</span><span class='line'>Using redcarpet (2.2.2)
+</span><span class='line'>Using rubypants (0.2.0)
+</span><span class='line'>Installing tilt (1.3.3)
+</span><span class='line'>Installing sinatra (1.3.4)
+</span><span class='line'>Installing stringex (1.4.0)
+</span><span class='line'>Using bundler (1.3.5)
+</span><span class='line'>Your bundle is complete!
+</span><span class='line'>Use `bundle show [gemname]` to see where a bundled gem is installed.
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>But I
+balked on the second step:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>% rake generate
+</span><span class='line'>rake aborted!
+</span><span class='line'>You have already activated rake 10.1.0, but your Gemfile requires rake 0.9.6. Using bundle exec may solve this.
+</span><span class='line'>/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:2:in `&lt;top (required)&gt;&#39;
+</span><span class='line'>(See full trace by running task with --trace)
+</span><span class='line'>% bundle exec
+</span><span class='line'>bundler: exec needs a command to run
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>I did not understand what <code>bundle exec</code> meant here, so I did not do the &quot;obvious thing&quot;, which apparently is to re-run generate but within bundle, like so:
+<code>% bundle exec rake generate</code></p>
+
+<p>Instead I fumbled around trying to figure out what my situation was
+with respect to <code>rake:</code> do I need to downgrade to a previous version?
+Or do I need to upgraade its subcomponents, and/or my whole site
+configuration?</p>
+
+<p>The first things I learned from a couple web interactions:</p>
+
+<p>From <a href="http://stackoverflow.com/questions/17474969/you-have-already-activated-rake-0-9-6-but-your-gemfile-requires-rake-10-1-0-us">stackoverflow</a>
+I learned:</p>
+
+<ul>
+<li><p>You can find out what version(s) of a gem you have install, with
+the relatively obvious <code>gem list</code> command:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>% gem list rake
+</span><span class='line'>
+</span><span class='line'>*** LOCAL GEMS ***
+</span><span class='line'>
+</span><span class='line'>rake (10.1.0, 0.9.6)
+</span></code></pre></td></tr></table></div></figure></p></li>
+<li><p>You can also remove particular versions of a gem, with the <code>gem
+uninstall</code> command:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>% gem uninstall rake
+</span><span class='line'>
+</span><span class='line'>Select gem to uninstall:
+</span><span class='line'> 1. rake-0.9.6
+</span><span class='line'> 2. rake-10.1.0
+</span><span class='line'> 3. All versions
+</span><span class='line'>&gt; 1
+</span><span class='line'>Successfully uninstalled rake-0.9.6
+</span></code></pre></td></tr></table></div></figure></p></li>
+</ul>
+
+<p>But these facts and this process did not actually help, because I
+still needed <code>rake-0.9.6</code> for my site configuration, for some reason I
+have not yet determined (mostly due to lack of trying).</p>
+
+<p>I then did some more guessing and followed some false paths, like
+reinstalling the <code>bundler</code> gem, uninstalling and reinstalling rake
+(which effectively led to me replacing rake-10.1.0 with rake-10.1.1).</p>
+
+<p>At some point I ran this:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>% bundle update rake
+</span><span class='line'>Fetching gem metadata from <a href="http://rubygems.org/">http://rubygems.org/</a>........
+</span><span class='line'>Fetching gem metadata from <a href="http://rubygems.org/">http://rubygems.org/</a>..
+</span><span class='line'>Resolving dependencies...
+</span><span class='line'>Installing rake (0.9.6)
+</span><span class='line'>Using RedCloth (4.2.9)
+</span><span class='line'>Using chunky_png (1.2.7)
+</span><span class='line'>Using fast-stemmer (1.0.2)
+</span><span class='line'>Using classifier (1.3.3)
+</span><span class='line'>Using fssm (0.2.10)
+</span><span class='line'>Using sass (3.2.5)
+</span><span class='line'>Using compass (0.12.2)
+</span><span class='line'>Using directory_watcher (1.4.1)
+</span><span class='line'>Using haml (3.1.8)
+</span><span class='line'>Using kramdown (0.13.8)
+</span><span class='line'>Using liquid (2.3.0)
+</span><span class='line'>Using syntax (1.0.0)
+</span><span class='line'>Using maruku (0.6.1)
+</span><span class='line'>Using posix-spawn (0.3.6)
+</span><span class='line'>Using yajl-ruby (1.1.0)
+</span><span class='line'>Using pygments.rb (0.3.7)
+</span><span class='line'>Using jekyll (0.12.0)
+</span><span class='line'>Using rack (1.4.5)
+</span><span class='line'>Using rack-protection (1.3.2)
+</span><span class='line'>Using rb-fsevent (0.9.3)
+</span><span class='line'>Using rdiscount (1.6.8)
+</span><span class='line'>Using redcarpet (2.2.2)
+</span><span class='line'>Using rubypants (0.2.0)
+</span><span class='line'>Using tilt (1.3.3)
+</span><span class='line'>Using sinatra (1.3.4)
+</span><span class='line'>Using stringex (1.4.0)
+</span><span class='line'>Using bundler (1.3.5)
+</span><span class='line'>Your bundle is updated!
+</span></code></pre></td></tr></table></div></figure>
+but I still got the error:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>% rake generate
+</span><span class='line'>rake aborted!
+</span><span class='line'>You have already activated rake 10.1.1, but your Gemfile requires rake 0.9.6. Using bundle exec may solve this.
+</span><span class='line'>/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:2:in `&lt;top (required)&gt;&#39;
+</span><span class='line'>(See full trace by running task with --trace)
+</span></code></pre></td></tr></table></div></figure>
+and this is when I finally saw that I had to do:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>% bundle exec rake generate
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>Except that this did not solve everything:
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>% bundle exec rake generate
+</span><span class='line'>## Generating Site with Jekyll
+</span><span class='line'>unchanged sass/screen.scss
+</span><span class='line'>Configuration from /Users/pnkfelix/Dev/Sites/pnkfx-blog/_config.yml
+</span><span class='line'>Building site: source -&gt; public
+</span><span class='line'>YAML Exception reading 2013-04-12-better-command-completion-in-bash-aka-resolving-zsh-envy.markdown: invalid byte sequence in US-ASCII
+</span><span class='line'>/Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/backtick_code_block.rb:13:in `gsub&#39;: invalid byte sequence in US-ASCII (ArgumentError)
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/backtick_code_block.rb:13:in `render_code_block&amp;#39;
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/octopress_filters.rb:12:in `pre_filter&#39;
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/octopress_filters.rb:28:in `pre_render&#39;
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:112:in `block in pre_render&#39;
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:111:in `each&#39;
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:111:in `pre_render&#39;
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:166:in `do_layout&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/post.rb:195:in `render&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:200:in `block in render&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:199:in `each&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:199:in `render&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:41:in `process&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/bin/jekyll:264:in `&lt;top (required)&gt;&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/bin/jekyll:23:in `load&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/bin/jekyll:23:in `&lt;main&gt;&#39;
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>Another web search brought me to a <a href="http://otfusion.org/blog/2013/10/27/os-x-mavericks/">post by a fellow Mavericks user</a> who seems to have a similar attitude to my own about ruby development.
+And from that I found the full command I needed
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>% LANG=en_US.utf-8 bundle exec rake generate
+</span><span class='line'>## Generating Site with Jekyll
+</span><span class='line'>unchanged sass/screen.scss
+</span><span class='line'>Configuration from /Users/pnkfelix/Dev/Sites/pnkfx-blog/_config.yml
+</span><span class='line'>Building site: source -&gt; public
+</span><span class='line'>Successfully generated site: source -&gt; public
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>And here we are!</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Felix S. Klock II</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-03-13T06:18:00+01:00" pubdate data-updated="true">13 March 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/octopress/'>octopress</a>, <a class='category' href='/blog/categories/osx/'>osx</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://blog.pnkfx.org/blog/2014/03/13/meta-updating-octopress-post-mavericks-upgrade/" data-via="pnkfelix" data-counturl="http://blog.pnkfx.org/blog/2014/03/13/meta-updating-octopress-post-mavericks-upgrade/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/06/07/detective-work-on-rust-closures/" title="Previous Post: Detective Work on Rust Closures">&laquo; Detective Work on Rust Closures</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/" title="Next Post: An insight regarding DST grammar for Rust">An insight regarding DST grammar for Rust &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/">An insight regarding DST grammar for Rust</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/03/13/meta-updating-octopress-post-mavericks-upgrade/">Updating Octopress post-Mavericks upgrade.</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing syntax for associated items in Rust</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy/">Better command completion in bash on OS X</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/pnkfelix">@pnkfelix</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'pnkfelix',
+            count: 4,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <li class="loading">Status updating...</li>
+  </ul>
+  <script type="text/javascript">
+    $.domReady(function(){
+      getTwitterFeed("pnkfelix", 4, false);
+    });
+  </script>
+  <script src="/javascripts/twitter.js" type="text/javascript"> </script>
+  
+    <a href="http://twitter.com/pnkfelix" class="twitter-follow-button" data-show-count="false">Follow @pnkfelix</a>
+  
+</section>
+
+
+<section>
+  <h1>On Delicious</h1>
+  <div id="delicious"></div>
+  <script type="text/javascript" src="http://feeds.delicious.com/v2/json/pnkfelix?count=3&amp;sort=date&amp;callback=renderDeliciousLinks"></script>
+  <p><a href="http://delicious.com/pnkfelix">My Delicious Bookmarks &raquo;</a></p>
+</section>
+
+
+<section class="googleplus">
+  <h1>
+    <a href="https://plus.google.com/pnkfelix?rel=author">
+      <img src="http://www.google.com/images/icons/ui/gprofile_button-32.png" width="32" height="32">
+      Google+
+    </a>
+  </h1>
+</section>
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Felix S. Klock II -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'pnkfx-blog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://blog.pnkfx.org/blog/2014/03/13/meta-updating-octopress-post-mavericks-upgrade/';
+        var disqus_url = 'http://blog.pnkfx.org/blog/2014/03/13/meta-updating-octopress-post-mavericks-upgrade/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
