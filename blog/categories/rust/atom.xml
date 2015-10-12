@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2014-03-13T16:26:50+01:00</updated>
+  <updated>2015-10-12T14:06:30+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,236 +12,6 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
-  
-  <entry>
-    <title type="html"><![CDATA[An insight regarding DST grammar for Rust]]></title>
-    <link href="http://blog.pnkfx.org/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/"/>
-    <updated>2014-03-13T07:04:00+01:00</updated>
-    <id>http://blog.pnkfx.org/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust</id>
-    <content type="html"><![CDATA[<p>Executive summary: <code>type</code> = <code>unsized</code> ⊎ <code>sized</code>, so we should use
-<code>type</code> as our generalization marker, not <code>unsized</code>.</p>
-
-<ul>
-<li><a href="#background_dst">Background: Dynamically Sized Types (DST)</a></li>
-<li><a href="#the_insight">The Insight: <code>type</code> is a better generalization marker</a></li>
-<li><a href="#the_examples">Examples ported from DST, Take 5</a></li>
-</ul>
-
-<h2 id="toc_0"><a id="background_dst">Background: Dynamically Sized Types (DST)</a></h2>
-
-<p>The Rust team has been discussing incorporating &quot;dynamically-sized
-types&quot; into the static semantics for Rust.  Essentially the idea is to
-allow code to describe and name static types whose size is only known
-at Runtime.  E.g. the integer vector <code>[int, ..5]</code> is known at compile
-time to have five elements, and is considered (statically) sized,
-while the vector <code>[int]</code> has unknown size at compile time, and so that
-type is called unsized.</p>
-
-<p><a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">There</a>
-is <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">a</a>
-series <a href="http://smallcultfollowing.com/babysteps/blog/2013/11/26/thoughts-on-dst-1/">of</a>
-blog <a href="http://smallcultfollowing.com/babysteps/blog/2013/11/27/thoughts-on-dst-2">posts</a>
-about <a href="http://smallcultfollowing.com/babysteps/blog/2013/11/27/thoughts-on-dst-3/">dynamically</a>
-sized <a href="http://smallcultfollowing.com/babysteps/blog/2013/12/02/thoughts-on-dst-4/">types</a>
-on <a href="http://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/">niko&#39;s</a>
-blog.
-So I will not dive into the details too much here</p>
-
-<p>The main points are that the compiler wants to know whether a type is
-meant to always have a static size, or if it can potentially be
-unsized.  In a language without type polymorphism, this might be easy
-to determine directly from the parsed type expression (such as in the
-vector examples I gave at the outset).  But once you add polymorphism,
-things get a litle harder for the compiler.</p>
-
-<p>Anyway, the plan drafted in Niko&#39;s
-<a href="http://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/">&quot;DST, Take 5&quot;</a>
-is to add an <code>unsized</code> keyword, and then use it as a marker to make
-certain spots more general than they are by default.  The reasoning
-here is that in the common case, you want a type parameter to
-represent a sized type.  (Since there are certain operations you
-cannot do with a value of an unsized type, such copying the value into
-some other location, the compiler needs to know its size statically so
-that it can allocate an appopriate amount of space for it.)</p>
-
-<p>So under that scheme, to write type parameter of most general type,
-e.g. for a <code>struct</code> definition that ends with an unsized field,
-you need to write:
-```rust
-struct Named<unsized T> {
-    name: ~str,
-    payload: T
-}</p>
-
-<p>// Accepts solely <em>sized</em> Named<T>.
-fn foo<T>(&amp;Named<T>) { ... }</p>
-
-<p>// Accepts both sized and <em>unsized</em> Named<T>
-fn bar<unsized T>(&amp;Named<T>) { ... }
-```</p>
-
-<p>That is, you need to use what I will call a &quot;generalization&quot; marker at
-the spot where you bind a type variable, to indicate that the domain of
-that type variable is more general than the common-case default of 
-a sized type.</p>
-
-<p>For defining a trait that can be implemented on any possible type,
-including unsized ones, you would need to use the <code>unsized</code> keyword
-somewhere there as well.  &quot;DST, Take 5&quot; proposed
-<code>trait Foo&lt;unsized Self&gt; : NormalBounds { ... }</code>
-(or <code>trait Foo : unsized + NormalBounds { ... }</code>, but this is broken for
-various reasons).
-I had been suggesting <code>unsized trait Foo : NormalBounds { ... }</code>,
-which Niko rightly objected to (since it is not the trait that is
-unsized, but rather potentially its Self type).
-Over the Rust work week last week I suggested
-<code>trait Foo for unsized : NormalBounds</code> { ... }, which I think is the first
-suggestion that Niko and myself could both stomach.  (The reasoning
-behind the latter suggestion is that we write <code>impl Trait for
-SelfType</code>, so it makes sense to put the generalization marker into the
-same position, i.e. filling the placeholder in: <code>Trait for _</code>.)</p>
-
-<h2 id="toc_1"><a id="the_insight">The Insight: <code>type</code> is a better generalization marker</a></h2>
-
-<p>One of the concerns that Niko has pointed out to me is that it is easy
-to (mis)read <code>unsized T</code> as saying &quot;<code>T</code> must be unsized&quot;.  But that is not
-what it is saying; it is saying &quot;<code>T</code> <em>can</em> be unsized&quot;; you can still pass in
-a sized type for <code>T</code>.</p>
-
-<p>I was reflecting on that this morning, and I realized something:
-The whole point of DST is to partition the type universe into (Sized ⊎ Unsized).
-So if you want this construct to be more self-documenting, the
-generalization marker should be using some name to describe that union
-(Sized ⊎ Unsized), rather than the name <code>unsized</code>.</p>
-
-<p>But we already have a very appropriate name for that union: <code>type</code>!</p>
-
-<p>So that started me thinking: Why don&#39;t we use <code>type</code> as our generalization marker?
-So the definition of <code>bar</code> in the example above would be written
-<code>rust
-fn bar&lt;type T&gt;(&amp;Named&lt;T&gt;) { ... }
-</code>
-In fact, this can have a very simple explanation: If we keep the <code>Sized</code> trait bound,
-then you can just say that
-<code>rust
-fn foo&lt;T&gt;(args, ...){ ... }
-</code>
-desugars to
-<code>rust
-fn foo&lt;type T:Sized&gt;(args, ...) { ... }
-</code>
-and in general, any type variable formal binding <code>&lt;T:Bounds&gt;</code> desugars
-to <code>&lt;type T:Sized+Bounds&gt;</code></p>
-
-<p>I admit, when I first wrote this, I said &quot;hmm, this looks a bit like
-C++, is that a problem?&quot;  But I&#39;m coming to like it.  The biggest
-problem I can foresee is that a developer might be confused about when
-they are suppposed to write <code>foo&lt;type T&gt;</code> versus <code>foo&lt;T&gt;</code>.  But chances
-are that someone who does not understand the distinction will <em>not</em>
-suffer if they just guess the answer; if they over-generalize, either:</p>
-
-<ul>
-<li><p>the code will compile successfully anyway, in which case there is
-no harm, except perhaps w.r.t. forward-compatibility of their
-library when they may have wished they had imposed the <code>Sized</code>
-bound, or</p></li>
-<li><p>the compiler will flag a problem in their code, in which case
-hopefully our error messages will suggest to add a <code>:Sized</code> bound
-or to just not use <code>type</code> in the binding for <code>T</code>.</p></li>
-</ul>
-
-<p>If they under-generalize, then they (or their library&#39;s clients) will
-discover the problem when they apply <code>foo</code>.</p>
-
-<p>For the trait case, it is a little less obvious what to do.
-I think we could likewise write:
-<code>trait Foo for type : NormalBounds</code>
-for the maximally general case.
-<code>trait Foo : NormalBounds</code> would then desugar to
-<code>trait Foo for type : Sized + NormalBounds</code></p>
-
-<p>So the point is that you would only use the <code>type</code> keyword when you
-wanted to explicitly say &quot;I am generalizing over <em>all</em> types, not just
-sized ones&quot;, and thus are opting into the additional constraints that
-that scenario presents.</p>
-
-<p>This approach wouldn&#39;t be so palatable under earlier envisioned
-designs for DST where e.g. you were restricted to write explicitly
-<code>unsized struct S { ... }</code> for structs that could end up being
-unsized.  But at this point I think we have collectively decided that
-such a restriction is unnecessary and undesired, so there is no worry
-that someone might end up having to write <code>type struct S { ... }</code>,
-which definitely looks nonsensical.</p>
-
-<p>There is another potential advantage to this approach that I have not
-explored much yet: we could also add an <code>Unsized</code> trait bound, and
-allow people to write <code>&lt;type X:Unsized&gt;</code> for when they want to
-restrict <code>X</code> to unsized types alone.  I am not sure whether this is
-actual value in this, but it does not seem absurd to put in a special
-case in the coherence checker to allow one to write
-<code>impl&lt;X:Sized&gt; SomeTrait for X { ... }</code>
-and
-<code>impl&lt;X:Unsized&gt; SomeTrait for X { ... }</code>
-in order to get full coverage of <code>SomeTrait</code> for all types.</p>
-
-<p>Finally, another obvious (though obviously post Rust 1.0) direction
-that this approach suggests is that if we decide to add
-parameterization over constants, we can likewise use the <code>const</code>
-keyword in the spot where I have written the generalization marker
-<code>type</code>, e.g.
-<code>rust
-fn foo&lt;const N:int&gt;(nums: &amp;[f64, ..N]) { ... }
-</code>
-(In this case <code>const</code> would not be a generalization marker but instead
-a <em>kind</em> marker, since it is changing the domain of the parameter from
-being that of a type to being some value within a type.)</p>
-
-<h2 id="toc_2"><a id="the_examples">Examples ported from DST, Take 5</a></h2>
-
-<p>Here are the ported definitions of <code>Rc</code> and <code>RcData</code>.
-(Update: had to turn off syntax highlighting to work-around a rendering bug on <code>*</code>.)
-```text
-struct Rc<type T> {
-    ptr: *RcData<T>,
-    // (a dummy field, just for illustrative purposes)
-    dummy: uint,
-}</p>
-
-<p>struct RcData<type T> {
-    ref_count: uint,</p>
-<div class="highlight"><pre><code class="text">#[max_alignment]
-data: T
-</code></pre></div>
-<p>}</p>
-
-<p>impl<type T> Drop for Rc<T> {
-    fn drop&lt;&#39;a&gt;(&amp;&#39;a mut self) {
-        unsafe {
-            intrinsics::drop(&amp;mut (*self.ptr).data);
-            libc::free(self.ptr);
-        }
-    }
-}
-```</p>
-
-<p>Here is the <code>ImmDeref</code> example:
-```rust
-trait ImmDeref<type T> {
-    fn deref&lt;&#39;a&gt;(&amp;&#39;a self) -&gt; &amp;&#39;a T;
-}</p>
-
-<p>impl<type T> ImmDeref<T> for Rc<T> {
-    fn deref&lt;&#39;a&gt;(&amp;&#39;a self) -&gt; &amp;&#39;a T {
-        unsafe {
-            &amp;(*self.ptr).data
-        }
-    }
-}
-```</p>
-
-<p>(I think I need a wider variety of examples, but this is good enough for now.)</p>
-]]></content>
-  </entry>
   
   <entry>
     <title type="html"><![CDATA[Detective Work on Rust Closures]]></title>
@@ -718,7 +488,7 @@ abbreviated &quot;EOP&quot; in this post) almost immediately makes use of
 <span class="p">{</span>
     <span class="c1">// Precondition: $y$ is reachable from $x$ under $f$</span>
     <span class="k">typedef</span> <span class="n">DistanceType</span><span class="p">(</span><span class="n">F</span><span class="p">)</span> <span class="n">N</span><span class="p">;</span>
-    <span class="n">N</span> <span class="nf">n</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="n">N</span> <span class="n">n</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
     <span class="k">while</span> <span class="p">(</span><span class="n">x</span> <span class="o">!=</span> <span class="n">y</span><span class="p">)</span> <span class="p">{</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
         <span class="n">n</span> <span class="o">=</span> <span class="n">n</span> <span class="o">+</span> <span class="n">N</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
@@ -1281,9 +1051,9 @@ I had expected.</p>
 <p>I am representing piles of playing cards via linked structures.
 Here are the data structure declarations:</p>
 <div class="highlight"><pre><code class="rust"><span class="k">enum</span> <span class="n">card_suit</span> <span class="p">{</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">hearts</span><span class="p">,</span> <span class="n">spades</span> <span class="p">}</span>
-<span class="k">struct</span> <span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">card_suit</span><span class="p">,</span>
-              <span class="n">rank</span><span class="o">:</span> <span class="kt">u8</span><span class="p">,</span> <span class="c1">// 1..13</span>
-              <span class="n">next</span><span class="o">:</span> <span class="nb">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span> <span class="p">}</span>
+<span class="n">struct</span> <span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">card_suit</span><span class="p">,</span>
+              <span class="n">rank</span><span class="o">:</span> <span class="k">u8</span><span class="p">,</span> <span class="c1">// 1..13</span>
+              <span class="n">next</span><span class="o">:</span> <span class="n">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span> <span class="p">}</span>
 </code></pre></div>
 <p>Note that the <code>next</code> field is an (optional) <em>owned</em> pointer to the
 next card in the pile.  <code>Option&lt;~card&gt;</code> will be generally used to
@@ -1313,16 +1083,16 @@ the new, potentially empty stack.</p></li>
 <p>In code, here are the signatures for the desired functions,
 as well as one-line reminders of the behavior for each.</p>
 <div class="highlight"><pre><code class="rust"><span class="c1">// [c1, ..., cN], cX -&gt; [cX, c1, ..., cN]</span>
-<span class="k">fn</span> <span class="n">place_top</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="nb">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">newcard</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">card</span><span class="p">;</span>
+<span class="k">fn</span> <span class="n">place_top</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="n">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">newcard</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">card</span><span class="p">;</span>
 
 <span class="c1">// [c1, ..., cN], cX -&gt; [c1, ..., cN, cX]</span>
-<span class="k">fn</span> <span class="n">place_bot</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="nb">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">newcard</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">card</span><span class="p">;</span>
+<span class="k">fn</span> <span class="n">place_bot</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="n">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">newcard</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">card</span><span class="p">;</span>
 
 <span class="c1">// [c1, c2, ..., cN] -&gt; (c1, [c2, ..., cN])</span>
-<span class="k">fn</span> <span class="n">pop_top</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="o">~</span><span class="n">card</span><span class="p">,</span> <span class="nb">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">);</span>
+<span class="k">fn</span> <span class="n">pop_top</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="o">~</span><span class="n">card</span><span class="p">,</span> <span class="n">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">);</span>
 
 <span class="c1">// [c1, ..., cN-1, cN] -&gt; (Some(cN), [c1, ..., cN-1])</span>
-<span class="k">fn</span> <span class="n">pop_bot</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="o">~</span><span class="n">card</span><span class="p">,</span> <span class="nb">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">);</span>
+<span class="k">fn</span> <span class="n">pop_bot</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="o">~</span><span class="n">card</span><span class="p">,</span> <span class="n">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">);</span>
 </code></pre></div>
 <h2 id="toc_1">(Some non-critical helper infrastructure follows, showing off Rust as language)</h2>
 
@@ -1331,66 +1101,66 @@ a few manipulations using the above operations (as well as
 some printing routines to make looking at these cards nicer
 in the terminal output)</p>
 <div class="highlight"><pre><code class="rust"><span class="k">fn</span> <span class="n">make_hand</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span>
-    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">10</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
-    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">spades</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">3</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
-    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">2</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
+    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">10</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="n">None</span> <span class="p">};</span>
+    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">spades</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">3</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="n">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
+    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">2</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="n">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
     <span class="n">hand</span>
 <span class="p">}</span>
 
 <span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="kd">let</span> <span class="n">hand</span> <span class="o">:</span> <span class="o">~</span><span class="n">card</span> <span class="o">=</span> <span class="n">make_hand</span><span class="p">();</span>
+    <span class="k">let</span> <span class="n">hand</span> <span class="o">:</span> <span class="o">~</span><span class="n">card</span> <span class="o">=</span> <span class="n">make_hand</span><span class="p">();</span>
     <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;initial hand: &quot;</span><span class="p">);</span>
-    <span class="kd">let</span> <span class="n">AceD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">1</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+    <span class="k">let</span> <span class="n">AceD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">1</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="n">None</span> <span class="p">};</span>
     <span class="n">AceD</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;place top: &quot;</span><span class="p">);</span>
-    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_top</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">AceD</span><span class="p">);</span>
+    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_top</span><span class="p">(</span><span class="n">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">AceD</span><span class="p">);</span>
     <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
-    <span class="kd">let</span> <span class="n">SixD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">6</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+    <span class="k">let</span> <span class="n">SixD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">6</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="n">None</span> <span class="p">};</span>
     <span class="n">SixD</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;place bot: &quot;</span><span class="p">);</span>
-    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_bot</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">SixD</span><span class="p">);</span>
+    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_bot</span><span class="p">(</span><span class="n">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">SixD</span><span class="p">);</span>
     <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
-    <span class="kd">let</span> <span class="p">(</span><span class="n">top</span><span class="p">,</span> <span class="n">rest</span><span class="p">)</span> <span class="o">=</span> <span class="n">pop_top</span><span class="p">(</span><span class="n">hand</span><span class="p">);</span>
+    <span class="k">let</span> <span class="p">(</span><span class="n">top</span><span class="p">,</span> <span class="n">rest</span><span class="p">)</span> <span class="o">=</span> <span class="n">pop_top</span><span class="p">(</span><span class="n">hand</span><span class="p">);</span>
     <span class="n">top</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;popped top: &quot;</span><span class="p">);</span>
-    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">rest</span><span class="p">.</span><span class="n">unwrap</span><span class="p">();</span>
+    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">rest</span><span class="p">.</span><span class="n">unwrap</span><span class="p">();</span>
     <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
-    <span class="kd">let</span> <span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="n">rest</span><span class="p">)</span> <span class="o">=</span> <span class="n">pop_bot</span><span class="p">(</span><span class="n">hand</span><span class="p">);</span>
+    <span class="k">let</span> <span class="p">(</span><span class="n">bot</span><span class="p">,</span> <span class="n">rest</span><span class="p">)</span> <span class="o">=</span> <span class="n">pop_bot</span><span class="p">(</span><span class="n">hand</span><span class="p">);</span>
     <span class="n">bot</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;popped bot: &quot;</span><span class="p">);</span>
-    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">rest</span><span class="p">.</span><span class="n">unwrap</span><span class="p">();</span>
+    <span class="k">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">rest</span><span class="p">.</span><span class="n">unwrap</span><span class="p">();</span>
     <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="c1">// Below are &quot;just&quot; some notation niceties that should not effect</span>
 <span class="c1">// the semantics of the code + algorithms above.</span>
 
-<span class="k">impl</span> <span class="nb">ToStr</span> <span class="k">for</span> <span class="n">card_suit</span> <span class="p">{</span>
-    <span class="k">fn</span> <span class="n">to_str</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="kt">str</span> <span class="p">{</span>
-        <span class="k">match</span> <span class="bp">self</span> <span class="p">{</span> <span class="o">&amp;</span><span class="n">spades</span>   <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;</span><span class="se">\u2664</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">hearts</span>   <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;</span><span class="se">\u2665</span><span class="s">&quot;</span><span class="p">,</span>
+<span class="k">impl</span> <span class="n">ToStr</span> <span class="k">for</span> <span class="n">card_suit</span> <span class="p">{</span>
+    <span class="k">fn</span> <span class="n">to_str</span><span class="p">(</span><span class="o">&amp;</span><span class="n">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">str</span> <span class="p">{</span>
+        <span class="n">match</span> <span class="n">self</span> <span class="p">{</span> <span class="o">&amp;</span><span class="n">spades</span>   <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;</span><span class="se">\u2664</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">hearts</span>   <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;</span><span class="se">\u2665</span><span class="s">&quot;</span><span class="p">,</span>
                      <span class="o">&amp;</span><span class="n">diamonds</span> <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;</span><span class="se">\u2666</span><span class="s">&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">clubs</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;</span><span class="se">\u2667</span><span class="s">&quot;</span> <span class="p">}</span> <span class="p">}</span>
 <span class="p">}</span>
 
-<span class="k">fn</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="n">r</span><span class="o">:</span><span class="kt">u8</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="kt">str</span> <span class="p">{</span>
-    <span class="k">match</span> <span class="n">r</span> <span class="p">{</span>
+<span class="k">fn</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="n">r</span><span class="o">:</span><span class="k">u8</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">str</span> <span class="p">{</span>
+    <span class="n">match</span> <span class="n">r</span> <span class="p">{</span>
         <span class="m">1</span>     <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;A&quot;</span><span class="p">,</span>
         <span class="m">2.</span><span class="p">.</span><span class="m">10</span> <span class="o">=&gt;</span> <span class="n">r</span><span class="p">.</span><span class="n">to_str</span><span class="p">(),</span>
         <span class="m">11</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;J&quot;</span><span class="p">,</span>
         <span class="m">12</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;Q&quot;</span><span class="p">,</span>
         <span class="m">13</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;K&quot;</span><span class="p">,</span>
-        <span class="n">_</span>     <span class="o">=&gt;</span> <span class="n">fail</span><span class="o">!</span><span class="p">()</span>
+        <span class="n">_</span>     <span class="o">=&gt;</span> <span class="k">fail</span><span class="o">!</span><span class="p">()</span>
     <span class="p">}</span>
 <span class="p">}</span>
 
 <span class="k">impl</span> <span class="n">card</span> <span class="p">{</span>
-    <span class="k">fn</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="kt">str</span> <span class="p">{</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">rank</span><span class="p">)</span> <span class="p">}</span>
-    <span class="k">fn</span> <span class="n">report</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="o">:</span> <span class="o">~</span><span class="kt">str</span><span class="p">)</span> <span class="p">{</span> <span class="n">io</span><span class="o">::</span><span class="nb">println</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="bp">self</span><span class="p">.</span><span class="n">to_str</span><span class="p">());</span> <span class="p">}</span>
+    <span class="k">fn</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="o">&amp;</span><span class="n">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">str</span> <span class="p">{</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="n">self</span><span class="p">.</span><span class="n">rank</span><span class="p">)</span> <span class="p">}</span>
+    <span class="k">fn</span> <span class="n">report</span><span class="p">(</span><span class="o">&amp;</span><span class="n">self</span><span class="p">,</span> <span class="n">prefix</span><span class="o">:</span> <span class="o">~</span><span class="n">str</span><span class="p">)</span> <span class="p">{</span> <span class="n">io</span><span class="o">::</span><span class="n">println</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="n">self</span><span class="p">.</span><span class="n">to_str</span><span class="p">());</span> <span class="p">}</span>
 <span class="p">}</span>
 
-<span class="k">impl</span> <span class="nb">ToStr</span> <span class="k">for</span> <span class="n">card</span> <span class="p">{</span>
-    <span class="k">fn</span> <span class="n">to_str</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="kt">str</span> <span class="p">{</span>
-        <span class="kd">let</span> <span class="k">mut</span> <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="p">.</span><span class="n">rank_to_str</span><span class="p">()</span> <span class="o">+</span> <span class="bp">self</span><span class="p">.</span><span class="n">suit</span><span class="p">.</span><span class="n">to_str</span><span class="p">();</span>
-        <span class="k">match</span> <span class="o">&amp;</span><span class="bp">self</span><span class="p">.</span><span class="n">next</span> <span class="p">{</span>
-            <span class="o">&amp;</span><span class="nb">None</span> <span class="o">=&gt;</span> <span class="p">(),</span>
-            <span class="o">&amp;</span><span class="nb">Some</span><span class="p">(</span><span class="k">ref</span> <span class="n">n</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">ret</span> <span class="o">+</span> <span class="s">&quot;,&quot;</span> <span class="o">+</span> <span class="n">n</span><span class="p">.</span><span class="n">to_str</span><span class="p">()</span>
+<span class="k">impl</span> <span class="n">ToStr</span> <span class="k">for</span> <span class="n">card</span> <span class="p">{</span>
+    <span class="k">fn</span> <span class="n">to_str</span><span class="p">(</span><span class="o">&amp;</span><span class="n">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">str</span> <span class="p">{</span>
+        <span class="k">let</span> <span class="k">mut</span> <span class="k">ret</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">rank_to_str</span><span class="p">()</span> <span class="o">+</span> <span class="n">self</span><span class="p">.</span><span class="n">suit</span><span class="p">.</span><span class="n">to_str</span><span class="p">();</span>
+        <span class="n">match</span> <span class="o">&amp;</span><span class="n">self</span><span class="p">.</span><span class="n">next</span> <span class="p">{</span>
+            <span class="o">&amp;</span><span class="n">None</span> <span class="o">=&gt;</span> <span class="p">(),</span>
+            <span class="o">&amp;</span><span class="n">Some</span><span class="p">(</span><span class="n">ref</span> <span class="n">n</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="k">ret</span> <span class="o">=</span> <span class="k">ret</span> <span class="o">+</span> <span class="s">&quot;,&quot;</span> <span class="o">+</span> <span class="n">n</span><span class="p">.</span><span class="n">to_str</span><span class="p">()</span>
         <span class="p">}</span>
-        <span class="n">ret</span>
+        <span class="k">ret</span>
     <span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>

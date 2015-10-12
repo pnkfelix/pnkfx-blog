@@ -152,7 +152,7 @@ abbreviated &quot;EOP&quot; in this post) almost immediately makes use of
 </span><span class='line'><span class="p">{</span>
 </span><span class='line'>    <span class="c1">// Precondition: $y$ is reachable from $x$ under $f$</span>
 </span><span class='line'>    <span class="k">typedef</span> <span class="n">DistanceType</span><span class="p">(</span><span class="n">F</span><span class="p">)</span> <span class="n">N</span><span class="p">;</span>
-</span><span class='line'>    <span class="n">N</span> <span class="nf">n</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">N</span> <span class="n">n</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
 </span><span class='line'>    <span class="k">while</span> <span class="p">(</span><span class="n">x</span> <span class="o">!=</span> <span class="n">y</span><span class="p">)</span> <span class="p">{</span>
 </span><span class='line'>        <span class="n">x</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
 </span><span class='line'>        <span class="n">n</span> <span class="o">=</span> <span class="n">n</span> <span class="o">+</span> <span class="n">N</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
@@ -297,8 +297,8 @@ example in Rust:
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">trait</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DISTANCETYPE</span><span class="p">,</span> <span class="n">DOMAIN</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">fn</span> <span class="n">apply</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">,</span> <span class="n">elem</span><span class="o">:</span> <span class="n">DOMAIN</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DOMAIN</span><span class="p">;</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="n">trait</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DISTANCETYPE</span><span class="p">,</span> <span class="n">DOMAIN</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="n">apply</span><span class="p">(</span><span class="o">&amp;</span><span class="n">self</span><span class="p">,</span> <span class="n">elem</span><span class="o">:</span> <span class="n">DOMAIN</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DOMAIN</span><span class="p">;</span>
 </span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 or if you prefer Java:
@@ -306,7 +306,7 @@ or if you prefer Java:
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 </pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">interface</span> <span class="nc">Transformation</span><span class="o">&lt;</span><span class="n">DISTANCETYPE</span><span class="o">,</span> <span class="n">DOMAIN</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">DOMAIN</span> <span class="n">apply</span><span class="o">(</span><span class="n">DOMAIN</span> <span class="n">elem</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">DOMAIN</span> <span class="nf">apply</span><span class="o">(</span><span class="n">DOMAIN</span> <span class="n">elem</span><span class="o">);</span>
 </span><span class='line'><span class="o">}</span>
 </span></code></pre></td></tr></table></div></figure></p>
 
@@ -356,7 +356,7 @@ to the generic method.</p>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
 </pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">DT</span><span class="o">,</span> <span class="n">DOM</span><span class="o">,</span> <span class="n">F</span> <span class="kd">extends</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DT</span><span class="o">,</span> <span class="n">DOM</span><span class="o">&gt;</span> <span class="o">&gt;</span>
-</span><span class='line'>    <span class="n">DT</span> <span class="n">distance</span><span class="o">(</span><span class="n">DOM</span> <span class="n">x</span><span class="o">,</span> <span class="n">DOM</span> <span class="n">y</span><span class="o">,</span> <span class="n">F</span> <span class="n">f</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">DT</span> <span class="nf">distance</span><span class="o">(</span><span class="n">DOM</span> <span class="n">x</span><span class="o">,</span> <span class="n">DOM</span> <span class="n">y</span><span class="o">,</span> <span class="n">F</span> <span class="n">f</span><span class="o">)</span> <span class="o">{</span>
 </span><span class='line'>    <span class="cm">/* ... */</span>
 </span><span class='line'><span class="o">}</span>
 </span></code></pre></td></tr></table></div></figure></p>
@@ -817,14 +817,6 @@ for me in the #rust irc channel.)</p>
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/">An insight regarding DST grammar for Rust</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/03/13/meta-updating-octopress-post-mavericks-upgrade/">Updating Octopress post-Mavericks upgrade.</a>
-      </li>
-    
-      <li class="post">
         <a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a>
       </li>
     
@@ -834,6 +826,14 @@ for me in the #rust irc channel.)</p>
     
       <li class="post">
         <a href="/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy/">Better command completion in bash on OS X</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/03/26/rusty-chain-puzzle-1/">Rusty Chain Puzzle 1.</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/01/29/implicit-versus-explicit-finalization/">Implicit versus Explicit Finalization</a>
       </li>
     
   </ul>
@@ -912,7 +912,7 @@ for me in the #rust irc channel.)</p>
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2014 - Felix S. Klock II -
+  Copyright &copy; 2015 - Felix S. Klock II -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 
