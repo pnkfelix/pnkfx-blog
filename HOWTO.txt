@@ -9,6 +9,8 @@
     For some reason I think my older laptop does not need this but the newer
     one does.
 
+  * In particular my use of the word "voilà" caused me to hit this issue.
+
   * https://github.com/imathis/octopress/issues/267 recommends setting this
     in one's `~/.profile`, which I suppose I will consider doing eventually
     if I encounter similar problems.
@@ -20,3 +22,29 @@
   not include unpublished posts.
 
 * `rake deploy` deploys the content to the target site (i.e.: takes it live).
+
+## Ruby maintenance
+
+If it seems like ruby itself is broken, here are some steps I had to
+do recently to fix ruby on my OS X machine.
+
+```
+# Not sure if this step was *actually* necessary
+
+% git clone git://github.com/sstephenson/ruby-build.git ~/.rbenv/plugins/ruby-build
+```
+
+```
+# I had to add the "without tk/tcl" options on OS X, otherwise it tries to #include X11 stuff
+# during its build.
+
+% CONFIGURE_OPTS="--without-tk --without-tcl" rbenv install 1.9.3-p194
+```
+
+```
+# This installed bundler globally (I think)
+% gem install bundler
+
+# This grabbed the stuff needed for octopress (I ran it in the blog project directory).
+% bundle install
+```
