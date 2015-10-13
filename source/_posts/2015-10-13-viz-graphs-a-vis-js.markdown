@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Drawing Circles and Arrows 2"
+title: "Vis-a-vis, part 1: Visualizing Graphs via viz.js"
 date: 2015-10-12 14:10
 comments: true
 categories:
@@ -11,25 +11,29 @@ This is a post discussing a couple different ways to draw pictures,
 mostly those of graphs (nodes and edges, i.e. circles or boxes, and
 lines between them).
 
+The technology covered by this post is [viz.js][], a Javascript
+library for rendering graphs specified via the [DOT] language.
+
+<!-- more -->
+
 Its meant both as a reference for me to use when I want to remind
 myself of my options here, and as a demo of some interesting web
 technologies.
 
-The three technologies covered here are [viz.js][], [SVG][], and [D3][].
+I hope in later posts to cover SVG ("Scalable Vector Graphics")
+itself, and perhaps higher level Javascript libraries such as [D3][].
 
-[viz.js]: #toc_0
-[SVG]: #toc_1
-[D3]: #toc_2
-
-<!-- more -->
-
-I have focused in this post on client-side rendering technologies.
+I will focus in these posts on client-side rendering technologies.
 Another entirely reasonable option is to render the content to an
 image (or SVG, or a JS script that renders into a canvas, et cetera).
 However, one of my goals with my documents is to embed all of the
 source text into the markdown content; a separate rendering tool would
 require some sort of pre-process step, and I am loathe to try to
 incoporate that into the `Rakefile` that Octopress uses.
+
+
+[viz.js]: https://github.com/mdaines/viz.js/
+[D3]: http://d3js.org/
 
 ## viz.js
 The first item we will cover, since it amongst the simplest to adopt,
