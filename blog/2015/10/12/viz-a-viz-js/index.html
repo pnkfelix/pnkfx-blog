@@ -1,0 +1,808 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Vis-a-vis, part 1: Visualizing Graphs via viz.js - The {pnk}f(eli)x Blog</title>
+  <meta name="author" content="Felix S. Klock II">
+
+  
+  <meta name="description" content="This is a post discussing a couple different ways to draw pictures,
+mostly those of graphs (nodes and edges, i.e. circles or boxes, and
+lines between &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://blog.pnkfx.org/blog/2015/10/12/viz-a-viz-js/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="The {pnk}f(eli)x Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">The {pnk}f(eli)x Blog</a></h1>
+  
+    <h2>The informal ramblings of an ex-pat PL enthusiast</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:blog.pnkfx.org" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Vis-a-vis, Part 1: Visualizing Graphs via viz.js</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-10-12T14:10:00+02:00" pubdate data-updated="true">12 October 2015</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>This is a post discussing a couple different ways to draw pictures,
+mostly those of graphs (nodes and edges, i.e. circles or boxes, and
+lines between them).</p>
+
+<p>The technology covered by this post is <a href="https://github.com/mdaines/viz.js/">viz.js</a>, a Javascript
+library for rendering graphs specified via the <a href="http://www.graphviz.org/content/dot-language">DOT</a> language.</p>
+
+<!-- more -->
+
+<p>Its meant both as a reference for me to use when I want to remind
+myself of my options here, and as a demo of some interesting web
+technologies.</p>
+
+<p>I hope in later posts to cover SVG (&quot;Scalable Vector Graphics&quot;)
+itself, and perhaps higher level Javascript libraries such as <a href="http://d3js.org/">D3</a>.</p>
+
+<p>I will focus in these posts on client-side rendering technologies.
+Another entirely reasonable option is to render the content to an
+image (or SVG, or a JS script that renders into a canvas, et cetera).
+However, one of my goals with my documents is to embed all of the
+source text into the markdown content; a separate rendering tool would
+require some sort of pre-process step, and I am loathe to try to
+incoporate that into the <code>Rakefile</code> that Octopress uses.</p>
+
+<h2 id="toc_0">viz.js</h2>
+
+<p>The first item we will cover, since it amongst the simplest to adopt,
+is <code>vis.js</code>, a javascript library that provides
+<a href="http://www.graphviz.org/">graphviz-style</a> rendering in the browser client.</p>
+
+<p>(<a href="http://www.graphviz.org/">Graphviz</a> is a tool for automatically laying out and
+rendering graphs; it is coupled with <a href="http://www.graphviz.org/content/dot-language">DOT</a>, a simple domain-specific
+language for describing graph structures by defining the nodes, edges,
+and various attributes attached to them, like labels.)</p>
+
+<h3 id="toc_1">Hooking up the JS source</h3>
+
+<p>Since this is using (heavy duty) javascript, you are not likely to
+want to put the supporting source code inline in your web page.
+Instead, you will need to load it up, either:</p>
+
+<ol>
+<li><p>from the original <a href="src=%22https://github.com/mdaines/viz.js/releases/download/0.0.3/viz.js%22">source site</a>, or</p></li>
+<li><p>in a server-side local copy of the file that you deploy alongside
+your content
+(e.g. put it into the <code>_source/javascripts/</code> directory,
+if you are using Octopress for a blog like this one).</p></li>
+</ol>
+
+<p>I recommend the latter route, since the linked github repository is
+outside of your control, and if it dissapears, you lose the rendering
+and your page is broken.</p>
+
+<p>After you have selected your source for the code, you need to
+make your page load it up, via a <code>script</code> tag invocation,
+like: <code>&lt;script src=&quot;/javascripts/viz.js&quot; charset=&quot;utf-8&quot;&gt;&lt;/script&gt;;</code></p>
+
+<p>This script can take a while to load. You may want to insert a warning,
+like this one, before the <code>script</code> invocation.</p>
+
+<script src="/javascripts/viz.js" charset="utf-8"></script>
+
+<h3 id="toc_2">Injecting generated SVG into the document</h3>
+
+<p>Once the script is loaded, you can start using inline Javascript to
+render graphviz-style descriptions of directed graphs to SVG within
+the page.</p>
+
+<p>The smallest example of this given in the <code>viz.js</code> documentation
+does this by dynamically adding to the <code>innerHTML</code> property:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>  <span class="nt">&lt;script&gt;</span>
+</span><span class='line'>    <span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">+=</span> <span class="s2">&quot;&lt;p&gt;Sample addition.&lt;/p&gt;&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">+=</span> <span class="nx">Viz</span><span class="p">(</span><span class="s2">&quot;digraph { a -&gt; b; }&quot;</span><span class="p">,</span> <span class="s2">&quot;svg&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="nt">&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p>The above &quot;works&quot; (even in the context of an Octopress blog post), but
+it is a rather brute-force approach. Plus, the resulting composition
+of the blog text with the graphics added at the end is not likely to
+please you nor your audience.</p>
+
+<p>We can do better: Add a content-less <code>div</code> tag (or <code>p</code> tag, et
+cetera), and then search for that element in a <code>script</code> block that
+will add our picture to the inner HTML for that tag.</p>
+
+<p>Here is a concrete illustration of the idea (that does not use
+Graphviz or <code>viz.js</code>):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;div</span> <span class="na">id=</span><span class="s">&quot;target_anchor0&quot;</span><span class="nt">&gt;&lt;/div&gt;</span>
+</span><span class='line'><span class="nt">&lt;script&gt;</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">elem</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;target_anchor0&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="nx">elem</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="s2">&quot;This text was injected.&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="nt">&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<div id="target_anchor0"></div>
+
+<script>
+    var elem = document.getElementById("target_anchor0");
+    elem.innerHTML = "This text was injected.";
+</script>
+
+<p>So, now that we know how to insert HTML into our document (even in the
+context of the markdown source for a blog post), let us dive into how
+to combine that with Graphviz, via <code>viz.js</code>.</p>
+
+<h3 id="toc_3"><code>dot_source</code> holds DOT source</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;div</span> <span class="na">id=</span><span class="s">&quot;target_anchor1&quot;</span><span class="nt">&gt;&lt;/div&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nt">&lt;script&gt;</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">dot_source</span> <span class="o">=</span> <span class="s1">&#39;digraph { rankdir=&quot;LR&quot;; bgcolor=&quot;transparent&quot;; a -&gt; b -&gt; c; }&#39;</span><span class="p">;</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">elem</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;target_anchor1&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="nx">elem</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">Viz</span><span class="p">(</span><span class="nx">dot_source</span><span class="p">,</span> <span class="s2">&quot;svg&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="nt">&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p>The contents of <code>dot_source</code> make up a DOT program:</p>
+
+<ul>
+<li><p><code>digraph</code> means we are making a directed graph,</p></li>
+<li><p><code>rankdir=&quot;LR&quot;</code> means we want the nodes to prefer horizontal left-to-right layout (the default is to have them vertically stacked top-to-bottom),</p></li>
+<li><p><code>bgcolor=&quot;transparent&quot;</code> means we want a transparent background (the default is white, which is fine but a little offputting for this site),</p></li>
+<li><p><code>a -&gt; b</code> means &quot;I want an edge coming out of <code>a</code> and into <code>b</code>&quot;; you can chain them together as shown in <code>a -&gt; b -&gt; c</code>.</p></li>
+</ul>
+
+<p>Here is how that ends up rendering:</p>
+
+<div id="target_anchor1"></div>
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent"; a -> b -> c; }';
+    var elem = document.getElementById("target_anchor1");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+<p>It turns out that the generated SVG is actually pretty readable.  That
+is, I am able to use &quot;Inspect Element&quot; in my web browser, and I see
+there that the SVG element is actually made up of many <code>g</code> elements
+that have each had their <code>class</code> attribute set according to their
+role: the whole graph has <code>class=&quot;graph&quot;</code>, and then each node and edge
+is assigned <code>&quot;node1&quot;</code>, <code>&quot;node2&quot;</code>, <code>&quot;edge1&quot;</code>, <code>&quot;node3&quot;</code>, <code>&quot;edge2&quot;</code>.
+(There are also comments embedded in the generated SVG above each
+element, so that one can map the element back to the node or edge
+in the original <code>dot_source</code> text.)</p>
+
+<p>That is how to use <code>viz.js</code> to embed graphs described via <a href="http://www.graphviz.org/content/dot-language">DOT</a>.</p>
+
+<p>This can be especially useful if you are making a dynamic page where
+the user can inject their own graph descriptions, and you want <code>viz.js</code>
+to do the heavy lifting of deciding how to lay out the nodes.</p>
+
+<h3 id="toc_4">Controlling node layout</h3>
+
+<p>But what if we want more control over the layout of the picture
+elements?</p>
+
+<p>For example, one might want more control over layout to
+ensure that there is a easy-to-see correspondence between a series of
+pictures, or if there is a structural symmetry that is easier to see
+if the layout is also symmetrical.</p>
+
+<p>Consider the following example graph:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;p</span> <span class="na">id=</span><span class="s">&quot;target_anchor2&quot;</span><span class="nt">&gt;</span>Symmetric structure but asymmetric layout: <span class="nt">&lt;/p&gt;</span>
+</span><span class='line'><span class="nt">&lt;script&gt;</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">dot_source</span> <span class="o">=</span> <span class="s1">&#39;digraph { rankdir=&quot;LR&quot;; bgcolor=&quot;transparent&quot;; a -&gt; b -&gt; c -&gt; e; b -&gt; d -&gt; e -&gt; a; }&#39;</span><span class="p">;</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">elem</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;target_anchor2&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="nx">elem</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">Viz</span><span class="p">(</span><span class="nx">dot_source</span><span class="p">,</span> <span class="s2">&quot;svg&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="nt">&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p id="target_anchor2">Symmetric structure but asymmetric layout: </p>
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent"; a -> b -> c -> e; b -> d -> e -> a; }';
+    var elem = document.getElementById("target_anchor2");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+<p>There are a number of options at this point. We could abandon Graphviz (and <code>viz.js</code>),
+and do our diagrams directly in SVG. But, assuming we want to stay within the confines
+of <code>viz.js</code>, there are a few things we <em>can</em> do.</p>
+
+<p>First, we can specify initial node positions by adding a <code>pos</code> attribute to
+each node that needs it. The default layout engine (called <code>dot</code>) just
+ignores such attributes, but other engines, such as the <code>neato</code> layout,
+will incorporate such information.</p>
+
+<p>One can switch the layout engine via an argument to the <code>Viz</code> function, but I will instead do it
+by setting an attribute in the graph itself.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;p</span> <span class="na">id=</span><span class="s">&quot;target_anchor3&quot;</span><span class="nt">&gt;&lt;/p&gt;</span>
+</span><span class='line'><span class="nt">&lt;script&gt;</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">dot_source</span> <span class="o">=</span> <span class="s1">&#39;digraph { rankdir=&quot;LR&quot;; bgcolor=&quot;transparent&quot;;&#39;</span>
+</span><span class='line'>    <span class="c1">// Start of the layout selection code</span>
+</span><span class='line'>    <span class="nx">dot_source</span> <span class="o">+=</span> <span class="s1">&#39;layout=&quot;neato&quot;; inputscale=72;&#39;</span> <span class="c1">// specifying &quot;neato&quot; layout to allow init position specification</span>
+</span><span class='line'>    <span class="nx">dot_source</span> <span class="o">+=</span> <span class="s1">&#39;overlap=&quot;false&quot;;&#39;</span> <span class="c1">// if you leave this out, the engine may put nodes in overlapping spots</span>
+</span><span class='line'>    <span class="nx">dot_source</span> <span class="o">+=</span> <span class="s1">&#39;start=0;&#39;</span> <span class="c1">// seed the RNG (to ensure consistent results)</span>
+</span><span class='line'>    <span class="c1">// End of the layout selection code</span>
+</span><span class='line'>    <span class="nx">dot_source</span> <span class="o">+=</span> <span class="s1">&#39;a -&gt; b -&gt; c -&gt; e; b -&gt; d -&gt; e -&gt; a;&#39;</span><span class="p">;</span>
+</span><span class='line'>    <span class="nx">dot_source</span> <span class="o">+=</span> <span class="s1">&#39; }&#39;</span><span class="p">;</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">elem</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;target_anchor3&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="nx">elem</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">Viz</span><span class="p">(</span><span class="nx">dot_source</span><span class="p">,</span> <span class="s2">&quot;svg&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="nt">&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p id="target_anchor3"></p>
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
+    // Start of the layout selection code
+    dot_source += 'layout="neato"; inputscale=72;' // specifying "neato" layout to allow init position specification
+    dot_source += 'overlap="false";' // if you leave this out, the engine may put nodes in overlapping spots
+    dot_source += 'start=0;' // seed the RNG (to ensure consistent results)
+    // End of the layout selection code
+    dot_source += 'a -> b -> c -> e; b -> d -> e -> a;';
+    dot_source += ' }';
+    var elem = document.getElementById("target_anchor3");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+<p>As you can see, we definitely have a different node layout. It is not
+yet directly illustrating the mirror symmetry of the graph structure,
+though. To achieve that, we could put the <code>a</code> node inside of a
+diamond shape formed by { <code>b</code>, <code>c</code>, <code>d</code>, <code>e</code> }.</p>
+
+<p>We can specify node positions by adding separate declarations for
+each of the individual nodes, and then adding <code>pos</code> attributes
+for each.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>dot_source += &#39;b [pos=&quot;0,40&quot;]; a [pos=&quot;100,40&quot;]; c [pos=&quot;160,80&quot;];&#39;
+</span><span class='line'>dot_source += &#39;d [pos=&quot;160,0&quot;]; e [pos=&quot;220,40&quot;];&#39;
+</span></code></pre></td></tr></table></div></figure>
+
+<p id="target_anchor4"></p>
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
+    // Start of the layout selection code
+    dot_source += 'layout="neato"; inputscale=72;' // specifying "neato" layout to allow init position specification
+    dot_source += 'overlap="false";' // if you leave this out, the engine may put nodes in overlapping spots
+    dot_source += 'start=0;' // seed the RNG (to ensure consistent results)
+    // End of the layout selection code
+    // Start of the node positioning code
+    dot_source += 'b [pos="0,40"]; a [pos="100,40"]; c [pos="160,80"];'
+    dot_source += 'd [pos="160,0"]; e [pos="220,40"];'
+    // End of the node positioning code
+    dot_source += 'a -> b -> c -> e; b -> d -> e -> a;';
+    dot_source += ' }';
+    var elem = document.getElementById("target_anchor4");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+<p><em>That</em> shows the mirror symmetry of the graph.</p>
+
+<p>The careful reader may have noticed an oddity in the above rendering: I had specified
+that <code>a</code> have an x-coordinate of 100, while the corresponding x-coordinate for <code>c</code> and <code>d</code> is 160; but
+in the rendering, all three of the nodes fall on a vertical line sharing the same x-coordinate.
+What happened?</p>
+
+<p>The answer is that the input node positions are by default only as
+<em>initial</em> values; the layout engine may still choose to adjust them in
+order to &quot;improve&quot; the layout according to its internal heuristics.</p>
+
+<p>We can override this by <em>pinning</em> the nodes in place. An individual node can be pinned by
+putting an exclamation point after the coordinate in its <code>pos</code> attribute, or equivalently by
+setting the nodes <code>pin</code> attribute to <code>true</code>.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>dot_source += &#39;b [pos=&quot;0,40&quot;]; a [pos=&quot;100,40!&quot;]; c [pos=&quot;160,80!&quot;];&#39;
+</span><span class='line'>dot_source += &#39;d [pos=&quot;160,0!&quot;]; e [pos=&quot;220,40&quot;];&#39;
+</span></code></pre></td></tr></table></div></figure>
+
+<p id="target_anchor5"></p>
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
+    // Start of the layout selection code
+    dot_source += 'layout="neato"; inputscale=72;' // specifying "neato" layout to allow init position specification
+    dot_source += 'overlap="false";' // if you leave this out, the engine may put nodes in overlapping spots
+    dot_source += 'start=0;' // seed the RNG (to ensure consistent results)
+    // End of the layout selection code
+    // Start of the node positioning code
+    dot_source += 'b [pos="0,40"]; a [pos="100,40!"]; c [pos="160,80!"];'
+    dot_source += 'd [pos="160,0!"]; e [pos="220,40"];'
+    // End of the node positioning code
+    dot_source += 'a -> b -> c -> e; b -> d -> e -> a;';
+    dot_source += ' }';
+    var elem = document.getElementById("target_anchor5");
+    elem.innerHTML = Viz(dot_source,"svg");
+</script>
+
+<p>Now we can see that <code>a</code>, <code>c</code>, and <code>d</code> are all pinned in place, and the resulting layout
+is perhaps not as nice.</p>
+
+<p>In particular, the <code>a -&gt; b</code> edge does not even have enough room
+for its arrow head. We could fix this by pinning the <code>b</code> node in place as well,
+but an alternative is to encourage graphviz to put more space between the nodes
+via the <code>sep</code> attribute.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>dot_source += &#39;sep=0.2;&#39; // treat each node as 1.2 times larger than it is
+</span></code></pre></td></tr></table></div></figure>
+
+<p id="target_anchor6"></p>
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
+    // Start of the layout selection code
+    dot_source += 'layout="neato"; inputscale=72;' // specifying "neato" layout to allow init position specification
+    dot_source += 'overlap="false";' // if you leave this out, the engine may put nodes in overlapping spots
+    dot_source += 'sep=0.2;' // treat each node as 1.2 times larger than it is
+    dot_source += 'start=0;' // seed the RNG (to ensure consistent results)
+    // End of the layout selection code
+    // Start of the node positioning code
+    dot_source += 'b [pos="0,40"]; a [pos="100,40!"]; c [pos="160,80!"];'
+    dot_source += 'd [pos="160,0!"]; e [pos="220,40"];'
+    // End of the node positioning code
+    dot_source += 'a -> b -> c -> e; b -> d -> e -> a;';
+    dot_source += ' }';
+    var elem = document.getElementById("target_anchor6");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+<p>That is a pretty legible graph. Of course, the code to describe it is
+quite a bit more complex than our <a href="#target_anchor2">original code</a>;
+hopefully I will not feel the need to specify node placement too
+often.</p>
+
+<h3 id="toc_5">Edge attributes</h3>
+
+<p>Above we saw examples of node attributes, which can be used to adjust the
+node placement and rendering. (The <a href="http://www.graphviz.org/doc/info/attrs.html">family of attributes</a> is much larger,
+and includes ways to specify shapes, color, label text, et cetera.)</p>
+
+<p>Graphviz also offers the ability to customize attributes for each
+<em>edge</em>.  This can also be useful for influencing layout.
+In particular, the <code>len</code> attribute can specify a preferred edge length
+(ignored by the <code>dot</code> layout), and the <code>weight</code> attribute can be
+increased to encourage the edge to be shorter (or, when <code>len</code> is
+specified and relevant, to encourage that edge length to more closely
+approximate <code>len</code>).</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;p</span> <span class="na">id=</span><span class="s">&quot;target_anchor7a&quot;</span><span class="nt">&gt;&lt;/p&gt;</span>
+</span><span class='line'><span class="nt">&lt;script&gt;</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">dot_source</span> <span class="o">=</span> <span class="s1">&#39;digraph { rankdir=&quot;LR&quot;; bgcolor=&quot;transparent&quot;;&#39;</span>
+</span><span class='line'>    <span class="nx">dot_source</span> <span class="o">+=</span> <span class="s1">&#39;edge [weight=2];&#39;</span>
+</span><span class='line'>    <span class="nx">dot_source</span> <span class="o">+=</span> <span class="s1">&#39;a -&gt; b -&gt; c -&gt; e; b -&gt; d -&gt; e -&gt; a [weight=1];&#39;</span><span class="p">;</span>
+</span><span class='line'>    <span class="nx">dot_source</span> <span class="o">+=</span> <span class="s1">&#39; }&#39;</span><span class="p">;</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">elem</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;target_anchor7a&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="nx">elem</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">Viz</span><span class="p">(</span><span class="nx">dot_source</span><span class="p">,</span> <span class="s2">&quot;svg&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="nt">&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p>Here we have used <code>edge [weight=2]</code> to specify a default weight of 2 for all edges,
+and then we override that weight for the <code>e -&gt; a</code> edge (and just that edge).
+(Note: The <code>dot</code> layout requires integral values for <code>weight</code>.)</p>
+
+<p>Here is the effect of this:</p>
+
+<p id="target_anchor7a"></p>
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
+    dot_source += 'edge [weight=2];'
+    dot_source += 'a -> b -> c -> e; b -> d -> e -> a [weight=1];';
+    dot_source += ' }';
+    var elem = document.getElementById("target_anchor7a");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+<p>Look at that! We can see the mirror symmetry of the graph (depending on
+how much we are willing to squint with regards to that <code>e -&gt; a</code> edge),
+but we did not have to do any layout hacking.</p>
+
+<p>Unsurprisingly, a different weight-assignment may yield a different layout.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>dot_source += &#39;   { edge [weight=10]; a -&gt; b; e -&gt; a; }&#39;
+</span><span class='line'>dot_source += &#39;   { edge [weight=1]; b -&gt; c -&gt; e; b -&gt; d -&gt; e; }&#39;
+</span></code></pre></td></tr></table></div></figure>
+
+<p>Here we have moved a portion of the edges into a subgraph, so that we
+can override their default <code>weight</code> as a group.</p>
+
+<p id="target_anchor7b"></p>
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
+    dot_source += '   { edge [weight=10]; a -> b; e -> a; }'
+    dot_source += '   { edge [weight=1]; b -> c -> e; b -> d -> e; }'
+    dot_source += ' }';
+    var elem = document.getElementById("target_anchor7b");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+<p>Perhaps more surprising, changing node introduction order in the
+source can also affect the layout.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>dot_source += &#39;   b -&gt; a [dir=&quot;back&quot;]; a -&gt; e [dir=&quot;back&quot;];&#39;
+</span><span class='line'>dot_source += &#39;   b -&gt; c -&gt; e; b -&gt; d -&gt; e;&#39;
+</span></code></pre></td></tr></table></div></figure>
+
+<p>Here, we introduce the nodes <code>b</code> then <code>a</code> then <code>e</code> to encourage them
+to be laid out horizontally in that order, then apply the <code>dir</code>
+attribute so that the edge between them has its direction reversed.</p>
+
+<p id="target_anchor7c"></p>
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
+    dot_source += '   b -> a [dir="back"]; a -> e [dir="back"];'
+    dot_source += '   b -> c -> e; b -> d -> e;'
+    dot_source += ' }';
+    var elem = document.getElementById("target_anchor7c");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+<p>Finally, if you want to describe a path through the graph, you can
+highlight the edges of the path by overriding their <code>color</code> and
+<code>penwidth</code> attribute.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;p</span> <span class="na">id=</span><span class="s">&quot;target_anchor8&quot;</span><span class="nt">&gt;&lt;/p&gt;</span>
+</span><span class='line'><span class="nt">&lt;script&gt;</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">dot_source</span> <span class="o">=</span> <span class="s1">&#39;digraph { rankdir=&quot;LR&quot;; bgcolor=&quot;transparent&quot;;&#39;</span>
+</span><span class='line'>    <span class="nx">dot_source</span> <span class="o">+=</span> <span class="s1">&#39;edge [weight=2];&#39;</span>
+</span><span class='line'>    <span class="nx">dot_source</span> <span class="o">+=</span> <span class="s1">&#39;a -&gt; b -&gt; d;&#39;</span><span class="p">;</span>
+</span><span class='line'>    <span class="nx">dot_source</span> <span class="o">+=</span> <span class="s1">&#39;{ edge [color=&quot;red&quot;,penwidth=&quot;3.0&quot;]; b -&gt; c -&gt; e -&gt; a [weight=1] }&#39;</span><span class="p">;</span>
+</span><span class='line'>    <span class="nx">dot_source</span> <span class="o">+=</span> <span class="s1">&#39; }&#39;</span><span class="p">;</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">elem</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;target_anchor8&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="nx">elem</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">=</span> <span class="nx">Viz</span><span class="p">(</span><span class="nx">dot_source</span><span class="p">,</span> <span class="s2">&quot;svg&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="nt">&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<p>Here again we have used a subgraph to reduce the annotation burden.</p>
+
+<p id="target_anchor8"></p>
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
+    dot_source += 'edge [weight=2];'
+    dot_source += 'a -> b -> d -> e;';
+    dot_source += '{ edge [color="red",penwidth="3.0"]; b -> c -> e -> a [weight=1] }';
+    dot_source += ' }';
+    var elem = document.getElementById("target_anchor8");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+<p>(One can use subgraphs for a number of other tricks, such as forcing all
+nodes in the subgraph to fall into the same <code>rank</code>, which can be another
+useful technique for encouraging particular layouts.)</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Felix S. Klock II</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-10-12T14:10:00+02:00" pubdate data-updated="true">12 October 2015</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://blog.pnkfx.org/blog/2015/10/12/viz-a-viz-js/" data-via="pnkfelix" data-counturl="http://blog.pnkfx.org/blog/2015/10/12/viz-a-viz-js/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/" title="Previous Post: An insight regarding DST grammar for Rust">&laquo; An insight regarding DST grammar for Rust</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/">An insight regarding DST grammar for Rust</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/03/13/meta-updating-octopress-post-mavericks-upgrade/">Updating Octopress post-Mavericks upgrade.</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing syntax for associated items in Rust</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/pnkfelix">@pnkfelix</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'pnkfelix',
+            count: 4,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <li class="loading">Status updating...</li>
+  </ul>
+  <script type="text/javascript">
+    $.domReady(function(){
+      getTwitterFeed("pnkfelix", 4, false);
+    });
+  </script>
+  <script src="/javascripts/twitter.js" type="text/javascript"> </script>
+  
+    <a href="http://twitter.com/pnkfelix" class="twitter-follow-button" data-show-count="false">Follow @pnkfelix</a>
+  
+</section>
+
+
+<section>
+  <h1>On Delicious</h1>
+  <div id="delicious"></div>
+  <script type="text/javascript" src="http://feeds.delicious.com/v2/json/pnkfelix?count=3&amp;sort=date&amp;callback=renderDeliciousLinks"></script>
+  <p><a href="http://delicious.com/pnkfelix">My Delicious Bookmarks &raquo;</a></p>
+</section>
+
+
+<section class="googleplus">
+  <h1>
+    <a href="https://plus.google.com/pnkfelix?rel=author">
+      <img src="http://www.google.com/images/icons/ui/gprofile_button-32.png" width="32" height="32">
+      Google+
+    </a>
+  </h1>
+</section>
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Felix S. Klock II -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'pnkfx-blog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://blog.pnkfx.org/blog/2015/10/12/viz-a-viz-js/';
+        var disqus_url = 'http://blog.pnkfx.org/blog/2015/10/12/viz-a-viz-js/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
