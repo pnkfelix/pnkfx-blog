@@ -2,3 +2,12 @@
 // Add styles here to make changes without digging in too much
 
 .pre-code { .n { color: $base1 !important } }
+
+// I would like to experiment with the Tufte CSS, but
+// getting a usable result is *not* as simple as just
+// adding a few imports like the below.
+//
+// So, I am going to put off such experimentation
+// for later.
+
+// @import url("/tufte-css/tufte.css")
