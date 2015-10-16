@@ -4,7 +4,7 @@ title: "Vis-a-vis, part 1: Visualizing Graphs via viz.js"
 date: 2015-10-12 14:10
 comments: true
 categories:
-published: false
+published: true
 ---
 
 This is a post discussing a couple different ways to draw pictures,
