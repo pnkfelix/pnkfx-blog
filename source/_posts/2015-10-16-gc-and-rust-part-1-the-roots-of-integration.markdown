@@ -25,9 +25,68 @@ To explain why, I need to define the actual problems we seek to solve.
 
 <!-- more -->
 
+(The body of this post makes heavy use of client-side rendering.  You
+may need to wait a moment while the supporting Javascript loads.)
+
+<script src="/javascripts/viz.js" charset="utf-8"></script>
+
 ## What is Garbage Collection
 
+A garbage collector is a component in the runtime for a programming
+language that periodically attempts to reclaim memory (without
+requiring explicit calls to memory-freeing routines in the programning
+language). To do this soundly, the collector must identify blocks of
+memory that cannot possibly be used in the future by the program
+(i.e., "dead objects").
 
+Discussions of garbage collection often equate the notion of "dead
+object" with "unreachable object": If no chain of references exists
+that could lead the program to an object, then that object cannot be
+reached (and therefore cannot be used in the future).<sup>[1](#footnote1)</sup>
+
+When one says "garbage collector", one usually means a "*tracing*
+garbage collector": a collector that works by identifying the
+reachable objects by computing from the object graph the connected
+components that include the "roots", i.e. the starting points from
+which any chain of references originates.
+
+<script>
+function make_graph0() {
+    return "digraph { A -> B; }"
+}
+function make_graph1() {
+    var dot_source = 'digraph { bgcolor="transparent";'
+    // dot_source += ' layout="neato"; inputscale=72;'
+    dot_source += ' overlap="false";' // if left out, nodes may overlap
+    dot_source += ' start=0;' // seed the RNG (for consistency)
+    dot_source += ' node [shape=record];'
+    dot_source += ' A [label="{A_top | A_bot}"];'
+    dot_source += ' B [label="{B_top | B_bot}"];'
+    dot_source += ' A -> B'
+    dot_source += '}'
+    return dot_source;
+}
+</script>
+<p id="target_anchor1"></p>
+<script>
+var g = make_graph0();
+var elem = document.getElementById("target_anchor1")
+elem.innerHTML += "<code>" + g + "</code>"
+</script>
+<script>
+var g = make_graph0()
+var elem = document.getElementById("target_anchor1")
+// elem.innerHTML += Viz(g, "svg")
+</script>
+
+----
+
+<a name="footnote1">1.</a> Researchers have explored methods exist to
+identify objects as dead even when reachable, such as using
+["parametricity"][collecting-more-garbage]; but I am not aware of any
+such method being used outside of a research setting.
+
+[collecting-more-garbage]: http://pop-art.inrialpes.fr/~fradet/PDFs/LISP94.pdf
 
 ## The Problem Space
 
