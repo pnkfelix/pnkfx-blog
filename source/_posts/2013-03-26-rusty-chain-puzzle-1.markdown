@@ -21,6 +21,8 @@ simple exercies, maybe taken from Knuth's
 This was indeed a much simpler goal, but it was more difficult than
 I had expected.
 
+<!-- more -->
+
 So, here is a Rust hacking puzzle that I struggled with.
 
 I am representing piles of playing cards via linked structures.

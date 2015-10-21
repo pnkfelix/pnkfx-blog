@@ -10,6 +10,8 @@ categories: parsing proglang
 I have been meaning to explore how one might implement a paritcular
 algorithm atop a host of languages that have struck my fancy lately.
 
+<!-- more -->
+
 In particular, I have wanted to explore Clojure and Rust some more,
 and perhaps compare them with e.g. (Larceny) Scheme and (Mozilla)
 Javascript.

@@ -12,6 +12,8 @@ open-source window-management tool for Mac OS X.
 It is very cool, mainly in that it is very configurable (but with a
 reasonably readable syntax for its configuration file).
 
+<!-- more -->
+
 Perhaps the most important thing to say is: Do not judge it solely
 based upon its default configuration file, which is very bare bones
 and does not illustrate anything near the full feature set that it

@@ -36,6 +36,8 @@ This post is my attempt to condense all of this information down into
 something where I can see all the pieces at once, and discard the
 red herrings along the way.
 
+<!-- more -->
+
 ## <a id="background_fns">Background: Closures (recurring and otherwise)</a>
 
 In Rust circa version 0.6, closures have three categories according to

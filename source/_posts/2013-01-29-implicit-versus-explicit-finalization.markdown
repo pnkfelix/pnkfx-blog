@@ -17,6 +17,8 @@ However, a significant portion of the destructor/finalizer design space is
 only briefly discussed in that paper, and I worry that Niko's post overlooks
 it.
 
+<!-- more -->
+
 There are designs that do not run finalizers directly from the garbage
 collection process (whether that collector be a coroutine with the mutator, or
 a concurrently running thread), and instead run finalization code

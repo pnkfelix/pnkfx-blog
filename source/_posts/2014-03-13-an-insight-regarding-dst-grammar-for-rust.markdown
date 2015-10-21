@@ -9,6 +9,8 @@ categories: rust proglang
 Executive summary: `type` = `unsized` ⊎ `sized`, so we should use
 `type` as our generalization marker, not `unsized`.
 
+<!-- more -->
+
 * <a href="#background_dst">Background: Dynamically Sized Types (DST)</a>
 * <a href="#the_insight">The Insight: `type` is a better generalization marker</a>
 * <a href="#the_examples">Examples ported from DST, Take 5</a>

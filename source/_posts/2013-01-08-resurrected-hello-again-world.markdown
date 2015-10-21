@@ -20,6 +20,8 @@ It turns out this is really important detail.
 Here's why: For my first blogging act of the new year, I inadvertently destroyed
 my own blog.
 
+<!-- more -->
+
 I attempted to write a post from a computer other than the one out of
 which I had already worked all the octopress-compatibility kinks.
 In the hustle of dealing with `rbenv` and various other ruby-oriented

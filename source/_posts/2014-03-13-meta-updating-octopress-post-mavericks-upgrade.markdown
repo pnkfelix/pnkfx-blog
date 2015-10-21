@@ -13,6 +13,8 @@ this computer at home to Mac OS X Mavericks (10.9.2).
 So of course my existing set of commands for Octopress workflow did
 not work.
 
+<!-- more -->
+
 At first there were dependencies like `chunky_png-1.2.7` that had to
 be satisfied (re-installed, I assume; I am pretty sure I blew away my
 previous Homebrew setup during the upgrade; I do not know how much

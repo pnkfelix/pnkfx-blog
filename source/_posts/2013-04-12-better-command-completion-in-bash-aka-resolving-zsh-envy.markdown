@@ -17,6 +17,8 @@ at least not if you are already using Homebrew.
 Just install
 [brew's bash completion package][4]!
 
+<!-- more -->
+
 Executive summary: 
 
 ```bash

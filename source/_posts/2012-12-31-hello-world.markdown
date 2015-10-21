@@ -21,6 +21,8 @@ I am attempting to move my blog to GitHub Pages.
 After seeing the results of others, I figure I will start with Octopress
 and see how that goes.
 
+<!-- more -->
+
 Just so I can remind myself of the Octopress basics in the immediate future:
 
 * Much of the page generation is controlled by configuration file `_config.yml`

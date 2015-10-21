@@ -10,6 +10,8 @@ categories:
 Steps adapted from the GNU [GNAT manual][1], which I found linked via [Stack Overflow][2].  I was actually concerned about whether I could legimately
 quote the manual (which is licensed under the [GNU FDL][3], [version 1.3][4]).  But based on the discussion on the emacs-devel list [5], it looks to me like the people will see that this is a good faith effort to share knowledge, and not to subvert the GNAT project or manual itself.  Furthermore, the fact that I am linking to the FDL in this post might well be satisfying the requirements of the license, in spirit if not in word.
 
+<!-- more -->
+
 Anyway, here are the steps.
 
 1. Open `Keychain Access.app`

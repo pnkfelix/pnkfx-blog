@@ -14,7 +14,11 @@ then, it won't happen for probably another week).
 
 But before I write up that post, I wanted to transcribe a series of
 interactions I had with the Rust compiler, `rustc`, from immediately
-*before* I encountered that puzzle..  My goal is largely to document
+*before* I encountered that puzzle..
+
+<!-- more -->
+
+My goal is largely to document
 my own experience as a semi-infomed Rust newbie who has not yet
 internalized all of the in's and out's of programming with owned
 pointers.  (I think I am addressing this post to myself, the me from a

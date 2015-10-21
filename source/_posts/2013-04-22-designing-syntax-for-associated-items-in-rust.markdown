@@ -20,6 +20,8 @@ Executive summary: if you don't want or need the background information
 or the discussion motivating the proposal, then just jump
 straight to the <a href="#proposal">proposal</a> itself.
 
+<!-- more -->
+
 ## <a id="background">Background</a>
 
 Early in my experimentation with Rust, I thought a reasonable exercise
