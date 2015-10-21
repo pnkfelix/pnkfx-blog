@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: parsing | The {pnk}f(eli)x Blog]]></title>
+  <link href="http://blog.pnkfx.org/blog/categories/parsing/atom.xml" rel="self"/>
+  <link href="http://blog.pnkfx.org/"/>
+  <updated>2015-10-20T21:46:12+02:00</updated>
+  <id>http://blog.pnkfx.org/</id>
+  <author>
+    <name><![CDATA[Felix S. Klock II]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Earley Parsing Variety Show]]></title>
+    <link href="http://blog.pnkfx.org/blog/2013/02/16/earley-parsing-variety-show/"/>
+    <updated>2013-02-16T18:06:00+01:00</updated>
+    <id>http://blog.pnkfx.org/blog/2013/02/16/earley-parsing-variety-show</id>
+    <content type="html"><![CDATA[<p>I have been meaning to explore how one might implement a paritcular
+algorithm atop a host of languages that have struck my fancy lately.</p>
+
+<p>In particular, I have wanted to explore Clojure and Rust some more,
+and perhaps compare them with e.g. (Larceny) Scheme and (Mozilla)
+Javascript.</p>
+<div class="highlight"><pre><code class="scheme"><span class="c1">;; fib : Nat -&gt; Nat</span>
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">fib</span> <span class="nv">n</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">cond </span><span class="p">((</span><span class="nb">&lt; </span><span class="nv">n</span> <span class="mi">2</span><span class="p">)</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">(</span><span class="k">else </span><span class="p">(</span><span class="nb">+ </span><span class="p">(</span><span class="nf">fib</span> <span class="p">(</span><span class="nb">- </span><span class="nv">n</span> <span class="mi">1</span><span class="p">))</span> <span class="p">(</span><span class="nf">fib</span> <span class="p">(</span><span class="nb">- </span><span class="nv">n</span> <span class="mi">2</span><span class="p">))))))</span>
+</code></pre></div><div class="highlight"><pre><code class="javascript"><span class="c1">// fib : Nat -&gt; Nat</span>
+<span class="kd">function</span> <span class="nx">fib</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span>
+  <span class="p">(</span><span class="o">&lt;</span> <span class="nx">n</span> <span class="mi">2</span><span class="p">)</span> <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="p">(</span><span class="nx">fib</span><span class="p">(</span><span class="nx">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="nx">fib</span><span class="p">(</span><span class="nx">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">))</span>
+</code></pre></div><div class="highlight"><pre><code class="javascript"><span class="c1">// fib : Nat -&gt; Nat</span>
+<span class="kd">function</span> <span class="nx">fib</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">&lt;</span> <span class="nx">n</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">fib</span><span class="p">(</span><span class="nx">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="nx">fib</span><span class="p">(</span><span class="nx">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h1 id="toc_0">Reminder of first thought on rust:</h1>
+
+<h1 id="toc_1">This:</h1>
+<div class="highlight"><pre><code class="text">fib.rs:7:8: 7:28 error: unresolved name
+fib.rs:7     use std::time::get_time;
+                 ^~~~~~~~~~~~~~~~~~~~
+fib.rs:7:8: 7:28 error: failed to resolve import: std::time::get_time
+fib.rs:7     use std::time::get_time;
+                 ^~~~~~~~~~~~~~~~~~~~
+error: failed to resolve imports
+error: aborting due to 3 previous errors
+</code></pre></div>
+<h1 id="toc_2">does not help remind me that I need this somewhere:</h1>
+<div class="highlight"><pre><code class="rust"><span class="k">extern</span> <span class="kn">mod</span> <span class="n">std</span><span class="p">;</span>
+</code></pre></div>
+<h1 id="toc_3">I think the error message could be improved here.</h1>
+]]></content>
+  </entry>
+  
+</feed>

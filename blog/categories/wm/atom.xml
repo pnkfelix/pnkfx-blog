@@ -4,7 +4,7 @@
   <title><![CDATA[Category: wm | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/wm/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-10-16T15:51:05+02:00</updated>
+  <updated>2015-10-20T22:34:50+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -29,19 +29,21 @@ based upon its default configuration file, which is very bare bones
 and does not illustrate anything near the full feature set that it
 offers.</p>
 
-<p>Instead, I recommend one at least read over Tristan Hume&#39;e <a href="http://thume.ca/howto/2012/11/19/using-slate/" title="Tristan Hume: Using Slate">blog post</a>,
-which advertises Slate much more effectively than the project&#39;s
+<p>Instead, I recommend one at least read over Tristan Hume'e <a href="http://thume.ca/howto/2012/11/19/using-slate/" title="Tristan Hume: Using Slate">blog post</a>,
+which advertises Slate much more effectively than the project&rsquo;s
 github page.  The blog post describes some of the crucial features that are not
 exposed in the default configuration.  In particular, the
 window-switcher shortcut, which overlays each window with a
 letter to give that window focus, is much more tile-friendly
-if you also turn on </p>
-<div class="highlight"><pre><code class="text">config windowHintsIgnoreHiddenWindows false
+if you also turn on</p>
+
+<pre><code>config windowHintsIgnoreHiddenWindows false
 config windowHintsShowIcons true
-</code></pre></div>
+</code></pre>
+
 <p>You can see this and other custimzations I have made for myself
 in my own <code>.slate</code> file, which I keep with my other dotfiles in
-<a href="https://github.com/pnkfelix/DotFiles/blob/master/slate" title="Felix&#39;s DotFiles github repo">my public repository</a>.</p>
+<a href="https://github.com/pnkfelix/DotFiles/blob/master/slate" title="Felix's DotFiles github repo">my public repository</a>.</p>
 ]]></content>
   </entry>
   

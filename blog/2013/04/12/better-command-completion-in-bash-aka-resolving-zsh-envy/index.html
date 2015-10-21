@@ -10,7 +10,7 @@
 
   
   <meta name="description" content="(This post started as a personal e-mail to Niko, and then I figured it
-was blog worthy.) There&#39;s plenty of problems when working atop &quot;OS X& &hellip;">
+was blog worthy.) There&rsquo;s plenty of problems when working atop &ldquo;OS &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -84,7 +84,7 @@ was blog worthy.) There&#39;s plenty of problems when working atop &quot;OS X& &
   
 
 
-<time datetime="2013-04-12T07:57:00+02:00" pubdate data-updated="true">12 April 2013</time>
+<time datetime="2013-04-12T07:57:00+02:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -94,14 +94,14 @@ was blog worthy.) There&#39;s plenty of problems when working atop &quot;OS X& &
 <div class="entry-content"><p>(This post started as a personal e-mail to Niko, and then I figured it
 was blog worthy.)</p>
 
-<p>There&#39;s plenty of problems when working atop &quot;OS X&quot;;
-but no need to be jealous of Shu&#39;s zsh setup
+<p>There&rsquo;s plenty of problems when working atop &ldquo;OS X&rdquo;;
+but no need to be jealous of Shu&rsquo;s zsh setup
 (at least not for its tab-completion on git stuff),
 at least not if you are already using Homebrew.
 Just install
-<a href="http://blog.jeffterrace.com/2012/09/bash-completion-for-mac-os-x.html">brew&#39;s bash completion package</a>!</p>
+<a href="http://blog.jeffterrace.com/2012/09/bash-completion-for-mac-os-x.html">brew&rsquo;s bash completion package</a>!</p>
 
-<p>Executive summary: </p>
+<p>Executive summary:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -119,11 +119,12 @@ Just install
 </span><span class='line'><span class="s">END</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
 <p>And voilà!</p>
 
 <p>See also potentially related topics from <a href="http://superuser.com/questions/288438/bash-completion-for-commands-in-mac-os">super user</a>, <a href="http://stackoverflow.com/questions/14970728/homebrews-git-not-using-completion">stack overflow</a>, <a href="http://milkbox.net/note/brace-completion-in-snow-leopard-upgrading-bash/">milkbox blog</a>.</p>
 
-<hr>
+<hr />
 
 <p>Note also that I did burn myself by trying to get too smart: In
 particular, after reading <a href="http://stackoverflow.com/questions/14970728/homebrews-git-not-using-completion">stack overflow</a>, I over-eagerly
@@ -147,22 +148,23 @@ in <code>/usr/local/bin/</code> out of the way, and</li>
 <li>redid the <code>brew install git</code></li>
 </ol>
 
-<hr>
+
+<hr />
 
 <p>Anyway, I should also give a shout-out to Axel Hecht; his post
-on Mozilla&#39;s Yammer instance is what got me to the point of even
+on Mozilla&rsquo;s Yammer instance is what got me to the point of even
 attempting to install this piece of marvelousness.</p>
 
 <p>(Also, further posts on yammer are lightly pushing for readers to consider
 zsh as an alternative to bash.  I do not think I am ready to switch to zsh,
 but I can at least link to the <a href="http://friedcpu.wordpress.com/2007/07/24/zsh-the-last-shell-youll-ever-need/">blog post arguing for zsh</a>.)</p>
 
-<hr>
+<hr />
 
 <p>Update (written 2013 april 16): Now that I have decent command/context
 sensitive completion in bash in my terminal, of <em>course</em> I
 want to have it in my Emacs <code>M-x shell</code> as well.  At first I
-was dismayed that I did not just get that &quot;out of the box&quot;;
+was dismayed that I did not just get that &ldquo;out of the box&rdquo;;
 then I was happy after some googling to discover:
 <a href="https://github.com/szermatt/emacs-bash-completion">bash-completion.el</a>, which forwards the completion
 requests onto a separate bash process, so that one inherits
@@ -174,7 +176,7 @@ with no Emacs hacking.</p>
 <p>It turns out that I had to do a little bit of Emacs hacking
 in order to get the setup working, at least for my idiosyncratic
 bash setup.  In particular, it seems like the Elisp code
-for bash-complete.el assumes that one is setting one&#39;s
+for bash-complete.el assumes that one is setting one&rsquo;s
 prompt via the <code>PS1</code> environment variable, while mine is often
 set via the <code>PROMPT_COMMAND</code> environment variable.
 After determining what is going on, it is easy enough to fix this (and
@@ -202,7 +204,7 @@ the github repo</a>).</p>
   
 
 
-<time datetime="2013-04-12T07:57:00+02:00" pubdate data-updated="true">12 April 2013</time>
+<time datetime="2013-04-12T07:57:00+02:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
@@ -249,6 +251,10 @@ the github repo</a>).</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/10/16/gc-and-rust-part-1-the-roots-of-integration/">GC and Rust Part 1: The Roots of Integration</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
@@ -262,10 +268,6 @@ the github repo</a>).</p>
     
       <li class="post">
         <a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing syntax for associated items in Rust</a>
       </li>
     
   </ul>
@@ -298,23 +300,6 @@ the github repo</a>).</p>
     });
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
-</section>
-
-
-<section>
-  <h1>Latest Tweets</h1>
-  <ul id="tweets">
-    <li class="loading">Status updating...</li>
-  </ul>
-  <script type="text/javascript">
-    $.domReady(function(){
-      getTwitterFeed("pnkfelix", 4, false);
-    });
-  </script>
-  <script src="/javascripts/twitter.js" type="text/javascript"> </script>
-  
-    <a href="http://twitter.com/pnkfelix" class="twitter-follow-button" data-show-count="false">Follow @pnkfelix</a>
-  
 </section>
 
 

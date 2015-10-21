@@ -86,7 +86,7 @@ Leveraging a proc keyword/expression &hellip;">
   
 
 
-<time datetime="2013-06-07T10:17:00+02:00" pubdate data-updated="true">07 June 2013</time>
+<time datetime="2013-06-07T10:17:00+02:00" pubdate data-updated="true"></time>
         
       </p>
     
@@ -101,12 +101,18 @@ Leveraging a proc keyword/expression &hellip;">
 <ul>
 <li><a href="#is_fn_too_ugly">Is fn~ too ugly?</a></li>
 <li><a href="#leveraging_proc">Leveraging a proc keyword/expression</a></li>
-<li><a href="#other_ways_to_proc">Other ways to express proc</a></li>
+<li><a href="#other_ways_to_proc">Other ways to express proc</a>
+
+<ul>
 <li><a href="#digression_on_macros">A Personal Digression on Macros</a></li>
+</ul>
+</li>
 <li><a href="#more_followup_on_procs_and_fns">More followups on procs and fns</a></li>
-</ul></li>
+</ul>
+</li>
 <li><a href="#where_are_we">So where are we?</a></li>
 </ul>
+
 
 <p>I have recently been trying to keep myself abreast of a flurry of
 discussion about reforming the design of Rust closures.  Niko has a
@@ -120,24 +126,24 @@ more formalized proposals with their own set of discussions: (<a href="https://g
 without sufficient context the discussion in the github issues may not
 always be intelligible.</p>
 
-<p>Some of the links above are more about &quot;Dynamically Sized Types&quot;
+<p>Some of the links above are more about &ldquo;Dynamically Sized Types&rdquo;
 (DST), a related topic, as we shall see.</p>
 
 <p>This post is my attempt to condense all of this information down into
 something where I can see all the pieces at once, and discard the
 red herrings along the way.</p>
 
-<h2 id="toc_0"><a id="background_fns">Background: Closures (recurring and otherwise)</a></h2>
+<h2><a id="background_fns">Background: Closures (recurring and otherwise)</a></h2>
 
 <p>In Rust circa version 0.6, closures have three categories according to
 the type system (<code>&amp;fn</code>, <code>@fn</code>, and <code>~fn</code>), but <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">as Niko describes</a>,
 they can be divided into two kinds: by-reference closures and copying
 closures.  By-reference closures are also referred to as
-stack-allocated closures or sometimes &quot;stack closure.&quot;
+stack-allocated closures or sometimes &ldquo;stack closure.&rdquo;
 (There is also a orthogonal division of <code>once</code> closures, versus
 closures that can be invoked more than once; some of these things are,
 to my knowledge, only part of planned future implementation.  Niko
-discusses them in the blog posts but I&#39;m mostly sidestep them here.)</p>
+discusses them in the blog posts but I&rsquo;m mostly sidestep them here.)</p>
 
 <p>As Niko states in the first paragraph of <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">1</a>, a stack closure is
 allocated on the stack, and can refer to and manipulate the local
@@ -153,14 +159,15 @@ type, Niko often uses the term <code>&amp;fn</code> closure synonymously with
 stack-allocated closure.</p>
 
 <p>(However, Niko also points out (first section of
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&quot;Procedures, Continued&quot;</a>) that one can borrow a <code>@fn</code> or <code>~fn</code> to
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&ldquo;Procedures, Continued&rdquo;</a>) that one can borrow a <code>@fn</code> or <code>~fn</code> to
 a <code>&amp;fn</code>, so the type does <em>not</em> tell you whether you actually have a
 by-reference or a copying-closure.)</p>
 
 <p>Here is the example of an unsound function that Niko described in
 his <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">Case of the Recurring Closure</a> post from 2013-04-30,
 making use of higher-order functions to express a fixed-point
-combinator:
+combinator:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -192,10 +199,10 @@ combinator:
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">innocent_looking_victim</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">vec</span> <span class="o">=</span> <span class="o">~</span><span class="p">[</span><span class="m">1</span><span class="p">,</span> <span class="m">2</span><span class="p">,</span> <span class="m">3</span><span class="p">];</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">vec</span> <span class="o">=</span> <span class="o">~</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">];</span>
 </span><span class='line'>    <span class="n">conspirator</span><span class="p">(</span><span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="n">vec</span><span class="p">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="m">100</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">vec</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="m">4</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">vec</span><span class="p">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">100</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">vec</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="mi">4</span><span class="p">);</span>
 </span><span class='line'>            <span class="k">for</span> <span class="n">vec</span><span class="p">.</span><span class="n">each</span> <span class="o">|</span><span class="n">i</span><span class="o">|</span> <span class="p">{</span>
 </span><span class='line'>                <span class="n">f</span><span class="p">.</span><span class="n">c</span><span class="p">(</span><span class="o">&amp;</span><span class="n">f</span><span class="p">)</span>
 </span><span class='line'>            <span class="p">}</span>
@@ -207,11 +214,12 @@ combinator:
 </span><span class='line'>    <span class="kd">let</span> <span class="n">r</span> <span class="o">=</span> <span class="n">R</span> <span class="p">{</span><span class="n">c</span><span class="o">:</span> <span class="n">f</span><span class="p">};</span>
 </span><span class='line'>    <span class="n">f</span><span class="p">(</span><span class="o">&amp;</span><span class="n">r</span><span class="p">)</span>
 </span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
+
 
 <p>As Niko explains, the vector <code>vec</code> is mutated while being traversed by
 an iterator; this is illegal.  The closure <code>|f| { ... }</code> captures
-a reference to <code>vec</code>, and Rust&#39;s borrow checker is not treating the argument
+a reference to <code>vec</code>, and Rust&rsquo;s borrow checker is not treating the argument
 <code>f</code> as a potential source of aliases to <code>vec</code>, even though it does alias
 <code>vec</code> because <code>f</code> ends up being bound to the closure <code>|f| { ... }</code>.</p>
 
@@ -228,10 +236,10 @@ with other proposals, as we shall see.
 (Note that Rust does have a way of expressing a non-aliasable pointer
 to <code>T</code> for any <code>T</code>: <code>&amp;mut T</code>.)</p>
 
-<h2 id="toc_1"><a id="background_dst">Background: DST</a></h2>
+<h2><a id="background_dst">Background: DST</a></h2>
 
 <p>The heart of the Dynamically Sized Types proposal is the discrepancy
-described in Niko&#39;s <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">DST, Revisited</a> post from 2013-04-30
+described in Niko&rsquo;s <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">DST, Revisited</a> post from 2013-04-30
 (published contemporaneously with <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">Case of the Recurring Closure</a>).
 Niko has been wrestling with the idea for a while, as one can see on
 his posts from <a href="http://smallcultfollowing.com/babysteps/blog/2012/04/23/vectors-strings-and-slices/">2012-04-23</a> and <a href="http://smallcultfollowing.com/babysteps/blog/2012/04/27/in-favor-of-types-of-unknown-size/">2012-04-27</a>.</p>
@@ -251,45 +259,47 @@ tracked at compile-time.  Consists of just the array of elements,
 <code>T[N]</code>, and nothing more.  Expressed as <code>[T, ..N]</code> in Rust.</li>
 </ul>
 
-<p>Niko points out that a slice&#39;s two-word representation is quite
+
+<p>Niko points out that a slice&rsquo;s two-word representation is quite
 different from the representations of the other variants.  His
 proposal is to unify the first two representations, by laying out
 <code>~[T]</code> and <code>@[T]</code> as pairs of words (a pointer to the boxed elements
 array, and a length).
-(Niko claimed that this makes a <code>~[T]</code> and <code>@[T]</code> valid slices, &quot;apart
-from the box header&quot;; it seems to me like the box header is quite
+(Niko claimed that this makes a <code>~[T]</code> and <code>@[T]</code> valid slices, &ldquo;apart
+from the box header&rdquo;; it seems to me like the box header is quite
 relevant here, unless the idea is that when you coerce a <code>@[T]</code> to a
-slice, you increment the pointer value accordingly&#8230;)</p>
+slice, you increment the pointer value accordingly&hellip;)</p>
 
 <p>Then, Niko classifies the types of Rust into two categories: Sized and
 Unsized; i.e., size is statically known, versus size is tracked at
 runtime (maybe the letters S and R would have been more appropriate
-than S and U&#8230;).  The &quot;unsized types&quot; cannot themselves be assigned
+than S and U&hellip;).  The &ldquo;unsized types&rdquo; cannot themselves be assigned
 as types of local variables, and you cannot have vectors of elements
-of unsized type; this all stems from the fact that &quot;unsized types&quot; do
+of unsized type; this all stems from the fact that &ldquo;unsized types&rdquo; do
 not have a static size.
-(The &quot;unsized types&quot; are arguably not actually types; we might be
-well-served by referring to them as &quot;pretypes&quot; or something).
+(The &ldquo;unsized types&rdquo; are arguably not actually types; we might be
+well-served by referring to them as &ldquo;pretypes&rdquo; or something).
 But pointers to unsized types are valid types.  Such pointers are the
-pairs of words discussed above, aka &quot;fat pointers&quot;: <code>(payload, meta)</code>,
+pairs of words discussed above, aka &ldquo;fat pointers&rdquo;: <code>(payload, meta)</code>,
 where <code>payload</code> is the pointer to the data, and <code>meta</code> is the
 descriptor that includes some way to determine the size of the payload
 (to support runtime bounds checks).</p>
 
-<p>The fact that &quot;unsized types&quot; need to be treated specially leads to a
+<p>The fact that &ldquo;unsized types&rdquo; need to be treated specially leads to a
 complication, discussed further in the post; how to differentiate
 between type-parameterized code that works on both kinds of types,
 versus typed-parameterized code that solely operates on sized types.
 The method proposed in the post is to express the distinction via a
 trait bound: the <code>Sized</code> bound would restrict the type parameter to
 one of statically-known size; you would not be able to express
-types like <code>[X, ..3]</code> (a fixed-length vector of 3 X&#39;es), unless you
+types like <code>[X, ..3]</code> (a fixed-length vector of 3 X'es), unless you
 include the bound <code>X:Sized</code>.  (There is more on this restriction
 and ways to ease it further down.)</p>
 
 <p>One of the benefits of DST that Niko proposes early on is that
 Traits and closures are other instances of unsized types, so that
-Rust&#39;s type hierarchy could be presented uniformly like so:
+Rust&rsquo;s type hierarchy could be presented uniformly like so:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -315,21 +325,23 @@ Rust&#39;s type hierarchy could be presented uniformly like so:
 </span><span class='line'>  <span class="o">|</span> <span class="n">Trait</span>        <span class="c1">// existential (&quot;exists S:Trait.S&quot;)</span>
 </span><span class='line'>  <span class="o">|</span> <span class="k">fn</span><span class="p">(</span><span class="n">S</span><span class="o">*</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>
 </span></code></pre></td></tr></table></div></figure>
-(Note that the actual types assigned to expressions would be instances
+
+
+<p>(Note that the actual types assigned to expressions would be instances
 of <code>S</code> according to this grammar.)</p>
 
-<h2 id="toc_2"><a id="the_problem">The Problem: DST and Closures</a></h2>
+<h2><a id="the_problem">The Problem: DST and Closures</a></h2>
 
-<p>So, from the &quot;Case of the Recurring Closure&quot;, we saw that
+<p>So, from the &ldquo;Case of the Recurring Closure&rdquo;, we saw that
 <code>&amp;fn</code> closures were to become non-copyable.
 But under the DST proposal, generic code should be able to treat <code>&amp;T</code>
 the same for all <code>T</code>, <em>including</em> when <code>T</code> is some <code>fn(S*) -&gt; S</code>.
 These two criteria are not compatible; Niko has lots more explanation
 in his corresponding post:
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/recurring-closures-and-dynamically-sized-types/">&quot;Recurring Closures and Dynamically Sized Types&quot;</a>,
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/recurring-closures-and-dynamically-sized-types/">&ldquo;Recurring Closures and Dynamically Sized Types&rdquo;</a>,
 from 2013-05-13.</p>
 
-<p>Niko&#39;s immediate proposals to resolve this were either:</p>
+<p>Niko&rsquo;s immediate proposals to resolve this were either:</p>
 
 <ul>
 <li>we write <code>&amp;mut fn</code> instead of <code>&amp;fn</code>.  <code>&amp;mut T</code> for all <code>T</code>
@@ -340,10 +352,11 @@ side-stepping the special treatment of <code>&amp;fn</code> versus <code>&amp;T<
 rid of <code>&amp;fn</code> and replacing it with <code>fn&amp;</code>.</li>
 </ul>
 
-<h3 id="toc_3"><a id="is_fn_too_ugly">Is fn~ too ugly?</a></h3>
+
+<h3><a id="is_fn_too_ugly">Is fn~ too ugly?</a></h3>
 
 <p>Niko at first favored the latter, then he wrote a second post,
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">&quot;Mutable Fn Alternatives&quot;</a> on 2013-05-13,
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">&ldquo;Mutable Fn Alternatives&rdquo;</a> on 2013-05-13,
 which reconsidered whether <code>fn~</code> is too ugly, and included
 new survey of the options:</p>
 
@@ -356,6 +369,7 @@ and replace <code>fn~</code> with a new keyword, like <code>proc</code>.  (This 
 on the previous bullet.)</li>
 </ul>
 
+
 <p>For the second and third bullets, the main point is: If you need to
 capture state in a manner that cannot be expressed via the available
 options (stack-allocated closure, or a <code>proc</code>, if present), then you
@@ -363,16 +377,16 @@ have to use an trait instead (i.e. an object or a record).
 (I personally am not thrilled about losing the option of using
 closures to express combinator libraries, a use case for <code>fn@</code>.)</p>
 
-<h3 id="toc_4"><a id="leveraging_proc">Leveraging a proc keyword/expression</a></h3>
+<h3><a id="leveraging_proc">Leveraging a proc keyword/expression</a></h3>
 
-<p>Then a third post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&quot;Procedures, Continued&quot;</a> from
+<p>Then a third post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&ldquo;Procedures, Continued&rdquo;</a> from
 2013-05-15, refined the <code>proc</code> proposal a bit further.  As stated in
 the background on closures, Rust has by-reference closures and copying
 closures; the choice of which variant to construct is based on the
 type expected by the context of the <code>|x ...| { ... }</code> expression.
 In this post, Niko proposed that the distinction here deserves a
 starker line between the two forms.  (In that post, he proposed both a
-revision to English jargon and also to the Rust syntax; I&#39;m going to
+revision to English jargon and also to the Rust syntax; I&rsquo;m going to
 focus solely on the Rust syntax changes, and let those guide the
 changes to my own jargon here.)</p>
 
@@ -383,7 +397,8 @@ solely via <code>fn</code>, and a copying closure would be constructed solely vi
 by-reference closure as an <code>fn</code>-closure and a copying closure as a
 <code>proc</code>-closure.</p>
 
-<p>The type hierarchy that Niko then provides for this is:
+<p>The type hierarchy that Niko then provides for this is:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -399,7 +414,7 @@ by-reference closure as an <code>fn</code>-closure and a copying closure as a
 <span class='line-number'>13</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="n">T</span> <span class="o">=</span> <span class="n">S</span>               <span class="c1">// sized types</span>
 </span><span class='line'>  <span class="o">|</span> <span class="n">U</span>               <span class="c1">// unsized types</span>
-</span><span class='line'><span class="n">S</span> <span class="o">=</span> <span class="k">fn</span><span class="p">(</span><span class="n">S</span><span class="o"><em></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>     <span class="c1">// closures (</em>)</span>
+</span><span class='line'><span class="n">S</span> <span class="o">=</span> <span class="k">fn</span><span class="p">(</span><span class="n">S</span><span class="o">*</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>     <span class="c1">// closures (*)</span>
 </span><span class='line'>  <span class="o">|</span> <span class="o">&amp;</span><span class="n">&#39;r</span> <span class="n">T</span>           <span class="c1">// region ptr</span>
 </span><span class='line'>  <span class="o">|</span> <span class="o">@</span><span class="n">T</span>              <span class="c1">// managed ptr</span>
 </span><span class='line'>  <span class="o">|</span> <span class="o">~</span><span class="n">T</span>              <span class="c1">// unique ptr</span>
@@ -409,12 +424,13 @@ by-reference closure as an <code>fn</code>-closure and a copying closure as a
 </span><span class='line'><span class="n">U</span> <span class="o">=</span> <span class="p">[</span><span class="n">S</span><span class="p">]</span>             <span class="c1">// vectors</span>
 </span><span class='line'>  <span class="o">|</span> <span class="kt">str</span>             <span class="c1">// string</span>
 </span><span class='line'>  <span class="o">|</span> <span class="n">Trait</span>           <span class="c1">// existential (&quot;exists S:Trait.S&quot;)</span>
-</span><span class='line'>  <span class="o">|</span> <span class="k">proc</span><span class="p">(</span><span class="n">S</span><span class="o"><em></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>   <span class="c1">// procedures (</em>)</span>
-</span></code></pre></td></tr></table></div></figure></p>
+</span><span class='line'>  <span class="o">|</span> <span class="k">proc</span><span class="p">(</span><span class="n">S</span><span class="o">*</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>   <span class="c1">// procedures (*)</span>
+</span></code></pre></td></tr></table></div></figure>
+
 
 <p>Now, <code>fn</code>-closures are considered <em>sized types</em>, because they are
 always represented by two words: a (borrowed) environment pointer (to
-the stack in Niko&#39;s proposal, though perhaps it could be generalized
+the stack in Niko&rsquo;s proposal, though perhaps it could be generalized
 to point elsewhere) and a function pointer.  <code>proc</code>-closures are
 <em>unsized types</em>, because their copied lexical environment is of some
 dynamically-determined size that they must carry in their record
@@ -424,7 +440,7 @@ structure.</p>
 the exchange heap (<code>~proc</code>) or the task heap (<code>@proc</code>).  So this
 brings back the ability to express combinator libraries.</p>
 
-<p>Niko&#39;s post provides further detail, such as dissection of the <code>fn</code>
+<p>Niko&rsquo;s post provides further detail, such as dissection of the <code>fn</code>
 and <code>proc</code> closure types (which include important details like the
 lifetime and trait <em>bounds</em> for the closed-over variables; this is
 important since with a separate keyword, it is now reasonable for
@@ -435,13 +451,13 @@ traits are objects carrying virtual method dispatch tables), and then
 expressing them via a <code>proc!</code> macro (which means they could be left
 out of the core language).</p>
 
-<h3 id="toc_5"><a id="other_ways_to_proc">Other ways to express proc</a></h3>
+<h3><a id="other_ways_to_proc">Other ways to express proc</a></h3>
 
-<p>In his next post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">&quot;Removing Procs&quot;</a>, Niko elaborates further
+<p>In his next post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">&ldquo;Removing Procs&rdquo;</a>, Niko elaborates further
 on the idea that <code>proc</code> need not be supported in the language at all.
 Stack-allocated <code>fn</code>-closures would remain, expressed via <code>fn(S ...) -&gt; T</code>,
 and the language already supports raw (environment-less) function
-pointers via <code>extern &quot;ABI&quot; fn(S ...) -&gt; T</code>.
+pointers via <code>extern "ABI" fn(S ...) -&gt; T</code>.
 Niko points out two ways to re-express copying closures:</p>
 
 <ol>
@@ -453,6 +469,7 @@ variable as a separate parameter), or</li>
 <li>As stated earlier, (boxed) traits can used to express copying
 closures.</li>
 </ol>
+
 
 <p>Niko surveyed how these patterns would look in his post, by considered
 existing use cases of <code>@fn</code> and <code>~fn</code> in the standard libraries,
@@ -470,7 +487,7 @@ would go away.</p>
 macro to query an expression for its free variables, then that might
 help.</p>
 
-<h4 id="toc_6"><a id="digression_on_macros">A Personal Digression on Macros</a></h4>
+<h4><a id="digression_on_macros">A Personal Digression on Macros</a></h4>
 
 <p>Actually, this latter idea brings up a problem with the explicit list
 of captured variables that I had not thought of before: some macros
@@ -494,12 +511,13 @@ support a <code>proc!</code> macro,</p></li>
 copying closures as a primitive linguistic construct.</p></li>
 </ul>
 
+
 <p>Okay, end of digression.</p>
 
-<h3 id="toc_7"><a id="more_followup_on_procs_and_fns">More followups on procs and fns</a></h3>
+<h3><a id="more_followup_on_procs_and_fns">More followups on procs and fns</a></h3>
 
 <p>A few days passed, then Niko had a fourth post,
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">&quot;More on Fns&quot;</a>, from 2013-06-03.
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">&ldquo;More on Fns&rdquo;</a>, from 2013-06-03.
 This proposal renamed of a proposed <code>Task</code> trait to <code>Thunk</code>, since
 Niko felt that the concept at hand (an encapsulated function and the
 parameters it needs) is better reflected by that name.</p>
@@ -510,12 +528,12 @@ instead of requiring an explicit list; this sidesteps the whole question
 of how to handle macros that inject new free variable references.</p>
 
 <p>There is then much discussion of whether or not to support <code>once fn</code>s,
-which I won&#39;t summarize here.  The important detail of the post is
+which I won&rsquo;t summarize here.  The important detail of the post is
 that we do not necessarily have to list the captured variables
 explicitly.</p>
 
 <p>After a few more days, Niko had a followup on the related topic of
-dynamically sized types (DST), <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">&quot;Reducing DST Annotation&quot;</a>, from
+dynamically sized types (DST), <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">&ldquo;Reducing DST Annotation&rdquo;</a>, from
 2013-06-06.  It took into account an <a href="https://github.com/mozilla/rust/issues/6308#issuecomment-18880575">investigation</a> by Ben Blum
 on the implications of a <code>Sized</code> trait bound.  This led to Niko
 exploring some alternatives to adopting DST with a <code>Sized</code> bound:</p>
@@ -527,13 +545,14 @@ also points out where it does not live up to its original promises.</li>
 syntactic mechanism to distinguish <code>Sized</code> from <code>Unsized</code> (such as
 a keyword).</li>
 <li>Use some sort of inference: the type-checker can use properties
-of a function&#39;s parameter list to provide feedback
+of a function&rsquo;s parameter list to provide feedback
 on whether the type parameter has an implicit <code>Sized</code> bound.
 (Niko wonders if this approach is too clever; I am inclined to
-affirm that it is.)</li>
+ affirm that it is.)</li>
 </ul>
 
-<h2 id="toc_8"><a id="where_are_we">So where are we?</a></h2>
+
+<h2><a id="where_are_we">So where are we?</a></h2>
 
 <p>The above summarizes the series of blog posts from Niko.  I had hoped
 to get through the actual proposals (and maybe also the team meeting
@@ -545,7 +564,7 @@ for everyone:</p>
 
 <ul>
 <li>My intuition is that we should leave in copying closures in some form.</li>
-<li>The <code>thunk { ... }</code> expression might suffice, but &#8230; I am not yet
+<li>The <code>thunk { ... }</code> expression might suffice, but &hellip; I am not yet
 convinced that I would be satisfied using boxed traits
 to express the cases that need input arguments (like combinator
 libraries).</li>
@@ -558,6 +577,7 @@ is moved or copied).</li>
 <code>proc</code>/<code>thunk</code>/etc, please ensure that the question of free
 variables injected by macro invocations is addressed.</li>
 </ul>
+
 </div>
 
 
@@ -580,7 +600,7 @@ variables injected by macro invocations is addressed.</li>
   
 
 
-<time datetime="2013-06-07T10:17:00+02:00" pubdate data-updated="true">07 June 2013</time>
+<time datetime="2013-06-07T10:17:00+02:00" pubdate data-updated="true"></time>
       
 
 <span class="categories">
@@ -627,6 +647,10 @@ variables injected by macro invocations is addressed.</li>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/10/16/gc-and-rust-part-1-the-roots-of-integration/">GC and Rust Part 1: The Roots of Integration</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
@@ -640,10 +664,6 @@ variables injected by macro invocations is addressed.</li>
     
       <li class="post">
         <a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing syntax for associated items in Rust</a>
       </li>
     
   </ul>
@@ -676,23 +696,6 @@ variables injected by macro invocations is addressed.</li>
     });
   </script>
   <script src="/javascripts/github.js" type="text/javascript"> </script>
-</section>
-
-
-<section>
-  <h1>Latest Tweets</h1>
-  <ul id="tweets">
-    <li class="loading">Status updating...</li>
-  </ul>
-  <script type="text/javascript">
-    $.domReady(function(){
-      getTwitterFeed("pnkfelix", 4, false);
-    });
-  </script>
-  <script src="/javascripts/twitter.js" type="text/javascript"> </script>
-  
-    <a href="http://twitter.com/pnkfelix" class="twitter-follow-button" data-show-count="false">Follow @pnkfelix</a>
-  
 </section>
 
 

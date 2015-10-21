@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-10-16T15:51:05+02:00</updated>
+  <updated>2015-10-20T22:34:50+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,6 +12,155 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[GC and Rust Part 1: The Roots of Integration]]></title>
+    <link href="http://blog.pnkfx.org/blog/2015/10/16/gc-and-rust-part-1-the-roots-of-integration/"/>
+    <updated>2015-10-16T15:24:00+02:00</updated>
+    <id>http://blog.pnkfx.org/blog/2015/10/16/gc-and-rust-part-1-the-roots-of-integration</id>
+    <content type="html"><![CDATA[<p>This is the first in a series of posts will discuss why garbage
+collection is hard, especially for Rust, and brainstorm about
+solutions to the problems we face.</p>
+
+<p>The relationship between garbage collection (GC) and the Rust
+programming language has been an interesting one.</p>
+
+<p>GC was originally deeply integrated into the language, complete with
+dedicated syntax; then over time we found ways to lessen the
+dependency on GC, and then finally remove it from the language
+entirely.</p>
+
+<p>However, we still want to provide support for garbage collection.</p>
+
+<p>To explain why, I need to define the actual problems we seek to solve.</p>
+
+<!-- more -->
+
+
+<p>(The body of this post makes heavy use of client-side rendering.  You
+may need to wait a moment while the supporting Javascript loads.)</p>
+
+<script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"></script>
+
+
+<h2>What is Garbage Collection</h2>
+
+<p>A garbage collector is a component in the runtime for a programming
+language that periodically attempts to reclaim memory (without
+requiring explicit calls to memory-freeing routines in the programning
+language). To do this soundly, the collector must identify blocks of
+memory that cannot possibly be used in the future by the program
+(i.e., &ldquo;dead objects&rdquo;).</p>
+
+<p>Discussions of garbage collection often equate the notion of &ldquo;dead
+object&rdquo; with &ldquo;unreachable object&rdquo;: If no chain of references exists
+that could lead the program to an object, then that object cannot be
+reached (and therefore cannot be used in the future).<sup><a href="#footnote1">1</a></sup></p>
+
+<p>When one says &ldquo;garbage collector&rdquo;, one usually means a &ldquo;<em>tracing</em>
+garbage collector&rdquo;: a collector that works by identifying the
+reachable objects by computing from the object graph the connected
+components that include the &ldquo;roots&rdquo;, i.e. the starting points from
+which any chain of references originates.</p>
+
+<script>
+function make_graph0() {
+    return "digraph { A -> B; }"
+}
+function make_graph1() {
+    var dot_source = 'digraph { bgcolor="transparent";'
+    // dot_source += ' layout="neato"; inputscale=72;'
+    dot_source += ' overlap="false";' // if left out, nodes may overlap
+    dot_source += ' start=0;' // seed the RNG (for consistency)
+    dot_source += ' node [shape=record];'
+    dot_source += ' A [label="{A_top | A_bot}"];'
+    dot_source += ' B [label="{B_top | B_bot}"];'
+    dot_source += ' A -> B'
+    dot_source += '}'
+    return dot_source;
+}
+</script>
+
+
+<p id="target_anchor1"></p>
+
+
+<script>
+var g = make_graph1();
+var elem = document.getElementById("target_anchor1")
+elem.innerHTML += "<code>" + g + "</code>"
+</script>
+
+
+<script>
+var g = make_graph1()
+var elem = document.getElementById("target_anchor1")
+elem.innerHTML += Viz(g, "svg")
+</script>
+
+
+<hr />
+
+<p><a name="footnote1">1.</a> Researchers have explored methods exist to
+identify objects as dead even when reachable, such as using
+<a href="http://pop-art.inrialpes.fr/~fradet/PDFs/LISP94.pdf">&ldquo;parametricity&rdquo;</a>; but I am not aware of any
+such method being used outside of a research setting.</p>
+
+<h2>The Problem Space</h2>
+
+<p>I have identified two distinct kinds of support that we could provide:</p>
+
+<ol>
+<li><p>A pure Rust programming feature: We could add a collector
+ interface, e.g. a <code>Gc&lt;T&gt;</code> type, that arbitrary library crates
+ could use as they create or receive instances of <code>T</code>. The
+ intention here would be similar to how <code>Rc&lt;T&gt;</code> is used: One does
+ not want to track ownership precisely, but rather treat ownership
+ as shared amongst all users of a value, and let the runtime
+ system handle reclaiming the value.</p>
+
+<p> This kind of feature could be useful in any Rust library.</p>
+
+<p> However, it is also very difficult to add (at least with the
+ ergonomics that one expects from a smart-pointer type like
+ <code>Rc&lt;T&gt;</code>), and since <code>Rc&lt;T&gt;</code> is already a workable solution for
+ many (though not all) use cases of <code>Gc&lt;T&gt;</code>, it is not the main
+ priority right now.</p></li>
+<li><p>An interoperation feature: Provide introspective hooks to improve
+ integration with application frameworks that are using their own
+ garbage collector. An obvious example of this is Servo&rsquo;s use of
+ the SpiderMonkey Virtual Machine for its Javascript support.</p>
+
+<p> Servo is relying on SpiderMonkey&rsquo;s garbage collection for memory
+ management, not only for Javascript values, but even for
+ <a href="https://blog.mozilla.org/research/2014/08/26/javascript-servos-only-garbage-collector/">native-code DOM objects</a>.</p>
+
+<p> That post describes (unchecked) scenarios where one can end up
+ with dangling pointers &ndash; that is, they invite unsoundness.
+ Proper support for GC-interoperation in Rust could address this;
+ I will discuss this further down in this post.</p>
+
+<p> Critically, GC-interoperation does not require the same level of
+ programmer ergonomics that <code>Rc&lt;T&gt;</code> provides. For example, it is
+ acceptable to not support <a href="https://doc.rust-lang.org/std/ops/trait.Deref.html"><code>Deref</code></a>.</p></li>
+</ol>
+
+
+<p>These are two distinct features; there is overlap between them, but
+trying to find a single solution that solves both problems completely
+may not be possible, and in any case we do not want to wait for it to
+be discovered.</p>
+
+<p>Let us assume that for the short term we are more interested in
+providing GC-interoperation and are willing to forego GC as a pure
+Rust programming feature.</p>
+
+<script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"></script>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Vis-a-vis, part 1: Visualizing Graphs via viz.js]]></title>
@@ -27,11 +176,12 @@ library for rendering graphs specified via the <a href="http://www.graphviz.org/
 
 <!-- more -->
 
+
 <p>Its meant both as a reference for me to use when I want to remind
 myself of my options here, and as a demo of some interesting web
 technologies.</p>
 
-<p>I hope in later posts to cover SVG (&quot;Scalable Vector Graphics&quot;)
+<p>I hope in later posts to cover SVG (&ldquo;Scalable Vector Graphics&rdquo;)
 itself, and perhaps higher level Javascript libraries such as <a href="http://d3js.org/">D3</a>.</p>
 
 <p>I will focus in these posts on client-side rendering technologies.
@@ -42,7 +192,7 @@ source text into the markdown content; a separate rendering tool would
 require some sort of pre-process step, and I am loathe to try to
 incoporate that into the <code>Rakefile</code> that Octopress uses.</p>
 
-<h2 id="toc_0">viz.js</h2>
+<h2>viz.js</h2>
 
 <p>The first item we will cover, since it amongst the simplest to adopt,
 is <code>vis.js</code>, a javascript library that provides
@@ -53,19 +203,20 @@ rendering graphs; it is coupled with <a href="http://www.graphviz.org/content/do
 language for describing graph structures by defining the nodes, edges,
 and various attributes attached to them, like labels.)</p>
 
-<h3 id="toc_1">Hooking up the JS source</h3>
+<h3>Hooking up the JS source</h3>
 
 <p>Since this is using (heavy duty) javascript, you are not likely to
 want to put the supporting source code inline in your web page.
 Instead, you will need to load it up, either:</p>
 
 <ol>
-<li><p>from the original <a href="src=%22https://github.com/mdaines/viz.js/releases/download/0.0.3/viz.js%22">source site</a>, or</p></li>
+<li><p>from the original <a href="src=" title="https://github.com/mdaines/viz.js/releases/download/0.0.3/viz.js">source site</a>, or</p></li>
 <li><p>in a server-side local copy of the file that you deploy alongside
 your content
 (e.g. put it into the <code>_source/javascripts/</code> directory,
 if you are using Octopress for a blog like this one).</p></li>
 </ol>
+
 
 <p>I recommend the latter route, since the linked github repository is
 outside of your control, and if it dissapears, you lose the rendering
@@ -73,14 +224,15 @@ and your page is broken.</p>
 
 <p>After you have selected your source for the code, you need to
 make your page load it up, via a <code>script</code> tag invocation,
-like: <code>&lt;script src=&quot;/javascripts/viz.js&quot; charset=&quot;utf-8&quot;&gt;&lt;/script&gt;;</code></p>
+like: <code>&lt;script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"&gt;&lt;/script&gt;;</code></p>
 
 <p>This script can take a while to load. You may want to insert a warning,
 like this one, before the <code>script</code> invocation.</p>
 
 <script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"></script>
 
-<h3 id="toc_2">Injecting generated SVG into the document</h3>
+
+<h3>Injecting generated SVG into the document</h3>
 
 <p>Once the script is loaded, you can start using inline Javascript to
 render graphviz-style descriptions of directed graphs to SVG within
@@ -99,7 +251,8 @@ does this by dynamically adding to the <code>innerHTML</code> property:</p>
 </span><span class='line'>  <span class="nt">&lt;/script&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
-<p>The above &quot;works&quot; (even in the context of an Octopress blog post), but
+
+<p>The above &ldquo;works&rdquo; (even in the context of an Octopress blog post), but
 it is a rather brute-force approach. Plus, the resulting composition
 of the blog text with the graphics added at the end is not likely to
 please you nor your audience.</p>
@@ -123,18 +276,23 @@ Graphviz or <code>viz.js</code>):</p>
 </span><span class='line'><span class="nt">&lt;/script&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
+
+
 <div id="target_anchor0"></div>
+
 
 <script>
     var elem = document.getElementById("target_anchor0");
     elem.innerHTML = "This text was injected.";
 </script>
 
+
 <p>So, now that we know how to insert HTML into our document (even in the
 context of the markdown source for a blog post), let us dive into how
 to combine that with Graphviz, via <code>viz.js</code>.</p>
 
-<h3 id="toc_3"><code>dot_source</code> holds DOT source</h3>
+<h3><code>dot_source</code> holds DOT source</h3>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -152,18 +310,21 @@ to combine that with Graphviz, via <code>viz.js</code>.</p>
 </span><span class='line'><span class="nt">&lt;/script&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
 <p>The contents of <code>dot_source</code> make up a DOT program:</p>
 
 <ul>
 <li><p><code>digraph</code> means we are making a directed graph,</p></li>
-<li><p><code>rankdir=&quot;LR&quot;</code> means we want the nodes to prefer horizontal left-to-right layout (the default is to have them vertically stacked top-to-bottom),</p></li>
-<li><p><code>bgcolor=&quot;transparent&quot;</code> means we want a transparent background (the default is white, which is fine but a little offputting for this site),</p></li>
-<li><p><code>a -&gt; b</code> means &quot;I want an edge coming out of <code>a</code> and into <code>b</code>&quot;; you can chain them together as shown in <code>a -&gt; b -&gt; c</code>.</p></li>
+<li><p><code>rankdir="LR"</code> means we want the nodes to prefer horizontal left-to-right layout (the default is to have them vertically stacked top-to-bottom),</p></li>
+<li><p><code>bgcolor="transparent"</code> means we want a transparent background (the default is white, which is fine but a little offputting for this site),</p></li>
+<li><p><code>a -&gt; b</code> means &ldquo;I want an edge coming out of <code>a</code> and into <code>b</code>&rdquo;; you can chain them together as shown in <code>a -&gt; b -&gt; c</code>.</p></li>
 </ul>
+
 
 <p>Here is how that ends up rendering:</p>
 
 <div id="target_anchor1"></div>
+
 
 <script>
     var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent"; a -> b -> c; }';
@@ -171,12 +332,13 @@ to combine that with Graphviz, via <code>viz.js</code>.</p>
     elem.innerHTML = Viz(dot_source, "svg");
 </script>
 
+
 <p>It turns out that the generated SVG is actually pretty readable.  That
-is, I am able to use &quot;Inspect Element&quot; in my web browser, and I see
+is, I am able to use &ldquo;Inspect Element&rdquo; in my web browser, and I see
 there that the SVG element is actually made up of many <code>g</code> elements
 that have each had their <code>class</code> attribute set according to their
-role: the whole graph has <code>class=&quot;graph&quot;</code>, and then each node and edge
-is assigned <code>&quot;node1&quot;</code>, <code>&quot;node2&quot;</code>, <code>&quot;edge1&quot;</code>, <code>&quot;node3&quot;</code>, <code>&quot;edge2&quot;</code>.
+role: the whole graph has <code>class="graph"</code>, and then each node and edge
+is assigned <code>"node1"</code>, <code>"node2"</code>, <code>"edge1"</code>, <code>"node3"</code>, <code>"edge2"</code>.
 (There are also comments embedded in the generated SVG above each
 element, so that one can map the element back to the node or edge
 in the original <code>dot_source</code> text.)</p>
@@ -187,7 +349,7 @@ in the original <code>dot_source</code> text.)</p>
 the user can inject their own graph descriptions, and you want <code>viz.js</code>
 to do the heavy lifting of deciding how to lay out the nodes.</p>
 
-<h3 id="toc_4">Controlling node layout</h3>
+<h3>Controlling node layout</h3>
 
 <p>But what if we want more control over the layout of the picture
 elements?</p>
@@ -213,13 +375,18 @@ if the layout is also symmetrical.</p>
 </span><span class='line'><span class="nt">&lt;/script&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
+
+
 <p id="target_anchor2">Symmetric structure but asymmetric layout: </p>
+
 
 <script>
     var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent"; a -> b -> c -> e; b -> d -> e -> a; }';
     var elem = document.getElementById("target_anchor2");
     elem.innerHTML = Viz(dot_source, "svg");
 </script>
+
 
 <p>There are a number of options at this point. We could abandon Graphviz (and <code>viz.js</code>),
 and do our diagrams directly in SVG. But, assuming we want to stay within the confines
@@ -261,7 +428,11 @@ by setting an attribute in the graph itself.</p>
 </span><span class='line'><span class="nt">&lt;/script&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
+
+
 <p id="target_anchor3"></p>
+
 
 <script>
     var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
@@ -275,6 +446,7 @@ by setting an attribute in the graph itself.</p>
     var elem = document.getElementById("target_anchor3");
     elem.innerHTML = Viz(dot_source, "svg");
 </script>
+
 
 <p>As you can see, we definitely have a different node layout. It is not
 yet directly illustrating the mirror symmetry of the graph structure,
@@ -291,7 +463,11 @@ for each.</p>
 </span><span class='line'>dot_source += &#39;d [pos=&quot;160,0&quot;]; e [pos=&quot;220,40&quot;];&#39;
 </span></code></pre></td></tr></table></div></figure>
 
+
+
+
 <p id="target_anchor4"></p>
+
 
 <script>
     var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
@@ -310,6 +486,7 @@ for each.</p>
     elem.innerHTML = Viz(dot_source, "svg");
 </script>
 
+
 <p><em>That</em> shows the mirror symmetry of the graph.</p>
 
 <p>The careful reader may have noticed an oddity in the above rendering: I had specified
@@ -319,7 +496,7 @@ What happened?</p>
 
 <p>The answer is that the input node positions are by default only as
 <em>initial</em> values; the layout engine may still choose to adjust them in
-order to &quot;improve&quot; the layout according to its internal heuristics.</p>
+order to &ldquo;improve&rdquo; the layout according to its internal heuristics.</p>
 
 <p>We can override this by <em>pinning</em> the nodes in place. An individual node can be pinned by
 putting an exclamation point after the coordinate in its <code>pos</code> attribute, or equivalently by
@@ -331,7 +508,11 @@ setting the nodes <code>pin</code> attribute to <code>true</code>.</p>
 </span><span class='line'>dot_source += &#39;d [pos=&quot;160,0!&quot;]; e [pos=&quot;220,40&quot;];&#39;
 </span></code></pre></td></tr></table></div></figure>
 
+
+
+
 <p id="target_anchor5"></p>
+
 
 <script>
     var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
@@ -350,6 +531,7 @@ setting the nodes <code>pin</code> attribute to <code>true</code>.</p>
     elem.innerHTML = Viz(dot_source,"svg");
 </script>
 
+
 <p>Now we can see that <code>a</code>, <code>c</code>, and <code>d</code> are all pinned in place, and the resulting layout
 is perhaps not as nice.</p>
 
@@ -362,7 +544,11 @@ via the <code>sep</code> attribute.</p>
 </pre></td><td class='code'><pre><code class='html'><span class='line'>dot_source += &#39;sep=0.2;&#39; // treat each node as 1.2 times larger than it is
 </span></code></pre></td></tr></table></div></figure>
 
+
+
+
 <p id="target_anchor6"></p>
+
 
 <script>
     var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
@@ -382,12 +568,13 @@ via the <code>sep</code> attribute.</p>
     elem.innerHTML = Viz(dot_source, "svg");
 </script>
 
+
 <p>That is a pretty legible graph. Of course, the code to describe it is
 quite a bit more complex than our <a href="#target_anchor2">original code</a>;
 hopefully I will not feel the need to specify node placement too
 often.</p>
 
-<h3 id="toc_5">Edge attributes</h3>
+<h3>Edge attributes</h3>
 
 <p>Above we saw examples of node attributes, which can be used to adjust the
 node placement and rendering. (The <a href="http://www.graphviz.org/doc/info/attrs.html">family of attributes</a> is much larger,
@@ -421,6 +608,7 @@ approximate <code>len</code>).</p>
 </span><span class='line'><span class="nt">&lt;/script&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
 <p>Here we have used <code>edge [weight=2]</code> to specify a default weight of 2 for all edges,
 and then we override that weight for the <code>e -&gt; a</code> edge (and just that edge).
 (Note: The <code>dot</code> layout requires integral values for <code>weight</code>.)</p>
@@ -428,6 +616,7 @@ and then we override that weight for the <code>e -&gt; a</code> edge (and just t
 <p>Here is the effect of this:</p>
 
 <p id="target_anchor7a"></p>
+
 
 <script>
     var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
@@ -437,6 +626,7 @@ and then we override that weight for the <code>e -&gt; a</code> edge (and just t
     var elem = document.getElementById("target_anchor7a");
     elem.innerHTML = Viz(dot_source, "svg");
 </script>
+
 
 <p>Look at that! We can see the mirror symmetry of the graph (depending on
 how much we are willing to squint with regards to that <code>e -&gt; a</code> edge),
@@ -450,10 +640,12 @@ but we did not have to do any layout hacking.</p>
 </span><span class='line'>dot_source += &#39;   { edge [weight=1]; b -&gt; c -&gt; e; b -&gt; d -&gt; e; }&#39;
 </span></code></pre></td></tr></table></div></figure>
 
+
 <p>Here we have moved a portion of the edges into a subgraph, so that we
 can override their default <code>weight</code> as a group.</p>
 
 <p id="target_anchor7b"></p>
+
 
 <script>
     var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
@@ -464,6 +656,7 @@ can override their default <code>weight</code> as a group.</p>
     elem.innerHTML = Viz(dot_source, "svg");
 </script>
 
+
 <p>Perhaps more surprising, changing node introduction order in the
 source can also affect the layout.</p>
 
@@ -473,11 +666,13 @@ source can also affect the layout.</p>
 </span><span class='line'>dot_source += &#39;   b -&gt; c -&gt; e; b -&gt; d -&gt; e;&#39;
 </span></code></pre></td></tr></table></div></figure>
 
+
 <p>Here, we introduce the nodes <code>b</code> then <code>a</code> then <code>e</code> to encourage them
 to be laid out horizontally in that order, then apply the <code>dir</code>
 attribute so that the edge between them has its direction reversed.</p>
 
 <p id="target_anchor7c"></p>
+
 
 <script>
     var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
@@ -487,6 +682,7 @@ attribute so that the edge between them has its direction reversed.</p>
     var elem = document.getElementById("target_anchor7c");
     elem.innerHTML = Viz(dot_source, "svg");
 </script>
+
 
 <p>Finally, if you want to describe a path through the graph, you can
 highlight the edges of the path by overriding their <code>color</code> and
@@ -514,9 +710,11 @@ highlight the edges of the path by overriding their <code>color</code> and
 </span><span class='line'><span class="nt">&lt;/script&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
 <p>Here again we have used a subgraph to reduce the annotation burden.</p>
 
 <p id="target_anchor8"></p>
+
 
 <script>
     var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent";'
@@ -527,6 +725,7 @@ highlight the edges of the path by overriding their <code>color</code> and
     var elem = document.getElementById("target_anchor8");
     elem.innerHTML = Viz(dot_source, "svg");
 </script>
+
 
 <p>(One can use subgraphs for a number of other tricks, such as forcing all
 nodes in the subgraph to fall into the same <code>rank</code>, which can be another
@@ -548,10 +747,11 @@ useful technique for encouraging particular layouts.)</p>
 <li><a href="#the_examples">Examples ported from DST, Take 5</a></li>
 </ul>
 
-<h2 id="toc_0"><a id="background_dst">Background: Dynamically Sized Types (DST)</a></h2>
 
-<p>The Rust team has been discussing incorporating &quot;dynamically-sized
-types&quot; into the static semantics for Rust.  Essentially the idea is to
+<h2><a id="background_dst">Background: Dynamically Sized Types (DST)</a></h2>
+
+<p>The Rust team has been discussing incorporating &ldquo;dynamically-sized
+types&rdquo; into the static semantics for Rust.  Essentially the idea is to
 allow code to describe and name static types whose size is only known
 at Runtime.  E.g. the integer vector <code>[int, ..5]</code> is known at compile
 time to have five elements, and is considered (statically) sized,
@@ -564,7 +764,7 @@ series <a href="http://smallcultfollowing.com/babysteps/blog/2013/11/26/thoughts
 blog <a href="http://smallcultfollowing.com/babysteps/blog/2013/11/27/thoughts-on-dst-2">posts</a>
 about <a href="http://smallcultfollowing.com/babysteps/blog/2013/11/27/thoughts-on-dst-3/">dynamically</a>
 sized <a href="http://smallcultfollowing.com/babysteps/blog/2013/12/02/thoughts-on-dst-4/">types</a>
-on <a href="http://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/">niko&#39;s</a>
+on <a href="http://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/">niko&rsquo;s</a>
 blog.
 So I will not dive into the details too much here</p>
 
@@ -575,8 +775,8 @@ to determine directly from the parsed type expression (such as in the
 vector examples I gave at the outset).  But once you add polymorphism,
 things get a litle harder for the compiler.</p>
 
-<p>Anyway, the plan drafted in Niko&#39;s
-<a href="http://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/">&quot;DST, Take 5&quot;</a>
+<p>Anyway, the plan drafted in Niko&rsquo;s
+<a href="http://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/">&ldquo;DST, Take 5&rdquo;</a>
 is to add an <code>unsized</code> keyword, and then use it as a marker to make
 certain spots more general than they are by default.  The reasoning
 here is that in the common case, you want a type parameter to
@@ -587,7 +787,8 @@ that it can allocate an appopriate amount of space for it.)</p>
 
 <p>So under that scheme, to write type parameter of most general type,
 e.g. for a <code>struct</code> definition that ends with an unsized field,
-you need to write:
+you need to write:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -603,21 +804,22 @@ you need to write:
 </span><span class='line'>    <span class="n">payload</span><span class="o">:</span> <span class="n">T</span>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
-</span><span class='line'><span class="c1">// Accepts solely <em>sized</em> Named&lt;T&gt;.</span>
+</span><span class='line'><span class="c1">// Accepts solely *sized* Named&lt;T&gt;.</span>
 </span><span class='line'><span class="k">fn</span> <span class="n">foo</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">Named</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">{</span> <span class="p">...</span> <span class="p">}</span>
 </span><span class='line'>
-</span><span class='line'><span class="c1">// Accepts both sized and <em>unsized</em> Named&lt;T&gt;</span>
+</span><span class='line'><span class="c1">// Accepts both sized and *unsized* Named&lt;T&gt;</span>
 </span><span class='line'><span class="k">fn</span> <span class="n">bar</span><span class="o">&lt;</span><span class="kr">unsized</span> <span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">Named</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">{</span> <span class="p">...</span> <span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
 
-<p>That is, you need to use what I will call a &quot;generalization&quot; marker at
+
+<p>That is, you need to use what I will call a &ldquo;generalization&rdquo; marker at
 the spot where you bind a type variable, to indicate that the domain of
-that type variable is more general than the common-case default of 
+that type variable is more general than the common-case default of
 a sized type.</p>
 
 <p>For defining a trait that can be implemented on any possible type,
 including unsized ones, you would need to use the <code>unsized</code> keyword
-somewhere there as well.  &quot;DST, Take 5&quot; proposed
+somewhere there as well.  &ldquo;DST, Take 5&rdquo; proposed
 <code>trait Foo&lt;unsized Self&gt; : NormalBounds { ... }</code>
 (or <code>trait Foo : unsized + NormalBounds { ... }</code>, but this is broken for
 various reasons).
@@ -625,17 +827,17 @@ I had been suggesting <code>unsized trait Foo : NormalBounds { ... }</code>,
 which Niko rightly objected to (since it is not the trait that is
 unsized, but rather potentially its Self type).
 Over the Rust work week last week I suggested
-<code>trait Foo for unsized : NormalBounds</code> { &#8230; }, which I think is the first
+<code>trait Foo for unsized : NormalBounds</code> { &hellip; }, which I think is the first
 suggestion that Niko and myself could both stomach.  (The reasoning
 behind the latter suggestion is that we write <code>impl Trait for
 SelfType</code>, so it makes sense to put the generalization marker into the
 same position, i.e. filling the placeholder in: <code>Trait for _</code>.)</p>
 
-<h2 id="toc_1"><a id="the_insight">The Insight: <code>type</code> is a better generalization marker</a></h2>
+<h2><a id="the_insight">The Insight: <code>type</code> is a better generalization marker</a></h2>
 
 <p>One of the concerns that Niko has pointed out to me is that it is easy
-to (mis)read <code>unsized T</code> as saying &quot;<code>T</code> must be unsized&quot;.  But that is not
-what it is saying; it is saying &quot;<code>T</code> <em>can</em> be unsized&quot;; you can still pass in
+to (mis)read <code>unsized T</code> as saying &ldquo;<code>T</code> must be unsized&rdquo;.  But that is not
+what it is saying; it is saying &ldquo;<code>T</code> <em>can</em> be unsized&rdquo;; you can still pass in
 a sized type for <code>T</code>.</p>
 
 <p>I was reflecting on that this morning, and I realized something:
@@ -646,25 +848,34 @@ generalization marker should be using some name to describe that union
 
 <p>But we already have a very appropriate name for that union: <code>type</code>!</p>
 
-<p>So that started me thinking: Why don&#39;t we use <code>type</code> as our generalization marker?
-So the definition of <code>bar</code> in the example above would be written
+<p>So that started me thinking: Why don&rsquo;t we use <code>type</code> as our generalization marker?
+So the definition of <code>bar</code> in the example above would be written</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">bar</span><span class="o">&lt;</span><span class="k">type</span> <span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">Named</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">{</span> <span class="p">...</span> <span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
-In fact, this can have a very simple explanation: If we keep the <code>Sized</code> trait bound,
-then you can just say that
+
+
+<p>In fact, this can have a very simple explanation: If we keep the <code>Sized</code> trait bound,
+then you can just say that</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">foo</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="p">...){</span> <span class="p">...</span> <span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
-desugars to
+
+
+<p>desugars to</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">foo</span><span class="o">&lt;</span><span class="k">type</span> <span class="n">T</span><span class="o">:</span><span class="nb">Sized</span><span class="o">&gt;</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="p">...)</span> <span class="p">{</span> <span class="p">...</span> <span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
-and in general, any type variable formal binding <code>&lt;T:Bounds&gt;</code> desugars
+
+
+<p>and in general, any type variable formal binding <code>&lt;T:Bounds&gt;</code> desugars
 to <code>&lt;type T:Sized+Bounds&gt;</code></p>
 
-<p>I admit, when I first wrote this, I said &quot;hmm, this looks a bit like
-C++, is that a problem?&quot;  But I&#39;m coming to like it.  The biggest
+<p>I admit, when I first wrote this, I said &ldquo;hmm, this looks a bit like
+C++, is that a problem?&rdquo;  But I&rsquo;m coming to like it.  The biggest
 problem I can foresee is that a developer might be confused about when
 they are suppposed to write <code>foo&lt;type T&gt;</code> versus <code>foo&lt;T&gt;</code>.  But chances
 are that someone who does not understand the distinction will <em>not</em>
@@ -680,7 +891,8 @@ hopefully our error messages will suggest to add a <code>:Sized</code> bound
 or to just not use <code>type</code> in the binding for <code>T</code>.</p></li>
 </ul>
 
-<p>If they under-generalize, then they (or their library&#39;s clients) will
+
+<p>If they under-generalize, then they (or their library&rsquo;s clients) will
 discover the problem when they apply <code>foo</code>.</p>
 
 <p>For the trait case, it is a little less obvious what to do.
@@ -691,11 +903,11 @@ for the maximally general case.
 <code>trait Foo for type : Sized + NormalBounds</code></p>
 
 <p>So the point is that you would only use the <code>type</code> keyword when you
-wanted to explicitly say &quot;I am generalizing over <em>all</em> types, not just
-sized ones&quot;, and thus are opting into the additional constraints that
+wanted to explicitly say &ldquo;I am generalizing over <em>all</em> types, not just
+sized ones&rdquo;, and thus are opting into the additional constraints that
 that scenario presents.</p>
 
-<p>This approach wouldn&#39;t be so palatable under earlier envisioned
+<p>This approach wouldn&rsquo;t be so palatable under earlier envisioned
 designs for DST where e.g. you were restricted to write explicitly
 <code>unsized struct S { ... }</code> for structs that could end up being
 unsized.  But at this point I think we have collectively decided that
@@ -718,18 +930,22 @@ in order to get full coverage of <code>SomeTrait</code> for all types.</p>
 that this approach suggests is that if we decide to add
 parameterization over constants, we can likewise use the <code>const</code>
 keyword in the spot where I have written the generalization marker
-<code>type</code>, e.g.
+<code>type</code>, e.g.</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">foo</span><span class="o">&lt;</span><span class="kr">const</span> <span class="n">N</span><span class="o">:</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">nums</span><span class="o">:</span> <span class="o">&amp;</span><span class="p">[</span><span class="kt">f64</span><span class="p">,</span> <span class="p">..</span><span class="n">N</span><span class="p">])</span> <span class="p">{</span> <span class="p">...</span> <span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
-(In this case <code>const</code> would not be a generalization marker but instead
+
+
+<p>(In this case <code>const</code> would not be a generalization marker but instead
 a <em>kind</em> marker, since it is changing the domain of the parameter from
 being that of a type to being some value within a type.)</p>
 
-<h2 id="toc_2"><a id="the_examples">Examples ported from DST, Take 5</a></h2>
+<h2><a id="the_examples">Examples ported from DST, Take 5</a></h2>
 
 <p>Here are the ported definitions of <code>Rc</code> and <code>RcData</code>.
-(Update: had to turn off syntax highlighting to work-around a rendering bug on <code>*</code>.)
+(Update: had to turn off syntax highlighting to work-around a rendering bug on <code>*</code>.)</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -752,7 +968,7 @@ being that of a type to being some value within a type.)</p>
 <span class='line-number'>20</span>
 <span class='line-number'>21</span>
 </pre></td><td class='code'><pre><code class='text'><span class='line'>struct Rc&lt;type T&gt; {
-</span><span class='line'>    ptr: *RcData&lt;T&gt;,
+</span><span class='line'>    ptr: \*RcData&lt;T&gt;,
 </span><span class='line'>    // (a dummy field, just for illustrative purposes)
 </span><span class='line'>    dummy: uint,
 </span><span class='line'>}
@@ -772,9 +988,11 @@ being that of a type to being some value within a type.)</p>
 </span><span class='line'>        }
 </span><span class='line'>    }
 </span><span class='line'>}
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
 
-<p>Here is the <code>ImmDeref</code> example:
+
+<p>Here is the <code>ImmDeref</code> example:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -797,7 +1015,8 @@ being that of a type to being some value within a type.)</p>
 </span><span class='line'>        <span class="p">}</span>
 </span><span class='line'>    <span class="p">}</span>
 </span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
+
 
 <p>(I think I need a wider variety of examples, but this is good enough for now.)</p>
 ]]></content>
@@ -818,11 +1037,12 @@ not work.</p>
 <p>At first there were dependencies like <code>chunky_png-1.2.7</code> that had to
 be satisfied (re-installed, I assume; I am pretty sure I blew away my
 previous Homebrew setup during the upgrade; I do not know how much
-that overlaps with Ruby&#39;s package management system).</p>
+that overlaps with Ruby&rsquo;s package management system).</p>
 
 <p>The few step was just blind following of the suggestions made by my
 tools: <code>rake</code> suggests to run <code>bundle install</code>, and I comply.  And the results
-seem promising:
+seem promising:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -861,10 +1081,10 @@ seem promising:
 <span class='line-number'>36</span>
 </pre></td><td class='code'><pre><code class='text'><span class='line'>% rake generate
 </span><span class='line'>Could not find chunky_png-1.2.7 in any of the sources
-</span><span class='line'>Run `bundle install` to install missing gems.
+</span><span class='line'>Run \`bundle install\` to install missing gems.
 </span><span class='line'>% bundle install
-</span><span class='line'>Fetching gem metadata from <a href="http://rubygems.org/">http://rubygems.org/</a>.......
-</span><span class='line'>Fetching gem metadata from <a href="http://rubygems.org/">http://rubygems.org/</a>..
+</span><span class='line'>Fetching gem metadata from http://rubygems.org/.......
+</span><span class='line'>Fetching gem metadata from http://rubygems.org/..
 </span><span class='line'>Using rake (0.9.6)
 </span><span class='line'>Using RedCloth (4.2.9)
 </span><span class='line'>Installing chunky_png (1.2.7)
@@ -894,11 +1114,13 @@ seem promising:
 </span><span class='line'>Installing stringex (1.4.0)
 </span><span class='line'>Using bundler (1.3.5)
 </span><span class='line'>Your bundle is complete!
-</span><span class='line'>Use `bundle show [gemname]` to see where a bundled gem is installed.
-</span></code></pre></td></tr></table></div></figure></p>
+</span><span class='line'>Use \`bundle show [gemname]\` to see where a bundled gem is installed.
+</span></code></pre></td></tr></table></div></figure>
+
 
 <p>But I
-balked on the second step:
+balked on the second step:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -909,13 +1131,14 @@ balked on the second step:
 </pre></td><td class='code'><pre><code class='text'><span class='line'>% rake generate
 </span><span class='line'>rake aborted!
 </span><span class='line'>You have already activated rake 10.1.0, but your Gemfile requires rake 0.9.6. Using bundle exec may solve this.
-</span><span class='line'>/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:2:in `&lt;top (required)&gt;&#39;
+</span><span class='line'>/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:2:in \`&lt;top (required)&gt;&#39;
 </span><span class='line'>(See full trace by running task with --trace)
 </span><span class='line'>% bundle exec
 </span><span class='line'>bundler: exec needs a command to run
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
 
-<p>I did not understand what <code>bundle exec</code> meant here, so I did not do the &quot;obvious thing&quot;, which apparently is to re-run generate but within bundle, like so:
+
+<p>I did not understand what <code>bundle exec</code> meant here, so I did not do the &ldquo;obvious thing&rdquo;, which apparently is to re-run generate but within bundle, like so:
 <code>% bundle exec rake generate</code></p>
 
 <p>Instead I fumbled around trying to figure out what my situation was
@@ -929,8 +1152,11 @@ configuration?</p>
 I learned:</p>
 
 <ul>
-<li><p>You can find out what version(s) of a gem you have install, with
-the relatively obvious <code>gem list</code> command:
+<li>You can find out what version(s) of a gem you have install, with
+the relatively obvious <code>gem list</code> command:</li>
+</ul>
+
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -941,9 +1167,15 @@ the relatively obvious <code>gem list</code> command:
 </span><span class='line'>*** LOCAL GEMS ***
 </span><span class='line'>
 </span><span class='line'>rake (10.1.0, 0.9.6)
-</span></code></pre></td></tr></table></div></figure></p></li>
-<li><p>You can also remove particular versions of a gem, with the <code>gem
-uninstall</code> command:
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>You can also remove particular versions of a gem, with the <code>gem
+uninstall</code> command:</li>
+</ul>
+
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -960,8 +1192,8 @@ uninstall</code> command:
 </span><span class='line'> 3. All versions
 </span><span class='line'>&gt; 1
 </span><span class='line'>Successfully uninstalled rake-0.9.6
-</span></code></pre></td></tr></table></div></figure></p></li>
-</ul>
+</span></code></pre></td></tr></table></div></figure>
+
 
 <p>But these facts and this process did not actually help, because I
 still needed <code>rake-0.9.6</code> for my site configuration, for some reason I
@@ -971,7 +1203,8 @@ have not yet determined (mostly due to lack of trying).</p>
 reinstalling the <code>bundler</code> gem, uninstalling and reinstalling rake
 (which effectively led to me replacing rake-10.1.0 with rake-10.1.1).</p>
 
-<p>At some point I ran this:
+<p>At some point I ran this:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -1006,8 +1239,8 @@ reinstalling the <code>bundler</code> gem, uninstalling and reinstalling rake
 <span class='line-number'>32</span>
 <span class='line-number'>33</span>
 </pre></td><td class='code'><pre><code class='text'><span class='line'>% bundle update rake
-</span><span class='line'>Fetching gem metadata from <a href="http://rubygems.org/">http://rubygems.org/</a>........
-</span><span class='line'>Fetching gem metadata from <a href="http://rubygems.org/">http://rubygems.org/</a>..
+</span><span class='line'>Fetching gem metadata from http://rubygems.org/........
+</span><span class='line'>Fetching gem metadata from http://rubygems.org/..
 </span><span class='line'>Resolving dependencies...
 </span><span class='line'>Installing rake (0.9.6)
 </span><span class='line'>Using RedCloth (4.2.9)
@@ -1039,7 +1272,10 @@ reinstalling the <code>bundler</code> gem, uninstalling and reinstalling rake
 </span><span class='line'>Using bundler (1.3.5)
 </span><span class='line'>Your bundle is updated!
 </span></code></pre></td></tr></table></div></figure>
-but I still got the error:
+
+
+<p>but I still got the error:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -1048,15 +1284,20 @@ but I still got the error:
 </pre></td><td class='code'><pre><code class='text'><span class='line'>% rake generate
 </span><span class='line'>rake aborted!
 </span><span class='line'>You have already activated rake 10.1.1, but your Gemfile requires rake 0.9.6. Using bundle exec may solve this.
-</span><span class='line'>/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:2:in `&lt;top (required)&gt;&#39;
+</span><span class='line'>/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:2:in \`&lt;top (required)&gt;&#39;
 </span><span class='line'>(See full trace by running task with --trace)
 </span></code></pre></td></tr></table></div></figure>
-and this is when I finally saw that I had to do:
+
+
+<p>and this is when I finally saw that I had to do:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class='text'><span class='line'>% bundle exec rake generate
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
 
-<p>Except that this did not solve everything:
+
+<p>Except that this did not solve everything:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -1085,26 +1326,28 @@ and this is when I finally saw that I had to do:
 </span><span class='line'>Configuration from /Users/pnkfelix/Dev/Sites/pnkfx-blog/_config.yml
 </span><span class='line'>Building site: source -&gt; public
 </span><span class='line'>YAML Exception reading 2013-04-12-better-command-completion-in-bash-aka-resolving-zsh-envy.markdown: invalid byte sequence in US-ASCII
-</span><span class='line'>/Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/backtick_code_block.rb:13:in `gsub&#39;: invalid byte sequence in US-ASCII (ArgumentError)
-</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/backtick_code_block.rb:13:in `render_code_block&amp;#39;
-</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/octopress_filters.rb:12:in `pre_filter&#39;
-</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/octopress_filters.rb:28:in `pre_render&#39;
-</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:112:in `block in pre_render&#39;
-</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:111:in `each&#39;
-</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:111:in `pre_render&#39;
-</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:166:in `do_layout&#39;
-</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/post.rb:195:in `render&#39;
-</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:200:in `block in render&#39;
-</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:199:in `each&#39;
-</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:199:in `render&#39;
-</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:41:in `process&#39;
-</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/bin/jekyll:264:in `&lt;top (required)&gt;&#39;
-</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/bin/jekyll:23:in `load&#39;
-</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/bin/jekyll:23:in `&lt;main&gt;&#39;
-</span></code></pre></td></tr></table></div></figure></p>
+</span><span class='line'>/Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/backtick_code_block.rb:13:in \`gsub&#39;: invalid byte sequence in US-ASCII (ArgumentError)
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/backtick_code_block.rb:13:in \`render_code_block\&#39;
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/octopress_filters.rb:12:in \`pre_filter&#39;
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/octopress_filters.rb:28:in \`pre_render&#39;
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:112:in \`block in pre_render&#39;
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:111:in \`each&#39;
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:111:in \`pre_render&#39;
+</span><span class='line'>  from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:166:in \`do_layout&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/post.rb:195:in \`render&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:200:in \`block in render&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:199:in \`each&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:199:in \`render&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:41:in \`process&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/bin/jekyll:264:in \`&lt;top (required)&gt;&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/bin/jekyll:23:in \`load&#39;
+</span><span class='line'>  from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/bin/jekyll:23:in \`&lt;main&gt;&#39;
+</span></code></pre></td></tr></table></div></figure>
+
 
 <p>Another web search brought me to a <a href="http://otfusion.org/blog/2013/10/27/os-x-mavericks/">post by a fellow Mavericks user</a> who seems to have a similar attitude to my own about ruby development.
-And from that I found the full command I needed
+And from that I found the full command I needed</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -1117,7 +1360,8 @@ And from that I found the full command I needed
 </span><span class='line'>Configuration from /Users/pnkfelix/Dev/Sites/pnkfx-blog/_config.yml
 </span><span class='line'>Building site: source -&gt; public
 </span><span class='line'>Successfully generated site: source -&gt; public
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
+
 
 <p>And here we are!</p>
 ]]></content>
@@ -1136,12 +1380,18 @@ And from that I found the full command I needed
 <ul>
 <li><a href="#is_fn_too_ugly">Is fn~ too ugly?</a></li>
 <li><a href="#leveraging_proc">Leveraging a proc keyword/expression</a></li>
-<li><a href="#other_ways_to_proc">Other ways to express proc</a></li>
+<li><a href="#other_ways_to_proc">Other ways to express proc</a>
+
+<ul>
 <li><a href="#digression_on_macros">A Personal Digression on Macros</a></li>
+</ul>
+</li>
 <li><a href="#more_followup_on_procs_and_fns">More followups on procs and fns</a></li>
-</ul></li>
+</ul>
+</li>
 <li><a href="#where_are_we">So where are we?</a></li>
 </ul>
+
 
 <p>I have recently been trying to keep myself abreast of a flurry of
 discussion about reforming the design of Rust closures.  Niko has a
@@ -1155,24 +1405,24 @@ more formalized proposals with their own set of discussions: (<a href="https://g
 without sufficient context the discussion in the github issues may not
 always be intelligible.</p>
 
-<p>Some of the links above are more about &quot;Dynamically Sized Types&quot;
+<p>Some of the links above are more about &ldquo;Dynamically Sized Types&rdquo;
 (DST), a related topic, as we shall see.</p>
 
 <p>This post is my attempt to condense all of this information down into
 something where I can see all the pieces at once, and discard the
 red herrings along the way.</p>
 
-<h2 id="toc_0"><a id="background_fns">Background: Closures (recurring and otherwise)</a></h2>
+<h2><a id="background_fns">Background: Closures (recurring and otherwise)</a></h2>
 
 <p>In Rust circa version 0.6, closures have three categories according to
 the type system (<code>&amp;fn</code>, <code>@fn</code>, and <code>~fn</code>), but <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">as Niko describes</a>,
 they can be divided into two kinds: by-reference closures and copying
 closures.  By-reference closures are also referred to as
-stack-allocated closures or sometimes &quot;stack closure.&quot;
+stack-allocated closures or sometimes &ldquo;stack closure.&rdquo;
 (There is also a orthogonal division of <code>once</code> closures, versus
 closures that can be invoked more than once; some of these things are,
 to my knowledge, only part of planned future implementation.  Niko
-discusses them in the blog posts but I&#39;m mostly sidestep them here.)</p>
+discusses them in the blog posts but I&rsquo;m mostly sidestep them here.)</p>
 
 <p>As Niko states in the first paragraph of <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">1</a>, a stack closure is
 allocated on the stack, and can refer to and manipulate the local
@@ -1188,14 +1438,15 @@ type, Niko often uses the term <code>&amp;fn</code> closure synonymously with
 stack-allocated closure.</p>
 
 <p>(However, Niko also points out (first section of
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&quot;Procedures, Continued&quot;</a>) that one can borrow a <code>@fn</code> or <code>~fn</code> to
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&ldquo;Procedures, Continued&rdquo;</a>) that one can borrow a <code>@fn</code> or <code>~fn</code> to
 a <code>&amp;fn</code>, so the type does <em>not</em> tell you whether you actually have a
 by-reference or a copying-closure.)</p>
 
 <p>Here is the example of an unsound function that Niko described in
 his <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">Case of the Recurring Closure</a> post from 2013-04-30,
 making use of higher-order functions to express a fixed-point
-combinator:
+combinator:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -1227,10 +1478,10 @@ combinator:
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">innocent_looking_victim</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">vec</span> <span class="o">=</span> <span class="o">~</span><span class="p">[</span><span class="m">1</span><span class="p">,</span> <span class="m">2</span><span class="p">,</span> <span class="m">3</span><span class="p">];</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">vec</span> <span class="o">=</span> <span class="o">~</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">];</span>
 </span><span class='line'>    <span class="n">conspirator</span><span class="p">(</span><span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="n">vec</span><span class="p">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="m">100</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">vec</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="m">4</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">vec</span><span class="p">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">100</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">vec</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="mi">4</span><span class="p">);</span>
 </span><span class='line'>            <span class="k">for</span> <span class="n">vec</span><span class="p">.</span><span class="n">each</span> <span class="o">|</span><span class="n">i</span><span class="o">|</span> <span class="p">{</span>
 </span><span class='line'>                <span class="n">f</span><span class="p">.</span><span class="n">c</span><span class="p">(</span><span class="o">&amp;</span><span class="n">f</span><span class="p">)</span>
 </span><span class='line'>            <span class="p">}</span>
@@ -1242,11 +1493,12 @@ combinator:
 </span><span class='line'>    <span class="kd">let</span> <span class="n">r</span> <span class="o">=</span> <span class="n">R</span> <span class="p">{</span><span class="n">c</span><span class="o">:</span> <span class="n">f</span><span class="p">};</span>
 </span><span class='line'>    <span class="n">f</span><span class="p">(</span><span class="o">&amp;</span><span class="n">r</span><span class="p">)</span>
 </span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
+
 
 <p>As Niko explains, the vector <code>vec</code> is mutated while being traversed by
 an iterator; this is illegal.  The closure <code>|f| { ... }</code> captures
-a reference to <code>vec</code>, and Rust&#39;s borrow checker is not treating the argument
+a reference to <code>vec</code>, and Rust&rsquo;s borrow checker is not treating the argument
 <code>f</code> as a potential source of aliases to <code>vec</code>, even though it does alias
 <code>vec</code> because <code>f</code> ends up being bound to the closure <code>|f| { ... }</code>.</p>
 
@@ -1263,10 +1515,10 @@ with other proposals, as we shall see.
 (Note that Rust does have a way of expressing a non-aliasable pointer
 to <code>T</code> for any <code>T</code>: <code>&amp;mut T</code>.)</p>
 
-<h2 id="toc_1"><a id="background_dst">Background: DST</a></h2>
+<h2><a id="background_dst">Background: DST</a></h2>
 
 <p>The heart of the Dynamically Sized Types proposal is the discrepancy
-described in Niko&#39;s <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">DST, Revisited</a> post from 2013-04-30
+described in Niko&rsquo;s <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">DST, Revisited</a> post from 2013-04-30
 (published contemporaneously with <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">Case of the Recurring Closure</a>).
 Niko has been wrestling with the idea for a while, as one can see on
 his posts from <a href="http://smallcultfollowing.com/babysteps/blog/2012/04/23/vectors-strings-and-slices/">2012-04-23</a> and <a href="http://smallcultfollowing.com/babysteps/blog/2012/04/27/in-favor-of-types-of-unknown-size/">2012-04-27</a>.</p>
@@ -1286,45 +1538,47 @@ tracked at compile-time.  Consists of just the array of elements,
 <code>T[N]</code>, and nothing more.  Expressed as <code>[T, ..N]</code> in Rust.</li>
 </ul>
 
-<p>Niko points out that a slice&#39;s two-word representation is quite
+
+<p>Niko points out that a slice&rsquo;s two-word representation is quite
 different from the representations of the other variants.  His
 proposal is to unify the first two representations, by laying out
 <code>~[T]</code> and <code>@[T]</code> as pairs of words (a pointer to the boxed elements
 array, and a length).
-(Niko claimed that this makes a <code>~[T]</code> and <code>@[T]</code> valid slices, &quot;apart
-from the box header&quot;; it seems to me like the box header is quite
+(Niko claimed that this makes a <code>~[T]</code> and <code>@[T]</code> valid slices, &ldquo;apart
+from the box header&rdquo;; it seems to me like the box header is quite
 relevant here, unless the idea is that when you coerce a <code>@[T]</code> to a
-slice, you increment the pointer value accordingly&#8230;)</p>
+slice, you increment the pointer value accordingly&hellip;)</p>
 
 <p>Then, Niko classifies the types of Rust into two categories: Sized and
 Unsized; i.e., size is statically known, versus size is tracked at
 runtime (maybe the letters S and R would have been more appropriate
-than S and U&#8230;).  The &quot;unsized types&quot; cannot themselves be assigned
+than S and U&hellip;).  The &ldquo;unsized types&rdquo; cannot themselves be assigned
 as types of local variables, and you cannot have vectors of elements
-of unsized type; this all stems from the fact that &quot;unsized types&quot; do
+of unsized type; this all stems from the fact that &ldquo;unsized types&rdquo; do
 not have a static size.
-(The &quot;unsized types&quot; are arguably not actually types; we might be
-well-served by referring to them as &quot;pretypes&quot; or something).
+(The &ldquo;unsized types&rdquo; are arguably not actually types; we might be
+well-served by referring to them as &ldquo;pretypes&rdquo; or something).
 But pointers to unsized types are valid types.  Such pointers are the
-pairs of words discussed above, aka &quot;fat pointers&quot;: <code>(payload, meta)</code>,
+pairs of words discussed above, aka &ldquo;fat pointers&rdquo;: <code>(payload, meta)</code>,
 where <code>payload</code> is the pointer to the data, and <code>meta</code> is the
 descriptor that includes some way to determine the size of the payload
 (to support runtime bounds checks).</p>
 
-<p>The fact that &quot;unsized types&quot; need to be treated specially leads to a
+<p>The fact that &ldquo;unsized types&rdquo; need to be treated specially leads to a
 complication, discussed further in the post; how to differentiate
 between type-parameterized code that works on both kinds of types,
 versus typed-parameterized code that solely operates on sized types.
 The method proposed in the post is to express the distinction via a
 trait bound: the <code>Sized</code> bound would restrict the type parameter to
 one of statically-known size; you would not be able to express
-types like <code>[X, ..3]</code> (a fixed-length vector of 3 X&#39;es), unless you
+types like <code>[X, ..3]</code> (a fixed-length vector of 3 X'es), unless you
 include the bound <code>X:Sized</code>.  (There is more on this restriction
 and ways to ease it further down.)</p>
 
 <p>One of the benefits of DST that Niko proposes early on is that
 Traits and closures are other instances of unsized types, so that
-Rust&#39;s type hierarchy could be presented uniformly like so:
+Rust&rsquo;s type hierarchy could be presented uniformly like so:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -1350,21 +1604,23 @@ Rust&#39;s type hierarchy could be presented uniformly like so:
 </span><span class='line'>  <span class="o">|</span> <span class="n">Trait</span>        <span class="c1">// existential (&quot;exists S:Trait.S&quot;)</span>
 </span><span class='line'>  <span class="o">|</span> <span class="k">fn</span><span class="p">(</span><span class="n">S</span><span class="o">*</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>
 </span></code></pre></td></tr></table></div></figure>
-(Note that the actual types assigned to expressions would be instances
+
+
+<p>(Note that the actual types assigned to expressions would be instances
 of <code>S</code> according to this grammar.)</p>
 
-<h2 id="toc_2"><a id="the_problem">The Problem: DST and Closures</a></h2>
+<h2><a id="the_problem">The Problem: DST and Closures</a></h2>
 
-<p>So, from the &quot;Case of the Recurring Closure&quot;, we saw that
+<p>So, from the &ldquo;Case of the Recurring Closure&rdquo;, we saw that
 <code>&amp;fn</code> closures were to become non-copyable.
 But under the DST proposal, generic code should be able to treat <code>&amp;T</code>
 the same for all <code>T</code>, <em>including</em> when <code>T</code> is some <code>fn(S*) -&gt; S</code>.
 These two criteria are not compatible; Niko has lots more explanation
 in his corresponding post:
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/recurring-closures-and-dynamically-sized-types/">&quot;Recurring Closures and Dynamically Sized Types&quot;</a>,
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/recurring-closures-and-dynamically-sized-types/">&ldquo;Recurring Closures and Dynamically Sized Types&rdquo;</a>,
 from 2013-05-13.</p>
 
-<p>Niko&#39;s immediate proposals to resolve this were either:</p>
+<p>Niko&rsquo;s immediate proposals to resolve this were either:</p>
 
 <ul>
 <li>we write <code>&amp;mut fn</code> instead of <code>&amp;fn</code>.  <code>&amp;mut T</code> for all <code>T</code>
@@ -1375,10 +1631,11 @@ side-stepping the special treatment of <code>&amp;fn</code> versus <code>&amp;T<
 rid of <code>&amp;fn</code> and replacing it with <code>fn&amp;</code>.</li>
 </ul>
 
-<h3 id="toc_3"><a id="is_fn_too_ugly">Is fn~ too ugly?</a></h3>
+
+<h3><a id="is_fn_too_ugly">Is fn~ too ugly?</a></h3>
 
 <p>Niko at first favored the latter, then he wrote a second post,
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">&quot;Mutable Fn Alternatives&quot;</a> on 2013-05-13,
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">&ldquo;Mutable Fn Alternatives&rdquo;</a> on 2013-05-13,
 which reconsidered whether <code>fn~</code> is too ugly, and included
 new survey of the options:</p>
 
@@ -1391,6 +1648,7 @@ and replace <code>fn~</code> with a new keyword, like <code>proc</code>.  (This 
 on the previous bullet.)</li>
 </ul>
 
+
 <p>For the second and third bullets, the main point is: If you need to
 capture state in a manner that cannot be expressed via the available
 options (stack-allocated closure, or a <code>proc</code>, if present), then you
@@ -1398,16 +1656,16 @@ have to use an trait instead (i.e. an object or a record).
 (I personally am not thrilled about losing the option of using
 closures to express combinator libraries, a use case for <code>fn@</code>.)</p>
 
-<h3 id="toc_4"><a id="leveraging_proc">Leveraging a proc keyword/expression</a></h3>
+<h3><a id="leveraging_proc">Leveraging a proc keyword/expression</a></h3>
 
-<p>Then a third post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&quot;Procedures, Continued&quot;</a> from
+<p>Then a third post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&ldquo;Procedures, Continued&rdquo;</a> from
 2013-05-15, refined the <code>proc</code> proposal a bit further.  As stated in
 the background on closures, Rust has by-reference closures and copying
 closures; the choice of which variant to construct is based on the
 type expected by the context of the <code>|x ...| { ... }</code> expression.
 In this post, Niko proposed that the distinction here deserves a
 starker line between the two forms.  (In that post, he proposed both a
-revision to English jargon and also to the Rust syntax; I&#39;m going to
+revision to English jargon and also to the Rust syntax; I&rsquo;m going to
 focus solely on the Rust syntax changes, and let those guide the
 changes to my own jargon here.)</p>
 
@@ -1418,7 +1676,8 @@ solely via <code>fn</code>, and a copying closure would be constructed solely vi
 by-reference closure as an <code>fn</code>-closure and a copying closure as a
 <code>proc</code>-closure.</p>
 
-<p>The type hierarchy that Niko then provides for this is:
+<p>The type hierarchy that Niko then provides for this is:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -1434,7 +1693,7 @@ by-reference closure as an <code>fn</code>-closure and a copying closure as a
 <span class='line-number'>13</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="n">T</span> <span class="o">=</span> <span class="n">S</span>               <span class="c1">// sized types</span>
 </span><span class='line'>  <span class="o">|</span> <span class="n">U</span>               <span class="c1">// unsized types</span>
-</span><span class='line'><span class="n">S</span> <span class="o">=</span> <span class="k">fn</span><span class="p">(</span><span class="n">S</span><span class="o"><em></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>     <span class="c1">// closures (</em>)</span>
+</span><span class='line'><span class="n">S</span> <span class="o">=</span> <span class="k">fn</span><span class="p">(</span><span class="n">S</span><span class="o">*</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>     <span class="c1">// closures (*)</span>
 </span><span class='line'>  <span class="o">|</span> <span class="o">&amp;</span><span class="n">&#39;r</span> <span class="n">T</span>           <span class="c1">// region ptr</span>
 </span><span class='line'>  <span class="o">|</span> <span class="o">@</span><span class="n">T</span>              <span class="c1">// managed ptr</span>
 </span><span class='line'>  <span class="o">|</span> <span class="o">~</span><span class="n">T</span>              <span class="c1">// unique ptr</span>
@@ -1444,12 +1703,13 @@ by-reference closure as an <code>fn</code>-closure and a copying closure as a
 </span><span class='line'><span class="n">U</span> <span class="o">=</span> <span class="p">[</span><span class="n">S</span><span class="p">]</span>             <span class="c1">// vectors</span>
 </span><span class='line'>  <span class="o">|</span> <span class="kt">str</span>             <span class="c1">// string</span>
 </span><span class='line'>  <span class="o">|</span> <span class="n">Trait</span>           <span class="c1">// existential (&quot;exists S:Trait.S&quot;)</span>
-</span><span class='line'>  <span class="o">|</span> <span class="k">proc</span><span class="p">(</span><span class="n">S</span><span class="o"><em></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>   <span class="c1">// procedures (</em>)</span>
-</span></code></pre></td></tr></table></div></figure></p>
+</span><span class='line'>  <span class="o">|</span> <span class="k">proc</span><span class="p">(</span><span class="n">S</span><span class="o">*</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span>   <span class="c1">// procedures (*)</span>
+</span></code></pre></td></tr></table></div></figure>
+
 
 <p>Now, <code>fn</code>-closures are considered <em>sized types</em>, because they are
 always represented by two words: a (borrowed) environment pointer (to
-the stack in Niko&#39;s proposal, though perhaps it could be generalized
+the stack in Niko&rsquo;s proposal, though perhaps it could be generalized
 to point elsewhere) and a function pointer.  <code>proc</code>-closures are
 <em>unsized types</em>, because their copied lexical environment is of some
 dynamically-determined size that they must carry in their record
@@ -1459,7 +1719,7 @@ structure.</p>
 the exchange heap (<code>~proc</code>) or the task heap (<code>@proc</code>).  So this
 brings back the ability to express combinator libraries.</p>
 
-<p>Niko&#39;s post provides further detail, such as dissection of the <code>fn</code>
+<p>Niko&rsquo;s post provides further detail, such as dissection of the <code>fn</code>
 and <code>proc</code> closure types (which include important details like the
 lifetime and trait <em>bounds</em> for the closed-over variables; this is
 important since with a separate keyword, it is now reasonable for
@@ -1470,13 +1730,13 @@ traits are objects carrying virtual method dispatch tables), and then
 expressing them via a <code>proc!</code> macro (which means they could be left
 out of the core language).</p>
 
-<h3 id="toc_5"><a id="other_ways_to_proc">Other ways to express proc</a></h3>
+<h3><a id="other_ways_to_proc">Other ways to express proc</a></h3>
 
-<p>In his next post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">&quot;Removing Procs&quot;</a>, Niko elaborates further
+<p>In his next post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">&ldquo;Removing Procs&rdquo;</a>, Niko elaborates further
 on the idea that <code>proc</code> need not be supported in the language at all.
 Stack-allocated <code>fn</code>-closures would remain, expressed via <code>fn(S ...) -&gt; T</code>,
 and the language already supports raw (environment-less) function
-pointers via <code>extern &quot;ABI&quot; fn(S ...) -&gt; T</code>.
+pointers via <code>extern "ABI" fn(S ...) -&gt; T</code>.
 Niko points out two ways to re-express copying closures:</p>
 
 <ol>
@@ -1488,6 +1748,7 @@ variable as a separate parameter), or</li>
 <li>As stated earlier, (boxed) traits can used to express copying
 closures.</li>
 </ol>
+
 
 <p>Niko surveyed how these patterns would look in his post, by considered
 existing use cases of <code>@fn</code> and <code>~fn</code> in the standard libraries,
@@ -1505,7 +1766,7 @@ would go away.</p>
 macro to query an expression for its free variables, then that might
 help.</p>
 
-<h4 id="toc_6"><a id="digression_on_macros">A Personal Digression on Macros</a></h4>
+<h4><a id="digression_on_macros">A Personal Digression on Macros</a></h4>
 
 <p>Actually, this latter idea brings up a problem with the explicit list
 of captured variables that I had not thought of before: some macros
@@ -1529,12 +1790,13 @@ support a <code>proc!</code> macro,</p></li>
 copying closures as a primitive linguistic construct.</p></li>
 </ul>
 
+
 <p>Okay, end of digression.</p>
 
-<h3 id="toc_7"><a id="more_followup_on_procs_and_fns">More followups on procs and fns</a></h3>
+<h3><a id="more_followup_on_procs_and_fns">More followups on procs and fns</a></h3>
 
 <p>A few days passed, then Niko had a fourth post,
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">&quot;More on Fns&quot;</a>, from 2013-06-03.
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">&ldquo;More on Fns&rdquo;</a>, from 2013-06-03.
 This proposal renamed of a proposed <code>Task</code> trait to <code>Thunk</code>, since
 Niko felt that the concept at hand (an encapsulated function and the
 parameters it needs) is better reflected by that name.</p>
@@ -1545,12 +1807,12 @@ instead of requiring an explicit list; this sidesteps the whole question
 of how to handle macros that inject new free variable references.</p>
 
 <p>There is then much discussion of whether or not to support <code>once fn</code>s,
-which I won&#39;t summarize here.  The important detail of the post is
+which I won&rsquo;t summarize here.  The important detail of the post is
 that we do not necessarily have to list the captured variables
 explicitly.</p>
 
 <p>After a few more days, Niko had a followup on the related topic of
-dynamically sized types (DST), <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">&quot;Reducing DST Annotation&quot;</a>, from
+dynamically sized types (DST), <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">&ldquo;Reducing DST Annotation&rdquo;</a>, from
 2013-06-06.  It took into account an <a href="https://github.com/mozilla/rust/issues/6308#issuecomment-18880575">investigation</a> by Ben Blum
 on the implications of a <code>Sized</code> trait bound.  This led to Niko
 exploring some alternatives to adopting DST with a <code>Sized</code> bound:</p>
@@ -1562,13 +1824,14 @@ also points out where it does not live up to its original promises.</li>
 syntactic mechanism to distinguish <code>Sized</code> from <code>Unsized</code> (such as
 a keyword).</li>
 <li>Use some sort of inference: the type-checker can use properties
-of a function&#39;s parameter list to provide feedback
+of a function&rsquo;s parameter list to provide feedback
 on whether the type parameter has an implicit <code>Sized</code> bound.
 (Niko wonders if this approach is too clever; I am inclined to
-affirm that it is.)</li>
+ affirm that it is.)</li>
 </ul>
 
-<h2 id="toc_8"><a id="where_are_we">So where are we?</a></h2>
+
+<h2><a id="where_are_we">So where are we?</a></h2>
 
 <p>The above summarizes the series of blog posts from Niko.  I had hoped
 to get through the actual proposals (and maybe also the team meeting
@@ -1580,7 +1843,7 @@ for everyone:</p>
 
 <ul>
 <li>My intuition is that we should leave in copying closures in some form.</li>
-<li>The <code>thunk { ... }</code> expression might suffice, but &#8230; I am not yet
+<li>The <code>thunk { ... }</code> expression might suffice, but &hellip; I am not yet
 convinced that I would be satisfied using boxed traits
 to express the cases that need input arguments (like combinator
 libraries).</li>
@@ -1593,6 +1856,7 @@ is moved or copied).</li>
 <code>proc</code>/<code>thunk</code>/etc, please ensure that the question of free
 variables injected by macro invocations is addressed.</li>
 </ul>
+
 ]]></content>
   </entry>
   
@@ -1606,23 +1870,26 @@ variables injected by macro invocations is addressed.</li>
 
 <ul>
 <li><a href="#encodingunpalatable">Encoding via parameters is unpalatable</a></li>
-</ul></li>
+</ul>
+</li>
 <li><a href="#rustspec">Rust-specific issues</a>
 
 <ul>
-<li><a href="#nikoposts">Niko&#39;s blog posts</a></li>
+<li><a href="#nikoposts">Niko&rsquo;s blog posts</a></li>
 <li><a href="#thinkbinding">Simpler syntax: What about binding?</a></li>
-</ul></li>
+</ul>
+</li>
 <li><a href="#insight">Insight</a></li>
 <li><a href="#proposal">The proposed syntax for associated items in Rust</a></li>
 <li><a href="#futurework">What the proposal does not cover</a></li>
 </ul>
 
-<p>Executive summary: if you don&#39;t want or need the background information
+
+<p>Executive summary: if you don&rsquo;t want or need the background information
 or the discussion motivating the proposal, then just jump
 straight to the <a href="#proposal">proposal</a> itself.</p>
 
-<h2 id="toc_0"><a id="background">Background</a></h2>
+<h2><a id="background">Background</a></h2>
 
 <p>Early in my experimentation with Rust, I thought a reasonable exercise
 would be to take the simple C++ programs from
@@ -1630,17 +1897,17 @@ would be to take the simple C++ programs from
 disciplined use of abstraction and C++ templates to encode various
 mathematical concepts.  The early chapters of the book use templates
 rather than classes as the means of code reuse, so translating those
-examples seemed like a good way to exercise Rust&#39;s generic type and
+examples seemed like a good way to exercise Rust&rsquo;s generic type and
 trait systems.</p>
 
 <p>However, almost immediately after starting the experiment, I encountered
 a problem: code that makes heavy use of C++ templates is quite likely
 to use particular features of C++ templates that are not a universal
-part of another language&#39;s generic type system.</p>
+part of another language&rsquo;s generic type system.</p>
 
 <p>In particular, the code from Elements of Programming (hereby
-abbreviated &quot;EOP&quot; in this post) almost immediately makes use of
-&quot;associated types&quot;, such as in the following definition for <code>distance</code>:</p>
+abbreviated &ldquo;EOP&rdquo; in this post) almost immediately makes use of
+&ldquo;associated types&rdquo;, such as in the following definition for <code>distance</code>:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -1670,6 +1937,7 @@ abbreviated &quot;EOP&quot; in this post) almost immediately makes use of
 </span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
 <p>The interesting thing about the above code is that it is parameterized
 over one type: <nobr><code>F</code>,</nobr> but it uses other type expressions within the body
 of the procedure, namely:</p>
@@ -1684,6 +1952,7 @@ Transformation, returns a numeric type (think <code>uint8_t</code>,
 minimum number of applications of the transformation necessary to
 get from any particular <code>T</code> value to some other <code>T</code> value.</p></li>
 </ul>
+
 
 <p>(Operators like <code>DistanceType</code>, to my mind, only makes sense when you
  look at things simultaneously in terms of bytes of memory in the
@@ -1726,10 +1995,11 @@ EOP source code distribution:</p>
 </span><span class='line'><span class="cp">#define DistanceType(T) typename distance_type&lt; T &gt;::type</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
 <p>This code is making use of a C-style macro to define a easy-to-read
 interface for the <code>DistanceType</code> operator (the subset of C++ used
-for EOP&#39;s textbook examples is meant to be LL(1)), but the implementation
-of the operator is using C++&#39;s template system to define a partial
+for EOP&rsquo;s textbook examples is meant to be LL(1)), but the implementation
+of the operator is using C++&rsquo;s template system to define a partial
 mapping from types to (integral) types.  One can add new entries to
 this mapping by defining a new template instantiation of
 <code>struct distance_type&lt;F&gt;</code>, as illustrated in <code>tests.h</code> for the following
@@ -1787,6 +2057,7 @@ transformation <code>gen_orbit</code>:</p>
 </span><span class='line'><span class="p">};</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
 <p>Thus, the definition of <code>gen_orbit</code> (including its instantiation of
 <code>distance_type</code>) collaborates with the definition of <code>DistanceType</code> to
 indicate that <code>DistanceType(gen_orbit&lt;I, N&gt;)</code> is <code>N</code>.  As one adds new
@@ -1794,15 +2065,16 @@ structs (classes) representing other transformations, one is expected
 to instantiate <code>distance_type</code> (as well as a host of other
 template-abstracted structs) accordingly.</p>
 
-<hr>
+<hr />
 
-<p>So, what&#39;s the problem here?  Well, Rust, much like Java, does not
+<p>So, what&rsquo;s the problem here?  Well, Rust, much like Java, does not
 provide a way to define general <code>type -&gt; type</code> mappings like
 <code>DistanceType(F)</code>.</p>
 
 <p>One can try to work around this via a code transformation and lift any
-type of interest up to a generic class&#39;s parameter list, like this
-example in Rust:
+type of interest up to a generic class&rsquo;s parameter list, like this
+example in Rust:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -1810,37 +2082,45 @@ example in Rust:
 </span><span class='line'>    <span class="k">fn</span> <span class="n">apply</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">,</span> <span class="n">elem</span><span class="o">:</span> <span class="n">DOMAIN</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DOMAIN</span><span class="p">;</span>
 </span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
-or if you prefer Java:
+
+
+<p>or if you prefer Java:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 </pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">interface</span> <span class="nc">Transformation</span><span class="o">&lt;</span><span class="n">DISTANCETYPE</span><span class="o">,</span> <span class="n">DOMAIN</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">DOMAIN</span> <span class="n">apply</span><span class="o">(</span><span class="n">DOMAIN</span> <span class="n">elem</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">DOMAIN</span> <span class="nf">apply</span><span class="o">(</span><span class="n">DOMAIN</span> <span class="n">elem</span><span class="o">);</span>
 </span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
+
 
 <p>At first glance, one might think this does not look so bad; after all,
 the <code>gen_orbit</code> struct similarly was parameterized over a domain <code>I</code>
 and a distance type <code>N</code>.  However, the problem comes when one
 then attempts to write a function like distance:</p>
 
-<p>Rust:
+<p>Rust:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">distance</span><span class="o">&lt;</span><span class="n">F</span><span class="o">:</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DT</span><span class="p">,</span> <span class="n">DOM</span><span class="o">&gt;</span> <span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="o">:</span> <span class="o">???</span><span class="p">,</span> <span class="n">y</span><span class="o">:</span> <span class="o">???</span><span class="p">,</span> <span class="n">f</span><span class="o">:</span> <span class="n">F</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">???</span> <span class="p">{</span>
 </span><span class='line'>    <span class="cm">/* ... */</span>
 </span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
 
-<p>Java:
+
+<p>Java:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 </pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">F</span> <span class="kd">extends</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DT</span><span class="o">,</span> <span class="n">DOM</span><span class="o">&gt;</span> <span class="o">???</span> <span class="n">distance</span><span class="o">(???</span> <span class="n">x</span><span class="o">,</span> <span class="o">???</span> <span class="n">y</span><span class="o">,</span> <span class="n">F</span> <span class="n">f</span><span class="o">)</span> <span class="o">{</span>
 </span><span class='line'>    <span class="cm">/* ... */</span>
 </span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
+
 
 <p>What do we put in for the <code>???</code> portions?  We already established that
 we do not have general <code>type -&gt; type</code> operators, so we cannot just
@@ -1850,27 +2130,31 @@ variables and then add constraints upon them after the fact.  The only
 option is to make any type we wish to use an additional type parameter
 to the generic method.</p>
 
-<p>Rust:
+<p>Rust:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">distance</span><span class="o">&lt;</span><span class="n">DT</span><span class="p">,</span> <span class="n">DOM</span><span class="p">,</span> <span class="n">F</span><span class="o">:</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DT</span><span class="p">,</span> <span class="n">DOM</span><span class="o">&gt;</span> <span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="o">:</span> <span class="n">DOM</span><span class="p">,</span> <span class="n">y</span><span class="o">:</span> <span class="n">DOM</span><span class="p">,</span> <span class="n">f</span><span class="o">:</span> <span class="n">F</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DT</span> <span class="p">{</span>
 </span><span class='line'>    <span class="cm">/* ... */</span>
 </span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
 
-<p>Java:
+
+<p>Java:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
 </pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">DT</span><span class="o">,</span> <span class="n">DOM</span><span class="o">,</span> <span class="n">F</span> <span class="kd">extends</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DT</span><span class="o">,</span> <span class="n">DOM</span><span class="o">&gt;</span> <span class="o">&gt;</span>
-</span><span class='line'>    <span class="n">DT</span> <span class="n">distance</span><span class="o">(</span><span class="n">DOM</span> <span class="n">x</span><span class="o">,</span> <span class="n">DOM</span> <span class="n">y</span><span class="o">,</span> <span class="n">F</span> <span class="n">f</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">DT</span> <span class="nf">distance</span><span class="o">(</span><span class="n">DOM</span> <span class="n">x</span><span class="o">,</span> <span class="n">DOM</span> <span class="n">y</span><span class="o">,</span> <span class="n">F</span> <span class="n">f</span><span class="o">)</span> <span class="o">{</span>
 </span><span class='line'>    <span class="cm">/* ... */</span>
 </span><span class='line'><span class="o">}</span>
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
 
-<h3 id="toc_1"><a id="encodingunpalatable">Encoding via parameters is unpalatable</a></h3>
+
+<h3><a id="encodingunpalatable">Encoding via parameters is unpalatable</a></h3>
 
 <p>The Rust and Java results above are made barely readable by using
 short (obscure) parameter names.  More troubling is the fact that this
@@ -1910,20 +2194,21 @@ inevitably arise during the compile-edit cycle.)</p>
  e.g. separate class-hierarchies).</li>
 </ol>
 
-<hr>
 
-<h2 id="toc_2"><a id="rustspec">Rust-specific issues</a></h2>
+<hr />
+
+<h2><a id="rustspec">Rust-specific issues</a></h2>
 
 <p>I encountered this problem while porting EOP code to Rust.  After
 wrestling with the type parameter lists for a while, I eventually
 wised up and asked on the #rust IRC channel if there was a better
 option.  Tim Chevalier informed me of the relevant terminology:
-the feature I want is called &quot;associated types access&quot; (or often just
-&quot;associated types&quot;).
+the feature I want is called &ldquo;associated types access&rdquo; (or often just
+&ldquo;associated types&rdquo;).
 An associated type specifies a mapping from some type to another type.</p>
 
-<p>&quot;Associated type access&quot; is listed as one of eight properties considered important in
-&quot;<a href="http://osl.iu.edu/publications/prints/2003/comparing_generic_programming03.pdf">A comparative study of language support for generic programming</a>&quot;
+<p>&ldquo;Associated type access&rdquo; is listed as one of eight properties considered important in
+&ldquo;<a href="http://osl.iu.edu/publications/prints/2003/comparing_generic_programming03.pdf">A comparative study of language support for generic programming</a>&rdquo;
 (Garcia et al., 2003 <a href="http://dl.acm.org/citation.cfm?id=949317">ACM</a>).
 If you found <a href="#encodingunpalatable">the argument above</a> unconvincing,
 you should read the Garcia paper for a completely different example motivated by
@@ -1935,24 +2220,24 @@ Synonyms.  After this, I had several discussions with Niko Matsakis,
 both over IRC and in person, on the problems that associated types
 present for Rust.</p>
 
-<h3 id="toc_3"><a id="nikoposts">Niko&#39;s blog posts</a></h3>
+<h3><a id="nikoposts">Niko&rsquo;s blog posts</a></h3>
 
-<p>You can see Niko&#39;s thorough overview of the matter,
-including his natural generalization of the topic from &quot;associated
-types&quot; to &quot;associated <em>items</em>&quot;, on his pair of blog posts (<a href="http://www.smallcultfollowing.com/babysteps/blog/2013/04/02/associated-items/">part
-I</a>, <a href="http://www.smallcultfollowing.com/babysteps/blog/2013/04/03/associated-items-continued/">part II</a>).  The generalization to &quot;associated items&quot;
+<p>You can see Niko&rsquo;s thorough overview of the matter,
+including his natural generalization of the topic from &ldquo;associated
+types&rdquo; to &ldquo;associated <em>items</em>&rdquo;, on his pair of blog posts (<a href="http://www.smallcultfollowing.com/babysteps/blog/2013/04/02/associated-items/">part
+I</a>, <a href="http://www.smallcultfollowing.com/babysteps/blog/2013/04/03/associated-items-continued/">part II</a>).  The generalization to &ldquo;associated items&rdquo;
 enables one to define, in addition to <code>type -&gt; type</code> mappings as
 illustrated <a href="#background">above</a>, also <code>type -&gt; function</code>
-mappings (called in some languages &quot;static&quot; functions) and <code>type -&gt;
+mappings (called in some languages &ldquo;static&rdquo; functions) and <code>type -&gt;
 (constant) value</code> mappings, which may enable certain interesting
 coding patterns, such as allowing a type representing a vector in a
 multi-dimensional space to state, statically, how many dimensions
 it carries.</p>
 
-<p>The following are the specific points that Niko makes in his posts (some of 
+<p>The following are the specific points that Niko makes in his posts (some of
 are just pointing out artifacts of current Rust language syntax).</p>
 
-<h3 id="toc_4">Current Rust syntax focuses on deriving associated functions from traits</h3>
+<h3>Current Rust syntax focuses on deriving associated functions from traits</h3>
 
 <p>Rust does not currently offer general associated items, but it does
 offer a kind of associated function access.</p>
@@ -1971,11 +2256,11 @@ of <code>f</code> must be <code>X</code> (and thus the <code>f</code> in questio
 the type <code>X</code> implements to satisfy the obligation established by the
 trait <code>T</code>).</p>
 
-<h4 id="toc_5"><a id="nikoenctt1">Resolving ambiguities in general implies you need both the trait and type</a></h4>
+<h4><a id="nikoenctt1">Resolving ambiguities in general implies you need both the trait and type</a></h4>
 
-<p>The choice of deriving a function&#39;s implementation from the trait
+<p>The choice of deriving a function&rsquo;s implementation from the trait
 rather than the type is understandable when one considers that a
-software system may have multiple traits <code>T</code>, <code>U</code>, <code>V</code>, &#8230; that all
+software system may have multiple traits <code>T</code>, <code>U</code>, <code>V</code>, &hellip; that all
 define a function of the same name (say <code>f</code>), and a type may be
 specified as implementing more than one of these traits in a single
 piece of code.  (It would be anti-modular to require every trait to
@@ -1984,23 +2269,27 @@ to handle this case, one must provide some way to disambiguate which
 <code>f</code> is being referenced.  Rust did so by making the trait expression
 part of the invocation syntax.  Niko points out that if one switches
 to a syntax where one derives <code>f</code> from the type
-<code>X</code> (e.g. <nobr>&quot;<code>X::f</code>&quot;</nobr>) then one must tackle this problem in
+<code>X</code> (e.g. <nobr>&ldquo;<code>X::f</code>&rdquo;</nobr>) then one must tackle this problem in
 some manner; in his first blog post, he suggests doing so by allowing
 one to encode both the type and the trait in the referencing syntax
-(e.g. <nobr>&quot;<code>X::(T::f)</code>&quot;</nobr> or <nobr>&quot;<code>X::(U::f)</code>&quot;</nobr>.</p>
+(e.g. <nobr>&ldquo;<code>X::(T::f)</code>&rdquo;</nobr> or <nobr>&ldquo;<code>X::(U::f)</code>&rdquo;</nobr>.</p>
 
 <p>I dislike this syntax because I think it
 would be confusing for a reader to comprehend the distinct roles of
-the <nobr>&quot;<code>::</code>&quot;</nobr> path operator, both when learning the language
+the <nobr>&ldquo;<code>::</code>&rdquo;</nobr> path operator, both when learning the language
 and when casually skimming Rust code in general.</p>
 
-<h4 id="toc_6">Rust type expressions do not naturally fit into Rust path expressions</h4>
+<h4>Rust type expressions do not naturally fit into Rust path expressions</h4>
 
 <p>Niko also points out that when one wants to write <code>X::f</code> where <code>X</code> is
 a type, it is not always the case that <code>X</code> is a type parameter; it
 could be a concrete type known to the programmer, such as the type of
-owned vecs of ints, denoted by the type expression
-<nobr><code>~[int]</code>.</nobr> So it seems natural to want to substitute such
+owned vecs of ints, denoted by the type expression</p>
+
+<nobr>`~[int]`.</nobr>
+
+
+<p> So it seems natural to want to substitute such
 a type expression for (the meta-variable) <code>X</code>.</p>
 
 <p>But the syntax <code>~[int]::f</code> is not legal, because <code>~[int]</code> is
@@ -2014,14 +2303,14 @@ which would complicate the parser in the Rust compiler (there has been
 a slight push to try to <em>simplify</em> the path expression syntax, which
 this would conflict with).</p>
 
-<h4 id="toc_7">Further syntactic exploration of encoding trait and type</h4>
+<h4>Further syntactic exploration of encoding trait and type</h4>
 
 <p>In his second blog post, Niko provides some alternative syntactic forms
 for resolution:</p>
 
 <ul>
 <li><p><code>X::(T::f)</code>, as described <a href="#nikoenctt1">above</a>.</p></li>
-<li><p><code>T::f::&lt;X&gt;</code> (from &quot;Functional-style name resolution (take 1)&quot;); here
+<li><p><code>T::f::&lt;X&gt;</code> (from &ldquo;Functional-style name resolution (take 1)&rdquo;); here
 <code>X</code> is a synthetic type parameter added to the type parameter list
 (if any) of <code>f</code>; so now we get to retain syntactic backwards
 compatibility.  Since Rust allows one to omit the explicit type
@@ -2033,12 +2322,13 @@ it does already.</p></li>
 from other entries on the parameter list.</p></li>
 </ul>
 
+
 <p>I have already stated my problems with the first option.</p>
 
 <p>For the second option, I anticipate being personally confused by the
 synthetic type parameter being injected into the type parameter list.
 I understand the appeal of enabling the compiler to continue doing
-heavy lifting and lighten the programmers syntactic load.  <a href="http://www.smallcultfollowing.com/babysteps/blog/2013/04/03/associated-items-continued/">Niko&#39;s
+heavy lifting and lighten the programmers syntactic load.  <a href="http://www.smallcultfollowing.com/babysteps/blog/2013/04/03/associated-items-continued/">Niko&rsquo;s
 post</a> does a good job of laying out some of the unexpected
 interactions of the synthetic type parameter with the other forms of
 generic type parameterization.</p>
@@ -2047,7 +2337,7 @@ generic type parameterization.</p>
 synthetic parameter would receive special attention at points of type
 instantiation, but I still think it is an abuse of the parameter list.</p>
 
-<h3 id="toc_8"><a id="thinkbinding">Simpler syntax: What about binding?</a></h3>
+<h3><a id="thinkbinding">Simpler syntax: What about binding?</a></h3>
 
 <p>So I set about trying to come up with another syntactic form
 for associated item access.  My primary focus initially was:
@@ -2055,7 +2345,7 @@ all of these examples would be so much simpler, to my mind,
 if we were able to go back to using a single identifier
 for the relevant path component in the referencing form,
 the way that C++ uses <nobr><code>C::f</code>.</nobr>
-How can Rust make its own analogous <nobr><code>R::f</code></nobr> (the &quot;R&quot; is for Rust).</p>
+How can Rust make its own analogous <nobr><code>R::f</code></nobr> (the &ldquo;R&rdquo; is for Rust).</p>
 
 <p>Of course, we have already covered that this will be ambiguous if
 <code>R</code> is a mere type (and it is of course ambiguous if <code>R</code> is just a trait).</p>
@@ -2075,7 +2365,8 @@ and other variations (I think Patrick Walton actually deserves credit
 for that last one; we will revisit it later).  But Niko quickly pointed
 the huge failing of all of these declaration forms: a very common
 use case for associated <em>types</em> (remember, that was our original goal)
-is for function signatures, like:
+is for function signatures, like:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -2083,7 +2374,9 @@ is for function signatures, like:
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">remove_edge</span><span class="o">&lt;</span><span class="n">G</span><span class="o">:</span> <span class="n">IncidenceGraph</span> <span class="o">+</span> <span class="n">EdgeCollection</span><span class="o">&gt;</span><span class="p">(</span><span class="n">g</span><span class="o">:</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">G</span><span class="p">,</span> <span class="n">e</span><span class="o">:</span> <span class="n">Edge</span><span class="p">(</span><span class="n">G</span><span class="p">));</span>
 </span></code></pre></td></tr></table></div></figure>
-where <code>Domain(F)</code>, <code>DistanceType(F)</code>, and <code>Edge(G)</code> are replaced
+
+
+<p>where <code>Domain(F)</code>, <code>DistanceType(F)</code>, and <code>Edge(G)</code> are replaced
 with appropriately Rust-friendly syntactic forms.  There is no <em>place</em>
 there to put a declaration form <code>let ...</code> or <code>use ...</code> that refers to
 <code>F</code>.  The same applies for other parameterized forms, such as structs,
@@ -2091,44 +2384,58 @@ enums, and traits.</p>
 
 <p>So, back to the drawing board.</p>
 
-<hr>
+<hr />
 
-<h2 id="toc_9"><a id="insight">An Insight</a></h2>
+<h2><a id="insight">An Insight</a></h2>
 
 <p>Even though my attempt to solve this problem via a declaration form had
 failed, I continued to focus on the fact that associated item access
 is all about the (type, trait) pairing.  So how could I surmount the
 parameterized signature wall?</p>
 
-<p>After reflecting on the parameterized signature itself, I said, &quot;where
+<p>After reflecting on the parameterized signature itself, I said, &ldquo;where
 is a natural place to put a binding from an identifier to a (type,
-trait) pair?&quot;  And this reduced to &quot;where does the (type, trait) pair
-come from?&quot;  This was my insight: The parameterized signature
-<nobr><code>&lt;X: T&gt;</code></nobr> <em>itself</em> is where the pairing is defined;
+trait) pair?&rdquo;  And this reduced to &ldquo;where does the (type, trait) pair
+come from?&rdquo;  This was my insight: The parameterized signature</p>
+
+<nobr>`<X: T>`</nobr>
+
+
+<p> <em>itself</em> is where the pairing is defined;
 (or in the case of <nobr><code>&lt;X: T + U&gt;</code></nobr>: <em>pairings</em>).</p>
 
 <p>My only problem was to put the identifier binding in there.  Once I
 saw the pairing waiting right in the parameter list, the place for the
-identifier became clear: in-between the type and the trait:
-<nobr><code>&lt;X: R=T&gt;</code></nobr> binds <code>R</code> to the <code>impl T for X</code>;
+identifier became clear: in-between the type and the trait:</p>
+
+<nobr>`<X: R=T>`</nobr>
+
+
+<p> binds <code>R</code> to the <code>impl T for X</code>;
 for multiple traits, we have <nobr><code>&lt;X: R=T + R2=U&gt;</code></nobr>,
 where <code>R</code> is bound as above, and <code>R2</code> is bound to the <code>impl U for X</code>.</p>
 
-<p>And now we can consider writing our examples like so:
+<p>And now we can consider writing our examples like so:</p>
+
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">distance</span><span class="o">&lt;</span><span class="n">F</span><span class="o">:</span> <span class="n">T</span><span class="o">=</span><span class="n">Transformation</span><span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="o">:</span> <span class="n">T</span><span class="o">::</span><span class="n">Domain</span><span class="p">,</span> <span class="n">y</span><span class="o">:</span> <span class="n">T</span><span class="o">::</span><span class="n">Domain</span><span class="p">,</span> <span class="n">f</span><span class="o">:</span> <span class="n">F</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="o">::</span><span class="n">DistanceType</span><span class="p">;</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">remove_edge</span><span class="o">&lt;</span><span class="n">G</span><span class="o">:</span> <span class="n">IncidenceGraph</span> <span class="o">+</span> <span class="n">EC</span><span class="o">=</span><span class="n">EdgeCollection</span> <span class="o">&gt;</span><span class="p">(</span><span class="n">g</span><span class="o">:</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">G</span><span class="p">,</span> <span class="n">e</span><span class="o">:</span> <span class="n">EC</span><span class="o">::</span><span class="n">Edge</span><span class="p">);</span>
-</span></code></pre></td></tr></table></div></figure></p>
+</span></code></pre></td></tr></table></div></figure>
+
 
 <p>The other cute insight is this: the only time we need to add these
 identifiers explicitly is when there are multiple trait bounds.
 When there is a single trait bound <nobr><code>&lt;X:R=T&gt;</code></nobr>, the
 identifier <code>X</code> is just as reasonable (or at least unambiguous) as <code>R</code>
-is as a way to reference the impl.  So why not treat
-<nobr><code>&lt;X:T&gt;</code></nobr> as an abbreviation for <nobr><code>&lt;X:X=T&gt;</code></nobr>:
+is as a way to reference the impl.  So why not treat</p>
+
+<nobr>`<X:T>`</nobr>
+
+
+<p> as an abbreviation for <nobr><code>&lt;X:X=T&gt;</code></nobr>:
 boom!  The biggest potential complaint with this extension (namely,
 the notational complexity of making people pepper their code with
 explicit bindings of the impls) goes away!  And our first example becomes:</p>
@@ -2136,6 +2443,7 @@ explicit bindings of the impls) goes away!  And our first example becomes:</p>
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">distance</span><span class="o">&lt;</span><span class="n">F</span><span class="o">:</span> <span class="n">Transformation</span><span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="o">:</span> <span class="n">F</span><span class="o">::</span><span class="n">Domain</span><span class="p">,</span> <span class="n">y</span><span class="o">:</span> <span class="n">F</span><span class="o">::</span><span class="n">Domain</span><span class="p">,</span> <span class="n">f</span><span class="o">:</span> <span class="n">F</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">F</span><span class="o">::</span><span class="n">DistanceType</span><span class="p">;</span>
 </span></code></pre></td></tr></table></div></figure>
+
 
 <p>(our second example remains unchanged, since <code>G</code> has two trait bounds there, and
 so <code>G</code> alone cannot unambiguously denote a (type, trait) pair.</p>
@@ -2149,54 +2457,64 @@ declaration form such as those <a href="#thinkbinding">proposed earlier</a>!</p>
 <p>So neither solution suffices on its own, but the two together cover
 many use cases of interest.</p>
 
-<hr>
+<hr />
 
-<h2 id="toc_10"><a id="proposal">The proposed syntax for associated items in Rust</a></h2>
+<h2><a id="proposal">The proposed syntax for associated items in Rust</a></h2>
 
 <p>So, with that insight explained, here is my proposal for associated items:</p>
 
 <ol>
 <li><p>A trait can now declare names for things besides methods.
  In terms of the grammar that John has been working on:</p>
-<div class="highlight"><pre><code class="text"> trait_decl: TRAIT ident
+
+<pre><code class="`"> trait_decl: TRAIT ident
                 (generic_decls)? (COLON trait_list)?
                 LBRACE trait_method* RBRACE ;
-</code></pre></div>
-<p>is replaced with</p>
-<div class="highlight"><pre><code class="text"> trait_decl: TRAIT ident
+</code></pre>
+
+<p> is replaced with</p>
+
+<pre><code class="`"> trait_decl: TRAIT ident
                 (generic_decls)? (COLON trait_list)?
                 LBRACE trait_item* RBRACE ;
  trait_item: trait_method | trait_constant | trait_type
  trait_type: TYPE ident (generic_decls)? SEMI
            | TYPE ident (generic_decls)? COLON boundseq SEMI ;
  trait_const: STATIC ident COLON ty SEMI ;
-</code></pre></div></li>
+</code></pre></li>
 <li><p>The identifier bound by a trait types is in scope of its enclosing
  trait; trait method declarations and trait const declarations
  can reference it.</p></li>
 <li><p>Extend the Rust grammar to allow an optional binding of
  an identifier to a (type, trait) pair in a type parameter bound.
  In terms of the grammar:</p>
-<div class="highlight"><pre><code class="text"> bound : STATIC_LIFETIME | trait | obsoletekind ;
-</code></pre></div>
-<p>is replaced with:</p>
-<div class="highlight"><pre><code class="text"> bound : STATIC_LIFETIME | trait | ident = trait | obsoletekind ;
-</code></pre></div></li>
-<li><p>Extend the Rust grammar to allow a declaration binding 
+
+<pre><code class="`"> bound : STATIC_LIFETIME | trait | obsoletekind ;
+</code></pre>
+
+<p> is replaced with:</p>
+
+<pre><code class="`"> bound : STATIC_LIFETIME | trait | ident = trait | obsoletekind ;
+</code></pre></li>
+<li><p>Extend the Rust grammar to allow a declaration binding
  an identifier to a (type, trait) pair.
  In terms of the grammar, I <em>think</em> this is close to what I want:</p>
-<div class="highlight"><pre><code class="text"> view_item : attrs_vis use ;
-</code></pre></div>
-<p>is replaced with:</p>
-<div class="highlight"><pre><code class="text"> view_item : attrs_vis use | USE impl ident = trait for ty ;
-</code></pre></div>
-<p>Of potential interest, we do not allow visibility attributes
+
+<pre><code class="`"> view_item : attrs_vis use ;
+</code></pre>
+
+<p> is replaced with:</p>
+
+<pre><code class="`"> view_item : attrs_vis use | USE impl ident = trait for ty ;
+</code></pre>
+
+<p> Of potential interest, we do not allow visibility attributes
  on <code>use impl R = T for X;</code>, because these definitions are always
  local shorthands and thus private to the module.  (Maybe in
  the future we will see motivation to allow the bindings to
  be exposed, but I have not yet seen a motivation for this.)</p>
 
-<p>I am not attached to the particulars of the syntax above;
+<p> I am not attached to the particulars of the syntax above;
  in particular, if someone wants to throw in the <code>trait</code>
  and/or <code>type</code> keywords into the above to make the purpose
  all the more clear, I will not object.  More so if it is
@@ -2207,7 +2525,7 @@ many use cases of interest.</p>
  (where <code>[]</code> denotes the contextual hole that the <code>R=T</code> is plugged into)
  is treated as binding <code>R</code> to the code defined by the <code>impl T for X</code>.
  The scope of the binding for <code>R</code> encompasses: the rest of the boundseq
- (to the right of the <nobr><code>&quot;R=T&quot;</code></nobr>) and the remainder of this decl
+ (to the right of the <nobr><code>"R=T"</code></nobr>) and the remainder of this decl
  that follows the generic_decls within which the <nobr><code>R=T</code></nobr> bound appears.</p></li>
 <li><p>This binding of <code>R</code> can shadow earlier bindings of the same identifier
  (either other impl-bindings, or module names).  It seems like this
@@ -2222,9 +2540,10 @@ many use cases of interest.</p>
  expanded into <code>&lt;X:X=T&gt;</code>.</p></li>
 </ol>
 
-<hr>
 
-<h2 id="toc_11"><a id="futurework">What the proposal does not cover</a></h2>
+<hr />
+
+<h2><a id="futurework">What the proposal does not cover</a></h2>
 
 <p>There are cases of interest that are not covered by the above proposal.</p>
 
@@ -2236,7 +2555,7 @@ content of the <code>requires(..)</code> clauses from EOP that I deliberately
 ignored).  For the examples from EOP, C++ handles this by doing the
 template instantiation blindly and applying the type checker to
 code after concrete types have been substituted for the parameters;
-this approach is not compatible with Rust&#39;s design where we want to
+this approach is not compatible with Rust&rsquo;s design where we want to
 type-check a generic body of code in terms of the guarantees provided
 by the trait-bounds, <em>not</em> delaying those checks until after
 the concrete types have been plugged in.</p>
@@ -2246,11 +2565,11 @@ somewhat implicitly to its semantics), I deliberately constrained my
 focus to the cases Niko described in his blog posts: types, functions,
 and constants.  But one might consider further extensions, such as
 allowing traits to define <em>other</em> traits.  (I found that subject hard
-to wrap one&#39;s mind around, and I wanted to keep the focus limited for
+to wrap one&rsquo;s mind around, and I wanted to keep the focus limited for
 Rust 1.0; we can leave generalizations of this approach for after Rust
 1.0.)</p>
 
-<p>Also, I&#39;m not sure whether there is need and/or utility in further
+<p>Also, I&rsquo;m not sure whether there is need and/or utility in further
 generalizing this topic to <a href="http://www.haskell.org/haskellwiki/GHC/Type_families#An_associated_data_type_example">associated data families</a>.  Again,
 I want to limit the scope of the work to something we believe we can
 accomplish for Rust 1.0.</p>
@@ -2268,14 +2587,14 @@ for me in the #rust irc channel.)</p>
     <content type="html"><![CDATA[<p>(This post started as a personal e-mail to Niko, and then I figured it
 was blog worthy.)</p>
 
-<p>There&#39;s plenty of problems when working atop &quot;OS X&quot;;
-but no need to be jealous of Shu&#39;s zsh setup
+<p>There&rsquo;s plenty of problems when working atop &ldquo;OS X&rdquo;;
+but no need to be jealous of Shu&rsquo;s zsh setup
 (at least not for its tab-completion on git stuff),
 at least not if you are already using Homebrew.
 Just install
-<a href="http://blog.jeffterrace.com/2012/09/bash-completion-for-mac-os-x.html">brew&#39;s bash completion package</a>!</p>
+<a href="http://blog.jeffterrace.com/2012/09/bash-completion-for-mac-os-x.html">brew&rsquo;s bash completion package</a>!</p>
 
-<p>Executive summary: </p>
+<p>Executive summary:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -2293,11 +2612,12 @@ Just install
 </span><span class='line'><span class="s">END</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
 <p>And voilà!</p>
 
 <p>See also potentially related topics from <a href="http://superuser.com/questions/288438/bash-completion-for-commands-in-mac-os">super user</a>, <a href="http://stackoverflow.com/questions/14970728/homebrews-git-not-using-completion">stack overflow</a>, <a href="http://milkbox.net/note/brace-completion-in-snow-leopard-upgrading-bash/">milkbox blog</a>.</p>
 
-<hr>
+<hr />
 
 <p>Note also that I did burn myself by trying to get too smart: In
 particular, after reading <a href="http://stackoverflow.com/questions/14970728/homebrews-git-not-using-completion">stack overflow</a>, I over-eagerly
@@ -2321,22 +2641,23 @@ in <code>/usr/local/bin/</code> out of the way, and</li>
 <li>redid the <code>brew install git</code></li>
 </ol>
 
-<hr>
+
+<hr />
 
 <p>Anyway, I should also give a shout-out to Axel Hecht; his post
-on Mozilla&#39;s Yammer instance is what got me to the point of even
+on Mozilla&rsquo;s Yammer instance is what got me to the point of even
 attempting to install this piece of marvelousness.</p>
 
 <p>(Also, further posts on yammer are lightly pushing for readers to consider
 zsh as an alternative to bash.  I do not think I am ready to switch to zsh,
 but I can at least link to the <a href="http://friedcpu.wordpress.com/2007/07/24/zsh-the-last-shell-youll-ever-need/">blog post arguing for zsh</a>.)</p>
 
-<hr>
+<hr />
 
 <p>Update (written 2013 april 16): Now that I have decent command/context
 sensitive completion in bash in my terminal, of <em>course</em> I
 want to have it in my Emacs <code>M-x shell</code> as well.  At first I
-was dismayed that I did not just get that &quot;out of the box&quot;;
+was dismayed that I did not just get that &ldquo;out of the box&rdquo;;
 then I was happy after some googling to discover:
 <a href="https://github.com/szermatt/emacs-bash-completion">bash-completion.el</a>, which forwards the completion
 requests onto a separate bash process, so that one inherits
@@ -2348,7 +2669,7 @@ with no Emacs hacking.</p>
 <p>It turns out that I had to do a little bit of Emacs hacking
 in order to get the setup working, at least for my idiosyncratic
 bash setup.  In particular, it seems like the Elisp code
-for bash-complete.el assumes that one is setting one&#39;s
+for bash-complete.el assumes that one is setting one&rsquo;s
 prompt via the <code>PS1</code> environment variable, while mine is often
 set via the <code>PROMPT_COMMAND</code> environment variable.
 After determining what is going on, it is easy enough to fix this (and
@@ -2365,15 +2686,15 @@ the github repo</a>).</p>
     <content type="html"><![CDATA[<p>I have been trying to get my feet wet programming in
 <a href="http://www.rust-lang.org/">Rust</a>.</p>
 
-<p>A month and a half ago, I thought &quot;Maybe I will hack up an Earley
-parser in a variety of languages, including Rust.&quot;  That sent me down
+<p>A month and a half ago, I thought &ldquo;Maybe I will hack up an Earley
+parser in a variety of languages, including Rust.&rdquo;  That sent me down
 a long path of learning about how Earley parsing works; I have not yet
 written up my results from that investigation, and I still have not
 written the Rust version of the code.</p>
 
-<p>Last weekend, I sat down and said, &quot;Let&#39;s try a simpler goal: A couple
-simple exercies, maybe taken from Knuth&#39;s
-<a href="http://www-cs-faculty.stanford.edu/%7Euno/taocp.html">TAOCP</a>&quot;
+<p>Last weekend, I sat down and said, &ldquo;Let&rsquo;s try a simpler goal: A couple
+simple exercies, maybe taken from Knuth&rsquo;s
+<a href="http://www-cs-faculty.stanford.edu/~uno/taocp.html">TAOCP</a>&rdquo;
 This was indeed a much simpler goal, but it was more difficult than
 I had expected.</p>
 
@@ -2392,13 +2713,14 @@ Here are the data structure declarations:</p>
 </span><span class='line'>              <span class="n">next</span><span class="o">:</span> <span class="nb">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span> <span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
 <p>Note that the <code>next</code> field is an (optional) <em>owned</em> pointer to the
 next card in the pile.  <code>Option&lt;~card&gt;</code> will be generally used to
-represent a potentially empty pile (or &quot;stack&quot;, &quot;deck&quot; or &quot;hand&quot;, as
+represent a potentially empty pile (or &ldquo;stack&rdquo;, &ldquo;deck&rdquo; or &ldquo;hand&rdquo;, as
 the context dictates), while <code>~card</code> is a non-empty pile (or, when its
 <code>next</code> is <code>None</code>, a single card, again as context dictates)</p>
 
-<h2 id="toc_0">The goal</h2>
+<h2>The goal</h2>
 
 <p>I want to write four functions: <code>place_top</code>, <code>place_bot</code>, <code>pop_top</code>,
 and <code>pop_bot</code>, which respectively:</p>
@@ -2412,10 +2734,11 @@ stack; otherwise, the old stack top is returned (since the stack is
 imperatively modified).</p></li>
 <li><p><code>pop_top(stack)</code> pops the top of the stack, returning a tuple of the
 popped card and the remaining, potentially empty stack.</p></li>
-<li><p><code>pop_bot(stack)</code> removes the bottom of the stack (i.e. &quot;deals from
-the bottom of the deck&quot;), returning a tuple of the removed card and
+<li><p><code>pop_bot(stack)</code> removes the bottom of the stack (i.e. &ldquo;deals from
+the bottom of the deck&rdquo;), returning a tuple of the removed card and
 the new, potentially empty stack.</p></li>
 </ul>
+
 
 <p>In code, here are the signatures for the desired functions,
 as well as one-line reminders of the behavior for each.</p>
@@ -2444,7 +2767,8 @@ as well as one-line reminders of the behavior for each.</p>
 </span><span class='line'><span class="k">fn</span> <span class="n">pop_bot</span><span class="p">(</span><span class="n">pile</span><span class="o">:</span> <span class="o">~</span><span class="n">card</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="o">~</span><span class="n">card</span><span class="p">,</span> <span class="nb">Option</span><span class="o">&lt;~</span><span class="n">card</span><span class="o">&gt;</span><span class="p">);</span>
 </span></code></pre></td></tr></table></div></figure>
 
-<h2 id="toc_1">(Some non-critical helper infrastructure follows, showing off Rust as language)</h2>
+
+<h2>(Some non-critical helper infrastructure follows, showing off Rust as language)</h2>
 
 <p>Here is some example code that puts together a hand and does
 a few manipulations using the above operations (as well as
@@ -2515,20 +2839,20 @@ in the terminal output)</p>
 <span class='line-number'>62</span>
 <span class='line-number'>63</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">make_hand</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">10</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">spades</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">3</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">2</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">10</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">spades</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">3</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">2</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
 </span><span class='line'>    <span class="n">hand</span>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
 </span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">:</span> <span class="o">~</span><span class="n">card</span> <span class="o">=</span> <span class="n">make_hand</span><span class="p">();</span>
 </span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;initial hand: &quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">AceD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">1</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">AceD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
 </span><span class='line'>    <span class="n">AceD</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;place top: &quot;</span><span class="p">);</span>
 </span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_top</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">AceD</span><span class="p">);</span>
 </span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">SixD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">6</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">SixD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">6</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
 </span><span class='line'>    <span class="n">SixD</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;place bot: &quot;</span><span class="p">);</span>
 </span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_bot</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">SixD</span><span class="p">);</span>
 </span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
@@ -2553,11 +2877,11 @@ in the terminal output)</p>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="n">r</span><span class="o">:</span><span class="kt">u8</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="kt">str</span> <span class="p">{</span>
 </span><span class='line'>    <span class="k">match</span> <span class="n">r</span> <span class="p">{</span>
-</span><span class='line'>        <span class="m">1</span>     <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;A&quot;</span><span class="p">,</span>
-</span><span class='line'>        <span class="m">2.</span><span class="p">.</span><span class="m">10</span> <span class="o">=&gt;</span> <span class="n">r</span><span class="p">.</span><span class="n">to_str</span><span class="p">(),</span>
-</span><span class='line'>        <span class="m">11</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;J&quot;</span><span class="p">,</span>
-</span><span class='line'>        <span class="m">12</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;Q&quot;</span><span class="p">,</span>
-</span><span class='line'>        <span class="m">13</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;K&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="mi">1</span>     <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;A&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="mf">2.</span><span class="p">.</span><span class="mi">10</span> <span class="o">=&gt;</span> <span class="n">r</span><span class="p">.</span><span class="n">to_str</span><span class="p">(),</span>
+</span><span class='line'>        <span class="mi">11</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;J&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="mi">12</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;Q&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="mi">13</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;K&quot;</span><span class="p">,</span>
 </span><span class='line'>        <span class="n">_</span>     <span class="o">=&gt;</span> <span class="n">fail</span><span class="o">!</span><span class="p">()</span>
 </span><span class='line'>    <span class="p">}</span>
 </span><span class='line'><span class="p">}</span>
@@ -2579,20 +2903,21 @@ in the terminal output)</p>
 </span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
 <p>In my terminal, I get the following output from the above <code>main</code>
 function:</p>
 
-<p>initial hand: 2&diams;,3&spades;,10&clubs;<br>
-place top: A&diams;<br>
-new hand: A&diams;,2&diams;,3&spades;,10&clubs;<br>
-place bot: 6&diams;<br>
-new hand: A&diams;,2&diams;,3&spades;,10&clubs;,6&diams;<br>
-popped top: A&diams;<br>
-new hand: 2&diams;,3&spades;,10&clubs;,6&diams;<br>
-popped bot: 6&diams;<br>
+<p>initial hand: 2&diams;,3&spades;,10&clubs;<br/>
+place top: A&diams;<br/>
+new hand: A&diams;,2&diams;,3&spades;,10&clubs;<br/>
+place bot: 6&diams;<br/>
+new hand: A&diams;,2&diams;,3&spades;,10&clubs;,6&diams;<br/>
+popped top: A&diams;<br/>
+new hand: 2&diams;,3&spades;,10&clubs;,6&diams;<br/>
+popped bot: 6&diams;<br/>
 new hand: 2&diams;,3&spades;,10&clubs;</p>
 
-<p>(I will post my initial &quot;solution&quot; to the puzzle in a follow-up post;
+<p>(I will post my initial &ldquo;solution&rdquo; to the puzzle in a follow-up post;
  I wanted to share this first because I know my current solution
  is non-optimal and wanted to see what others had to offer for how
  to solve this first.)</p>
@@ -2604,15 +2929,15 @@ new hand: 2&diams;,3&spades;,10&clubs;</p>
     <link href="http://blog.pnkfx.org/blog/2013/01/29/implicit-versus-explicit-finalization/"/>
     <updated>2013-01-29T22:47:00+01:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/01/29/implicit-versus-explicit-finalization</id>
-    <content type="html"><![CDATA[<p>(This post is largely a response to Niko Matsakis&#39;s blog post
+    <content type="html"><![CDATA[<p>(This post is largely a response to Niko Matsakis&rsquo;s blog post
 <a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">Destructors and Finalizers in Rust</a>.  I started composing it as a comment there,
 but eventually realized I needed more breathing room.)</p>
 
-<p>I agree wholeheartedly with Niko&#39;s statement that the Boehm paper
-<a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">&quot;Destructors, Finalizers, and Synchronization&quot;</a> is a really nice
+<p>I agree wholeheartedly with Niko&rsquo;s statement that the Boehm paper
+<a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">&ldquo;Destructors, Finalizers, and Synchronization&rdquo;</a> is a really nice
 discussion of this topic.
 However, a significant portion of the destructor/finalizer design space is
-only briefly discussed in that paper, and I worry that Niko&#39;s post overlooks
+only briefly discussed in that paper, and I worry that Niko&rsquo;s post overlooks
 it.</p>
 
 <p>There are designs that do not run finalizers directly from the garbage
@@ -2625,9 +2950,9 @@ it seems to align with the spirit of giving the programmer access to the set of
 knobs they need for explicit sequencing and resource management (or rope
 to hang themselves with).</p>
 
-<h2 id="toc_0">Explicit Cleanup</h2>
+<h2>Explicit Cleanup</h2>
 
-<p>In the <a href="http://www.cs.indiana.edu/%7Edyb/pubs/guardians-pldi93.pdf">guardian</a> and <a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">reference-queue</a> family of systems (see
+<p>In the <a href="http://www.cs.indiana.edu/~dyb/pubs/guardians-pldi93.pdf">guardian</a> and <a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">reference-queue</a> family of systems (see
 also <a href="http://docs.racket-lang.org/reference/willexecutor.html">wills and executors</a>), resource cleanup code is no longer asynchronously
 run by the GC.  Instead, cleanup is the obligation of the
 mutator.  The only asynchronous cleanup action of the garbage collector
@@ -2643,22 +2968,22 @@ too terse.</p>
 plausibly reason about, in a single- or multi-threaded context.</p>
 
 <p>To be fair: Boehm <em>does</em> address these approaches briefly; see the beginning
-of section 3.5.1 of his paper, &quot;Explicit Finalizer Invocation&quot;.  However,
-he also mixes them in with Java&#39;s <code>System.runFinalization()</code> and the motivation
-for that method.  Thus one must take care to distinguish which of Boehm&#39;s complaints
-apply to all explicit finalization systems, and which apply solely to systems 
+of section 3.5.1 of his paper, &ldquo;Explicit Finalizer Invocation&rdquo;.  However,
+he also mixes them in with Java&rsquo;s <code>System.runFinalization()</code> and the motivation
+for that method.  Thus one must take care to distinguish which of Boehm&rsquo;s complaints
+apply to all explicit finalization systems, and which apply solely to systems
 such as Java with <code>runFinalization</code> that provide a mix of explicit and implicit finalization.</p>
 
-<h2 id="toc_1">Passing the Buck</h2>
+<h2>Passing the Buck</h2>
 
-<p>One important characteristic (some might say &quot;drawback&quot;) of explicit
+<p>One important characteristic (some might say &ldquo;drawback&rdquo;) of explicit
 finalization approaches is that the mutator does need to periodically process
 its associated guardians/reference queues.  After all, with the transfer of
 responsibility for cleanup from the collector to the mutator, the mutator must
 meet this obligation eventually.</p>
 
-<p>One standard way to do this is to sprinkle cleanup code (i.e. &quot;check if
-guardian has entries; if so, process some of them&quot;) at points in the control
+<p>One standard way to do this is to sprinkle cleanup code (i.e. &ldquo;check if
+guardian has entries; if so, process some of them&rdquo;) at points in the control
 flow of library routines using that guardian.  (In other words, in languages
 with guardians, library designers can hopefully isolate the cleanup code behind the interface of the library that
 requires such cleanup.)</p>
@@ -2674,48 +2999,47 @@ single finalization queue for the whole heap.</p>
 <ol>
 <li><p>ensuring that the necessary processing does <em>eventually</em> happen
 (i.e. prevent resource leaks when control does not often (or ever) flow back into the
-developer&#39;s library utilizing the guardian), and</p></li>
+developer&rsquo;s library utilizing the guardian), and</p></li>
 <li><p>inserting finalizer invocations across the code of a library detracts
 from its readability; they are a clear example of a cross-cutting concern that
-should be factored into its own &quot;aspect.&quot;</p></li>
+should be factored into its own &ldquo;aspect.&rdquo;</p></li>
 </ol>
+
 
 <p>Boehm essentially covers both of the points above (though on first reading I
 only interpreted him as describing the second point):</p>
 
-<blockquote>
-<p>This appears to be the safest way to handle finalization in single-threaded
+<blockquote><p>This appears to be the safest way to handle finalization in single-threaded
 code, although it has some clear disadvantages in certain contexts:
 Potentially large amounts of code, especially long running routines, must be
-explicitly sprinkled with finalizer invocations.</p>
-</blockquote>
+explicitly sprinkled with finalizer invocations.</p></blockquote>
 
-<p>In the very worst case, in a &quot;normal&quot; imperative language with concurrent
+<p>In the very worst case, in a &ldquo;normal&rdquo; imperative language with concurrent
 threads, these last two drawbacks could be addressed by the client-developer:
 the client-developer can set their associated cleanup code to run on a
 distinct thread (that the <em>mutator</em> manages, not the garbage collector).  This
 avoids the ugly sprinkling/cross-cutting of concerns, and should ensure that
 cleanup does eventually occur (assuming correctly-written multi-threaded code,
-&quot;ha ha&quot;).</p>
+&ldquo;ha ha&rdquo;).</p>
 
-<p>Of course, that last suggestion is essentially reimplementing the GC&#39;s
+<p>Of course, that last suggestion is essentially reimplementing the GC&rsquo;s
 finalizer thread as a mutator process.  But nonetheless, in principle this
 could be implemented as a library, as long as the appropriate primitives are
 available underneath.</p>
 
 <p>By making explicit finalization expressible as a library,
-the developer community would be free to propose competing API&#39;s
+the developer community would be free to propose competing API&rsquo;s
 and implementations.  That seems like a good thing for a young
 experimental language.</p>
 
 <p>(One <em>might</em> even be able to develop finalization
-libraries that are &quot;composable&quot;, in the sense that different finalization
+libraries that are &ldquo;composable&rdquo;, in the sense that different finalization
 libraries could be used by distinct libraries in the same overall program.
 One could coin the term
-<a href="http://en.wikipedia.org/wiki/Decomposing_Composers">&quot;composing decomposers&quot;</a>
+<a href="http://en.wikipedia.org/wiki/Decomposing_Composers">&ldquo;composing decomposers&rdquo;</a>
 for such things.)</p>
 
-<h2 id="toc_2">Wait, what was that about &quot;normal&quot; languages?</h2>
+<h2>Wait, what was that about &ldquo;normal&rdquo; languages?</h2>
 
 <p>I wrote the end of the previous section intending for it to apply to Rust.
 Then I realized that I do not have enough experience writing Rust programs to
@@ -2732,7 +3056,7 @@ types that would make it impossible for a separate thread to extract them from
 a guardian and be able to access their contents.</p>
 
 <p>There is also the serious problem that such a cleanup thread seems likely to require
-the use of mutex locks in order to coordinate with the &quot;real&quot; mutator; this in
+the use of mutex locks in order to coordinate with the &ldquo;real&rdquo; mutator; this in
 particular seems antithetical to the ideals of Rust.</p>
 
 <p>(Hopefully I will soon acquire sufficient experience with Rust itself to be
@@ -2762,7 +3086,8 @@ future.
 
 --->
 
-<h2 id="toc_3">Conclusion</h2>
+
+<h2>Conclusion</h2>
 
 <p>I am not saying this is easy, and I am not saying that the systems I am
 referencing get everything right either.  But implicit finalizers, even those invoked
@@ -2773,7 +3098,7 @@ asynchronous routines; but with explicit finalization, one has more options
 (yet still may be able to fall back on asynchrony if necessary).</p>
 
 <p>So, what does all of this mean for Rust?  Well, Niko already suggested
-limiting destructors solely to types that contain only &quot;owned data.&quot;</p>
+limiting destructors solely to types that contain only &ldquo;owned data.&rdquo;</p>
 
 <p>I have no problem with that, since it clearly deals with all of the issues
 that Boehm described.</p>
@@ -2786,37 +3111,38 @@ finalizers, or adopt another approach?</p>
 <p>My goal is to make sure we remember to consider those other approaches when we
 hit that crossroads.</p>
 
-<h2 id="toc_4">References</h2>
+<h2>References</h2>
 
 <ol>
-<li><a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">&quot;Destructors and Finalizers in Rust&quot;</a>
+<li><a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">&ldquo;Destructors and Finalizers in Rust&rdquo;</a>
 <br/>Niko Matsakis
 <br/>Blog post, 2013</li>
-<li><a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">&quot;Destructors, Finalizers, and Synchronization&quot;</a>
+<li><a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">&ldquo;Destructors, Finalizers, and Synchronization&rdquo;</a>
 <br/>Hans Boehm
 <br/>HP Tech Report; POPL 2003</li>
-<li><a href="http://www.cs.indiana.edu/%7Edyb/pubs/guardians-pldi93.pdf">&quot;Guardians in a Generation-Based Garbage Collector&quot;</a>
+<li><a href="http://www.cs.indiana.edu/~dyb/pubs/guardians-pldi93.pdf">&ldquo;Guardians in a Generation-Based Garbage Collector&rdquo;</a>
 <br/>Dybvig, Bruggeman, and Eby
 <br/>PLDI, 1993</li>
-<li><a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">&quot;How to Handle Java Finalization&#39;s Memory-Retention Issues&quot;</a>
+<li><a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">&ldquo;How to Handle Java Finalization&rsquo;s Memory-Retention Issues&rdquo;</a>
 <br/>Tony Printezis
 <br/>Tech Report, 2007</li>
-<li><a href="http://docs.racket-lang.org/reference/willexecutor.html">&quot;Wills and Executors&quot;</a>
+<li><a href="http://docs.racket-lang.org/reference/willexecutor.html">&ldquo;Wills and Executors&rdquo;</a>
 <br/>PLT Racket Reference Documentation</li>
-<li><a href="http://repository.readscheme.org/ftp/papers/sw2010/02-hsu.pdf">&quot;Implementing User-level Value-weak Hashtables&quot;</a>
+<li><a href="http://repository.readscheme.org/ftp/papers/sw2010/02-hsu.pdf">&ldquo;Implementing User-level Value-weak Hashtables&rdquo;</a>
 <br/>Aaron Hsu
 <br/>Scheme Workshop 2010
 <br/>(I only properly appreciated the value (and difficulties) of using guardians for such purposes after I read this paper)</li>
 </ol>
 
-<h2 id="toc_5">Appendix A. What are Guardians?</h2>
+
+<h2>Appendix A. What are Guardians?</h2>
 
 <p>I here outline a concrete example of how this works in the case of Guardians
 (adapted from <a href="http://repository.readscheme.org/ftp/papers/sw2010/02-hsu.pdf">Hsu</a>).  (To aid readability, I have replaced the use of
 procedure-arity-based-dispatch, as written by Hsu to match the Chez Scheme
 API, and I am rewriting his example with a new distinct named procedures .)</p>
 
-<p>One can construct as many guardian instances (or simply &quot;guardians&quot;) as one wants.
+<p>One can construct as many guardian instances (or simply &ldquo;guardians&rdquo;) as one wants.
 Each guardian is associated with two things:</p>
 
 <ol>
@@ -2824,33 +3150,36 @@ Each guardian is associated with two things:</p>
 <li><code>registry</code> : a set of objects scheduled to be eventually enqueued in the first set.</li>
 </ol>
 
+
 <p>Both of these sets are initially empty when the guardian is constructed.</p>
-<div class="highlight"><pre><code class="text">&gt; (define g (make-guardian))
-&gt; (define v &quot;VAL&quot;)
-&gt; (define p (weak-cons v &#39;())
+
+<pre><code>&gt; (define g (make-guardian))
+&gt; (define v "VAL")
+&gt; (define p (weak-cons v '())
 &gt; (guardian-register! g v)
 
-&gt; (set! v #f)                    ;; Now `&quot;VAL&quot;` is unreachable via strong-refs ...
+&gt; (set! v #f)                    ;; Now `"VAL"` is unreachable via strong-refs ...
 &gt; (guardian-fetch! g)            ;; ... but GC has not discovered that yet.
 #f
 
-&gt; (collect-garbage)              ;; `&quot;VAL&quot;` is still unreachable ...
+&gt; (collect-garbage)              ;; `"VAL"` is still unreachable ...
 &gt; p                              ;; ... though one can access via weak paths ...
-(&quot;VAL&quot;)
+("VAL")
 &gt; (define x (guardian-fetch! g)) ;; ... and the guardian held it in `reclaimable`
 &gt; x
-&quot;VAL&quot;
+"VAL"
 
-                                 ;; At this point, &quot;VAL&quot; is again strongly reachable
+                                 ;; At this point, "VAL" is again strongly reachable
                                  ;; (via `x`).  However, it is *not* in either of the
                                  ;; sets for the guardian `g`, and thus is not scheduled
                                  ;; to be enqueued in the `reclaimable` set.
 
-&gt; (set! x #f)                    ;; Now &quot;VAL&quot; is no longer strongly reachable...
+&gt; (set! x #f)                    ;; Now "VAL" is no longer strongly reachable...
 &gt; (collect-garbage)
 &gt; p                              ;; ... and thus can be reclaimed.
 (#!blank-weak-pointer)
-</code></pre></div>
+</code></pre>
+
 <p>So, what does this have to do with finalization?</p>
 
 <p>With the guardian API in hand, one could take care of closing individual
@@ -2866,7 +3195,8 @@ with G.</p></li>
 file descriptors.</p></li>
 </ol>
 
-<h2 id="toc_6">Appendix B. Another peeve about guardians</h2>
+
+<h2>Appendix B. Another peeve about guardians</h2>
 
 <p>One idiosyncrasy about a lot of the guardian-like systems is that they enqueue
 the original object for processing, which is quite counter-intuitive to me
@@ -2874,7 +3204,7 @@ given the effort that the GC went through to determine that the object was
 otherwise unreachable.</p>
 
 <p>Perhaps this could be addressed by using something like the model described at
-the start of section 3.1 of Boehm&#39;s paper, &quot;Alternatives&quot;; namely, instead of
+the start of section 3.1 of Boehm&rsquo;s paper, &ldquo;Alternatives&rdquo;; namely, instead of
 enqueuing the unreachable object on a reference queue, the GC could instead
 enqueue an associated distinct cleanup object, and reclaim the originally
 registered object itself. (Boehm states that such a cleanup object falls
@@ -2906,20 +3236,18 @@ hack one up in the future.</p>
     <link href="http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world/"/>
     <updated>2013-01-08T00:55:00+01:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world</id>
-    <content type="html"><![CDATA[<h2 id="toc_0">It&#39;s Clobbering Time</h2>
+    <content type="html"><![CDATA[<h2>It&rsquo;s Clobbering Time</h2>
 
 <p>Remember that thing I said back <a href="http://blog.pnkfx.org/blog/2012/12/31/hello-world">at the end of 2012</a>?
 That thing?
 That thing about the important detail that:</p>
 
-<blockquote>
-<p>the <code>_deploy/</code> subdirectory is itself a clone of the targeted
-github repository, with the <code>gh-pages</code> branch checked out.</p>
-</blockquote>
+<blockquote><p>the <code>_deploy/</code> subdirectory is itself a clone of the targeted
+github repository, with the <code>gh-pages</code> branch checked out.</p></blockquote>
 
 <p>It turns out this is really important detail.</p>
 
-<p>Here&#39;s why: For my first blogging act of the new year, I inadvertently destroyed
+<p>Here&rsquo;s why: For my first blogging act of the new year, I inadvertently destroyed
 my own blog.</p>
 
 <p>I attempted to write a post from a computer other than the one out of
@@ -2955,37 +3283,35 @@ a blog if not to freely broadcast your mistakes?  :)</p>
 <p>So, directly from <a href="https://github.com/pnkfelix/pnkfx-blog/commit/f277b041de33a8e0eac02c6aecb3909231725db7">my commit message</a>, here is the description of how
 I clobbered my own blog:</p>
 
-<blockquote>
-<p>The easy way to sum it up is: The model
-employed by octopress when deploying to github is this: Your _deploy/
+<blockquote><p>The easy way to sum it up is: The model
+employed by octopress when deploying to github is this: Your <em>deploy/
 subdirectory must contain a checkout of the target repo, the one with
-the gh-pages branch, and you must have that _deploy/ subdirectory
-checked out and ready to go before running &#39;rake deploy&#39;.</p>
+the gh-pages branch, and you must have that </em>deploy/ subdirectory
+checked out and ready to go before running &lsquo;rake deploy&rsquo;.</p>
 
-<p>If you do not have a _deploy/ subdirectory at all and you let &#39;rake
-deploy&#39; create it for you but you also let &#39;rake deploy&#39; attempt to
+<p>If you do not have a _deploy/ subdirectory at all and you let &lsquo;rake
+deploy&rsquo; create it for you but you also let &lsquo;rake deploy&rsquo; attempt to
 push to github, and you are also managing the source itself on github,
 you will enter a world of pain where the rake invocation will push
 <em>this</em> root directory, presumably in the master branch (or in my case,
 blog.pnkfx.org branch) to the target repo in the gh-pages/ branch.
 Which will bust things terribly, especially if that causes the CNAME
-file to get deleted from the gh-pages/ branch of the target repo.</p>
-</blockquote>
+file to get deleted from the gh-pages/ branch of the target repo.</p></blockquote>
 
-<h2 id="toc_1">A note on self-reference</h2>
+<h2>A note on self-reference</h2>
 
 <p>Also, a quick half shout-out, or maybe corrective note, to
 <a href="http://www.seamusbradley.net/blog/blog/2012/04/24/how-to-link-to-your-own-blog-posts-in-octopress/">seamusbradley</a> for pointing out some details about linking back to
-one&#39;s own blog posts.</p>
+one&rsquo;s own blog posts.</p>
 
-<p>It is only a half shout-out because Seamus&#39;s note is only useful, I
+<p>It is only a half shout-out because Seamus&rsquo;s note is only useful, I
 think, if you have, like him, a customized setting for the <code>root:</code> in
 your <code>_config.yml</code>.  That, or Seamus has confused himself and changed
-his <code>root</code> setting in order to accommodate other url&#39;s that he
+his <code>root</code> setting in order to accommodate other url&rsquo;s that he
 observed, but those urls are in fact actually generated by settings
 for properties other than <code>root</code>.</p>
 
-<p>Here&#39;s the concrete details: I read (misread?) Seamus&#39;s post at first
+<p>Here&rsquo;s the concrete details: I read (misread?) Seamus&rsquo;s post at first
 as saying that a customized setting of <code>root</code> to <code>/blog</code> is a
 prerequisite for linking to your own posts.  It seems to me that the
 relevant detail is what the <em>permalink</em> setting is, not the root.
@@ -2995,15 +3321,19 @@ Seamus suggested, it seems like doing so broke <code>rake preview</code>.)</p>
 
 <p>In my case, the <code>root</code> and <code>permalink</code> for my <code>_config.yml</code>
 are set as follows:</p>
-<div class="highlight"><pre><code class="text">root: /
+
+<pre><code>root: /
 permalink: /blog/:year/:month/:day/:title/
-</code></pre></div>
+</code></pre>
+
 <p>and I format links to my own posts, such as the one you are reading,
 like so:
 <a href="http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world"><code>/blog/2013/01/08/resurrected-hello-again-world</code></a>
 as you can see from looking at the source for the line above,</p>
-<div class="highlight"><pre><code class="text">[`/blog/2013/01/08/resurrected-hello-again-world`](/blog/2013/01/08/resurrected-hello-again-world)
-</code></pre></div>
+
+<pre><code>[`/blog/2013/01/08/resurrected-hello-again-world`](/blog/2013/01/08/resurrected-hello-again-world)
+</code></pre>
+
 <p>A bit of quoted self-reference is a good place to stop for the night.</p>
 ]]></content>
   </entry>
@@ -3024,19 +3354,21 @@ based upon its default configuration file, which is very bare bones
 and does not illustrate anything near the full feature set that it
 offers.</p>
 
-<p>Instead, I recommend one at least read over Tristan Hume&#39;e <a href="http://thume.ca/howto/2012/11/19/using-slate/" title="Tristan Hume: Using Slate">blog post</a>,
-which advertises Slate much more effectively than the project&#39;s
+<p>Instead, I recommend one at least read over Tristan Hume'e <a href="http://thume.ca/howto/2012/11/19/using-slate/" title="Tristan Hume: Using Slate">blog post</a>,
+which advertises Slate much more effectively than the project&rsquo;s
 github page.  The blog post describes some of the crucial features that are not
 exposed in the default configuration.  In particular, the
 window-switcher shortcut, which overlays each window with a
 letter to give that window focus, is much more tile-friendly
-if you also turn on </p>
-<div class="highlight"><pre><code class="text">config windowHintsIgnoreHiddenWindows false
+if you also turn on</p>
+
+<pre><code>config windowHintsIgnoreHiddenWindows false
 config windowHintsShowIcons true
-</code></pre></div>
+</code></pre>
+
 <p>You can see this and other custimzations I have made for myself
 in my own <code>.slate</code> file, which I keep with my other dotfiles in
-<a href="https://github.com/pnkfelix/DotFiles/blob/master/slate" title="Felix&#39;s DotFiles github repo">my public repository</a>.</p>
+<a href="https://github.com/pnkfelix/DotFiles/blob/master/slate" title="Felix's DotFiles github repo">my public repository</a>.</p>
 ]]></content>
   </entry>
   
@@ -3049,10 +3381,14 @@ in my own <code>.slate</code> file, which I keep with my other dotfiles in
 Apparently Markdown syntax does not have any shorthand for comments
 -->
 
+
+
+
 <!---
 First 7 lines of this file were generated by command invocation:
   % rake new_post["Hello World"]
 -->
+
 
 <p>First post!
 I am attempting to move my blog to GitHub Pages.</p>
@@ -3069,12 +3405,14 @@ and see how that goes.</p>
 <li><p>The first 7 lines of that file were originally generated via the
 <code>rake</code> command invocation:</p>
 
-<p>% rake new_post[&quot;Hello World&quot;]</p></li>
+<pre><code>% rake new_post["Hello World"]
+</code></pre></li>
 <li><p>The command <code>rake generate</code> will convert the source into static html pages.</p></li>
 <li><p>After generating the file (and during subsequent editting), one can preview
 the state locally in a local Ruby webserver via:</p>
 
-<p>% rake preview</p>
+<pre><code>% rake preview
+</code></pre>
 
 <p>and then <a href="http://localhost:4000/">browsing localhost port 4000</a>.
 The <code>rake preview</code> invocation will continuously monitor your post
@@ -3087,43 +3425,47 @@ already set up and integrated with github (or something similar) so that
 there would be no password prompts.</p>
 
 <ul>
-<li>But of course I have not done this yet.</li>
-<li>One important detail about <code>rake deploy</code> with github pages is that
+<li><p>But of course I have not done this yet.</p></li>
+<li><p>One important detail about <code>rake deploy</code> with github pages is that
 the <code>_deploy/</code> subdirectory is itself a clone of the targetted
 github repository, with the <code>gh-pages</code> branch checked out.
 This can be confusing if your main source tree (the parent
 directory of <code>_deploy/</code>) is itself the same repository as the
-targetted github repository.</li>
-</ul></li>
+targetted github repository.</p></li>
+</ul>
+</li>
 <li><p>Update: <code>rake deploy</code> just worked fine for me, password prompts and all.
 I think my earlier difficulty was an artifact of some previous bad
 state, one of either:</p>
 
 <ul>
-<li>I had put in a malformatted url for the target repository</li>
-<li>My target repository already had a <code>gh-pages</code> branch (from earlier
+<li><p>I had put in a malformatted url for the target repository</p></li>
+<li><p>My target repository already had a <code>gh-pages</code> branch (from earlier
 testing) that needed to be pulled-and-merged (or discarded in some
-fashion, which was what my merge amounted to).</li>
-</ul></li>
+fashion, which was what my merge amounted to).</p></li>
+</ul>
+</li>
 <li><p>Update (26 march 2012): there are still some hiccups with <code>rake deploy</code>;
 you need to be careful about what you store in the <code>source/</code> directory.
 In particular, I was working on a draft post and threw various
 source files that I was hacking on in the same directory, along with
 some <code>.gitignore</code> files so that <code>git</code> would ignore build products
-generated when I compiled the source (to binaries or jars or fasls&#8230;).</p>
+generated when I compiled the source (to binaries or jars or fasls&hellip;).</p>
 
 <p>The headache came when I did <code>rake deploy</code>, and hit this error:</p>
-<div class="highlight"><pre><code class="bash">% rake deploy
-cp -r <span class="nb">source</span>/_posts/.gitignore public/_posts/.gitignore
+
+<pre><code class="bash">% rake deploy
+cp -r source/_posts/.gitignore public/_posts/.gitignore
 rake aborted!
 No such file or directory - public/_posts/.gitignore
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:230:in <span class="sb">`</span>block <span class="o">(</span>2 levels<span class="o">)</span> in &lt;top <span class="o">(</span>required<span class="o">)</span>&gt;<span class="s1">&#39;</span>
-<span class="s1">/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:229:in `block in &lt;top (required)&gt;&#39;</span>
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:219:in <span class="sb">`</span>block in &lt;top <span class="o">(</span>required<span class="o">)</span>&gt;<span class="err">&#39;</span>
-Tasks: <span class="nv">TOP</span> <span class="o">=</span>&gt; copydot
-<span class="o">(</span>See full trace by running task with --trace<span class="o">)</span>
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:230:in `block (2 levels) in &lt;top (required)&gt;'
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:229:in `block in &lt;top (required)&gt;'
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:219:in `block in &lt;top (required)&gt;'
+Tasks: TOP =&gt; copydot
+(See full trace by running task with --trace)
 %
-</code></pre></div>
+</code></pre>
+
 <p>The problem here, as far as I can tell, is that octopress
 is aggressively trying to copy over all dotfiles it can find
 (<a href="https://github.com/imathis/octopress/issues/104">Octopress Issue 104</a>)
@@ -3138,6 +3480,7 @@ This seems to have addressed the problem; I have also filed
 <a href="https://github.com/imathis/octopress/issues/1151">an issue</a>
 for this with Octopress.</p></li>
 </ul>
+
 ]]></content>
   </entry>
   

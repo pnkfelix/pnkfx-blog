@@ -4,7 +4,7 @@
   <title><![CDATA[Category: octopress | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/octopress/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-10-16T15:51:05+02:00</updated>
+  <updated>2015-10-20T22:34:50+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -28,7 +28,7 @@ not work.</p>
 <p>At first there were dependencies like <code>chunky_png-1.2.7</code> that had to
 be satisfied (re-installed, I assume; I am pretty sure I blew away my
 previous Homebrew setup during the upgrade; I do not know how much
-that overlaps with Ruby&#39;s package management system).</p>
+that overlaps with Ruby&rsquo;s package management system).</p>
 
 <p>The few step was just blind following of the suggestions made by my
 tools: <code>rake</code> suggests to run <code>bundle install</code>, and I comply.  And the results
@@ -40,34 +40,34 @@ Run \`bundle install\` to install missing gems.
 % bundle install
 Fetching gem metadata from http://rubygems.org/.......
 Fetching gem metadata from http://rubygems.org/..
-Using rake (0.9.6) 
-Using RedCloth (4.2.9) 
-Installing chunky_png (1.2.7) 
-Using fast-stemmer (1.0.2) 
-Using classifier (1.3.3) 
-Using fssm (0.2.10) 
-Installing sass (3.2.5) 
-Using compass (0.12.2) 
-Using directory_watcher (1.4.1) 
-Installing haml (3.1.8) 
-Installing kramdown (0.13.8) 
-Installing liquid (2.3.0) 
-Using syntax (1.0.0) 
-Using maruku (0.6.1) 
-Using posix-spawn (0.3.6) 
-Using yajl-ruby (1.1.0) 
-Installing pygments.rb (0.3.7) 
-Installing jekyll (0.12.0) 
-Installing rack (1.4.5) 
-Installing rack-protection (1.3.2) 
-Using rb-fsevent (0.9.3) 
-Using rdiscount (1.6.8) 
-Using redcarpet (2.2.2) 
-Using rubypants (0.2.0) 
-Installing tilt (1.3.3) 
-Installing sinatra (1.3.4) 
-Installing stringex (1.4.0) 
-Using bundler (1.3.5) 
+Using rake (0.9.6)
+Using RedCloth (4.2.9)
+Installing chunky_png (1.2.7)
+Using fast-stemmer (1.0.2)
+Using classifier (1.3.3)
+Using fssm (0.2.10)
+Installing sass (3.2.5)
+Using compass (0.12.2)
+Using directory_watcher (1.4.1)
+Installing haml (3.1.8)
+Installing kramdown (0.13.8)
+Installing liquid (2.3.0)
+Using syntax (1.0.0)
+Using maruku (0.6.1)
+Using posix-spawn (0.3.6)
+Using yajl-ruby (1.1.0)
+Installing pygments.rb (0.3.7)
+Installing jekyll (0.12.0)
+Installing rack (1.4.5)
+Installing rack-protection (1.3.2)
+Using rb-fsevent (0.9.3)
+Using rdiscount (1.6.8)
+Using redcarpet (2.2.2)
+Using rubypants (0.2.0)
+Installing tilt (1.3.3)
+Installing sinatra (1.3.4)
+Installing stringex (1.4.0)
+Using bundler (1.3.5)
 Your bundle is complete!
 Use \`bundle show [gemname]\` to see where a bundled gem is installed.
 </code></p>
@@ -78,13 +78,13 @@ balked on the second step:
 % rake generate
 rake aborted!
 You have already activated rake 10.1.0, but your Gemfile requires rake 0.9.6. Using bundle exec may solve this.
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:2:in \`&lt;top (required)&gt;&#39;
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:2:in \`&lt;top (required)&gt;'
 (See full trace by running task with --trace)
 % bundle exec
 bundler: exec needs a command to run
 </code></p>
 
-<p>I did not understand what <code>bundle exec</code> meant here, so I did not do the &quot;obvious thing&quot;, which apparently is to re-run generate but within bundle, like so:
+<p>I did not understand what <code>bundle exec</code> meant here, so I did not do the &ldquo;obvious thing&rdquo;, which apparently is to re-run generate but within bundle, like so:
 <code>% bundle exec rake generate</code></p>
 
 <p>Instead I fumbled around trying to figure out what my situation was
@@ -100,32 +100,46 @@ I learned:</p>
 <ul>
 <li>You can find out what version(s) of a gem you have install, with
 the relatively obvious <code>gem list</code> command:
-```
-% gem list rake</li>
-</ul>
-
-<p>*** LOCAL GEMS ***</p>
-
-<p>rake (10.1.0, 0.9.6)
-```</p>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>% gem list rake&lt;/li&gt;
+</span><span class='line'>&lt;/ul&gt;
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>&lt;p&gt;&lt;strong&gt;&lt;em&gt; LOCAL GEMS &lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;
+</span><span class='line'>
+</span><span class='line'>&lt;p&gt;rake (10.1.0, 0.9.6)</span></code></pre></td></tr></table></div></figure></p>
 
 <ul>
 <li>You can also remove particular versions of a gem, with the <code>gem
 uninstall</code> command:
-```
-% gem uninstall rake</li>
-</ul>
-
-<p>Select gem to uninstall:
- 1. rake-0.9.6
- 2. rake-10.1.0
- 3. All versions</p>
-
-<blockquote>
-<p>1
-Successfully uninstalled rake-0.9.6
-```</p>
-</blockquote>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>% gem uninstall rake&lt;/li&gt;
+</span><span class='line'>&lt;/ul&gt;
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>&lt;p&gt;Select gem to uninstall:
+</span><span class='line'> 1. rake-0.9.6
+</span><span class='line'> 2. rake-10.1.0
+</span><span class='line'> 3. All versions&lt;/p&gt;
+</span><span class='line'>
+</span><span class='line'>&lt;blockquote&gt;&lt;p&gt;1
+</span><span class='line'>Successfully uninstalled rake-0.9.6</span></code></pre></td></tr></table></div></figure></p></blockquote>
 
 <p>But these facts and this process did not actually help, because I
 still needed <code>rake-0.9.6</code> for my site configuration, for some reason I
@@ -141,34 +155,34 @@ reinstalling the <code>bundler</code> gem, uninstalling and reinstalling rake
 Fetching gem metadata from http://rubygems.org/........
 Fetching gem metadata from http://rubygems.org/..
 Resolving dependencies...
-Installing rake (0.9.6) 
-Using RedCloth (4.2.9) 
-Using chunky_png (1.2.7) 
-Using fast-stemmer (1.0.2) 
-Using classifier (1.3.3) 
-Using fssm (0.2.10) 
-Using sass (3.2.5) 
-Using compass (0.12.2) 
-Using directory_watcher (1.4.1) 
-Using haml (3.1.8) 
-Using kramdown (0.13.8) 
-Using liquid (2.3.0) 
-Using syntax (1.0.0) 
-Using maruku (0.6.1) 
-Using posix-spawn (0.3.6) 
-Using yajl-ruby (1.1.0) 
-Using pygments.rb (0.3.7) 
-Using jekyll (0.12.0) 
-Using rack (1.4.5) 
-Using rack-protection (1.3.2) 
-Using rb-fsevent (0.9.3) 
-Using rdiscount (1.6.8) 
-Using redcarpet (2.2.2) 
-Using rubypants (0.2.0) 
-Using tilt (1.3.3) 
-Using sinatra (1.3.4) 
-Using stringex (1.4.0) 
-Using bundler (1.3.5) 
+Installing rake (0.9.6)
+Using RedCloth (4.2.9)
+Using chunky_png (1.2.7)
+Using fast-stemmer (1.0.2)
+Using classifier (1.3.3)
+Using fssm (0.2.10)
+Using sass (3.2.5)
+Using compass (0.12.2)
+Using directory_watcher (1.4.1)
+Using haml (3.1.8)
+Using kramdown (0.13.8)
+Using liquid (2.3.0)
+Using syntax (1.0.0)
+Using maruku (0.6.1)
+Using posix-spawn (0.3.6)
+Using yajl-ruby (1.1.0)
+Using pygments.rb (0.3.7)
+Using jekyll (0.12.0)
+Using rack (1.4.5)
+Using rack-protection (1.3.2)
+Using rb-fsevent (0.9.3)
+Using rdiscount (1.6.8)
+Using redcarpet (2.2.2)
+Using rubypants (0.2.0)
+Using tilt (1.3.3)
+Using sinatra (1.3.4)
+Using stringex (1.4.0)
+Using bundler (1.3.5)
 Your bundle is updated!
 </code>
 but I still got the error:
@@ -176,7 +190,7 @@ but I still got the error:
 % rake generate
 rake aborted!
 You have already activated rake 10.1.1, but your Gemfile requires rake 0.9.6. Using bundle exec may solve this.
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:2:in \`&lt;top (required)&gt;&#39;
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:2:in \`&lt;top (required)&gt;'
 (See full trace by running task with --trace)
 </code>
 and this is when I finally saw that I had to do:
@@ -185,45 +199,75 @@ and this is when I finally saw that I had to do:
 </code></p>
 
 <p>Except that this did not solve everything:
-``` text
-% bundle exec rake generate</p>
-
-<h2 id="toc_0">Generating Site with Jekyll</h2>
-
-<p>unchanged sass/screen.scss
-Configuration from /Users/pnkfelix/Dev/Sites/pnkfx-blog/_config.yml
-Building site: source -&gt; public
-YAML Exception reading 2013-04-12-better-command-completion-in-bash-aka-resolving-zsh-envy.markdown: invalid byte sequence in US-ASCII
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/backtick_code_block.rb:13:in `gsub&#39;: invalid byte sequence in US-ASCII (ArgumentError)
-    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/backtick_code_block.rb:13:in `render_code_block\&#39;
-    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/octopress_filters.rb:12:in `pre_filter&#39;
-    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/octopress_filters.rb:28:in `pre_render&#39;
-    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:112:in `block in pre_render&#39;
-    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:111:in `each&#39;
-    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:111:in `pre_render&#39;
-    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:166:in `do_layout&#39;
-    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/post.rb:195:in `render&#39;
-    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:200:in `block in render&#39;
-    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:199:in `each&#39;
-    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:199:in `render&#39;
-    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:41:in `process&#39;
-    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/bin/jekyll:264:in `<top (required)>&#39;
-    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/bin/jekyll:23:in `load&#39;
-    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/bin/jekyll:23:in `<main>&#39;
-```</p>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>% bundle exec rake generate&lt;/p&gt;
+</span><span class='line'>
+</span><span class='line'>&lt;h2&gt;Generating Site with Jekyll&lt;/h2&gt;
+</span><span class='line'>
+</span><span class='line'>&lt;p&gt;unchanged sass/screen.scss
+</span><span class='line'>Configuration from /Users/pnkfelix/Dev/Sites/pnkfx-blog/_config.yml
+</span><span class='line'>Building site: source -&gt; public
+</span><span class='line'>YAML Exception reading 2013-04-12-better-command-completion-in-bash-aka-resolving-zsh-envy.markdown: invalid byte sequence in US-ASCII
+</span><span class='line'>/Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/backtick_code_block.rb:13:in `gsub&#39;: invalid byte sequence in US-ASCII (ArgumentError)
+</span><span class='line'>    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/backtick_code_block.rb:13:in `render_code_block\&amp;lsquo;
+</span><span class='line'>    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/octopress_filters.rb:12:in `pre_filter&amp;rsquo;
+</span><span class='line'>    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/octopress_filters.rb:28:in `pre_render&#39;
+</span><span class='line'>    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:112:in `block in pre_render&#39;
+</span><span class='line'>    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:111:in `each&#39;
+</span><span class='line'>    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:111:in `pre_render&#39;
+</span><span class='line'>    from /Users/pnkfelix/Dev/Sites/pnkfx-blog/plugins/post_filters.rb:166:in `do_layout&#39;
+</span><span class='line'>    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/post.rb:195:in `render&#39;
+</span><span class='line'>    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:200:in `block in render&#39;
+</span><span class='line'>    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:199:in `each&#39;
+</span><span class='line'>    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:199:in `render&#39;
+</span><span class='line'>    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/lib/jekyll/site.rb:41:in `process&#39;
+</span><span class='line'>    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/lib/ruby/gems/1.9.1/gems/jekyll-0.12.0/bin/jekyll:264:in `&lt;top (required)&gt;&amp;lsquo;
+</span><span class='line'>    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/bin/jekyll:23:in `load&amp;rsquo;
+</span><span class='line'>    from /Users/pnkfelix/.rbenv/versions/1.9.3-p194/bin/jekyll:23:in `&lt;main&gt;&amp;lsquo;
+</span></code></pre></td></tr></table></div></figure></p>
 
 <p>Another web search brought me to a <a href="http://otfusion.org/blog/2013/10/27/os-x-mavericks/">post by a fellow Mavericks user</a> who seems to have a similar attitude to my own about ruby development.
 And from that I found the full command I needed
-```
-% LANG=en_US.utf-8 bundle exec rake generate</p>
-
-<h2 id="toc_1">Generating Site with Jekyll</h2>
-
-<p>unchanged sass/screen.scss
-Configuration from /Users/pnkfelix/Dev/Sites/pnkfx-blog/_config.yml
-Building site: source -&gt; public
-Successfully generated site: source -&gt; public
-```</p>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='text'><span class='line'>% LANG=en_US.utf-8 bundle exec rake generate&lt;/p&gt;
+</span><span class='line'>
+</span><span class='line'>&lt;h2&gt;Generating Site with Jekyll&lt;/h2&gt;
+</span><span class='line'>
+</span><span class='line'>&lt;p&gt;unchanged sass/screen.scss
+</span><span class='line'>Configuration from /Users/pnkfelix/Dev/Sites/pnkfx-blog/_config.yml
+</span><span class='line'>Building site: source -&gt; public
+</span><span class='line'>Successfully generated site: source -&gt; public
+</span></code></pre></td></tr></table></div></figure></p>
 
 <p>And here we are!</p>
 ]]></content>
@@ -234,20 +278,18 @@ Successfully generated site: source -&gt; public
     <link href="http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world/"/>
     <updated>2013-01-08T00:55:00+01:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world</id>
-    <content type="html"><![CDATA[<h2 id="toc_0">It&#39;s Clobbering Time</h2>
+    <content type="html"><![CDATA[<h2>It&rsquo;s Clobbering Time</h2>
 
 <p>Remember that thing I said back <a href="/blog/2012/12/31/hello-world">at the end of 2012</a>?
 That thing?
 That thing about the important detail that:</p>
 
-<blockquote>
-<p>the <code>_deploy/</code> subdirectory is itself a clone of the targeted
-github repository, with the <code>gh-pages</code> branch checked out.</p>
-</blockquote>
+<blockquote><p>the <code>_deploy/</code> subdirectory is itself a clone of the targeted
+github repository, with the <code>gh-pages</code> branch checked out.</p></blockquote>
 
 <p>It turns out this is really important detail.</p>
 
-<p>Here&#39;s why: For my first blogging act of the new year, I inadvertently destroyed
+<p>Here&rsquo;s why: For my first blogging act of the new year, I inadvertently destroyed
 my own blog.</p>
 
 <p>I attempted to write a post from a computer other than the one out of
@@ -283,37 +325,35 @@ a blog if not to freely broadcast your mistakes?  :)</p>
 <p>So, directly from <a href="https://github.com/pnkfelix/pnkfx-blog/commit/f277b041de33a8e0eac02c6aecb3909231725db7">my commit message</a>, here is the description of how
 I clobbered my own blog:</p>
 
-<blockquote>
-<p>The easy way to sum it up is: The model
-employed by octopress when deploying to github is this: Your _deploy/
+<blockquote><p>The easy way to sum it up is: The model
+employed by octopress when deploying to github is this: Your <em>deploy/
 subdirectory must contain a checkout of the target repo, the one with
-the gh-pages branch, and you must have that _deploy/ subdirectory
-checked out and ready to go before running &#39;rake deploy&#39;.</p>
+the gh-pages branch, and you must have that </em>deploy/ subdirectory
+checked out and ready to go before running &lsquo;rake deploy&rsquo;.</p>
 
-<p>If you do not have a _deploy/ subdirectory at all and you let &#39;rake
-deploy&#39; create it for you but you also let &#39;rake deploy&#39; attempt to
+<p>If you do not have a _deploy/ subdirectory at all and you let &lsquo;rake
+deploy&rsquo; create it for you but you also let &lsquo;rake deploy&rsquo; attempt to
 push to github, and you are also managing the source itself on github,
 you will enter a world of pain where the rake invocation will push
 <em>this</em> root directory, presumably in the master branch (or in my case,
 blog.pnkfx.org branch) to the target repo in the gh-pages/ branch.
 Which will bust things terribly, especially if that causes the CNAME
-file to get deleted from the gh-pages/ branch of the target repo.</p>
-</blockquote>
+file to get deleted from the gh-pages/ branch of the target repo.</p></blockquote>
 
-<h2 id="toc_1">A note on self-reference</h2>
+<h2>A note on self-reference</h2>
 
 <p>Also, a quick half shout-out, or maybe corrective note, to
 <a href="http://www.seamusbradley.net/blog/blog/2012/04/24/how-to-link-to-your-own-blog-posts-in-octopress/">seamusbradley</a> for pointing out some details about linking back to
-one&#39;s own blog posts.</p>
+one&rsquo;s own blog posts.</p>
 
-<p>It is only a half shout-out because Seamus&#39;s note is only useful, I
+<p>It is only a half shout-out because Seamus&rsquo;s note is only useful, I
 think, if you have, like him, a customized setting for the <code>root:</code> in
 your <code>_config.yml</code>.  That, or Seamus has confused himself and changed
-his <code>root</code> setting in order to accommodate other url&#39;s that he
+his <code>root</code> setting in order to accommodate other url&rsquo;s that he
 observed, but those urls are in fact actually generated by settings
 for properties other than <code>root</code>.</p>
 
-<p>Here&#39;s the concrete details: I read (misread?) Seamus&#39;s post at first
+<p>Here&rsquo;s the concrete details: I read (misread?) Seamus&rsquo;s post at first
 as saying that a customized setting of <code>root</code> to <code>/blog</code> is a
 prerequisite for linking to your own posts.  It seems to me that the
 relevant detail is what the <em>permalink</em> setting is, not the root.
@@ -323,15 +363,19 @@ Seamus suggested, it seems like doing so broke <code>rake preview</code>.)</p>
 
 <p>In my case, the <code>root</code> and <code>permalink</code> for my <code>_config.yml</code>
 are set as follows:</p>
-<div class="highlight"><pre><code class="text">root: /
+
+<pre><code>root: /
 permalink: /blog/:year/:month/:day/:title/
-</code></pre></div>
+</code></pre>
+
 <p>and I format links to my own posts, such as the one you are reading,
 like so:
 <a href="/blog/2013/01/08/resurrected-hello-again-world"><code>/blog/2013/01/08/resurrected-hello-again-world</code></a>
 as you can see from looking at the source for the line above,</p>
-<div class="highlight"><pre><code class="text">[`/blog/2013/01/08/resurrected-hello-again-world`](/blog/2013/01/08/resurrected-hello-again-world)
-</code></pre></div>
+
+<pre><code>[`/blog/2013/01/08/resurrected-hello-again-world`](/blog/2013/01/08/resurrected-hello-again-world)
+</code></pre>
+
 <p>A bit of quoted self-reference is a good place to stop for the night.</p>
 ]]></content>
   </entry>
@@ -345,10 +389,14 @@ as you can see from looking at the source for the line above,</p>
 Apparently Markdown syntax does not have any shorthand for comments
 -->
 
+
+
+
 <!---
 First 7 lines of this file were generated by command invocation:
   % rake new_post["Hello World"]
 -->
+
 
 <p>First post!
 I am attempting to move my blog to GitHub Pages.</p>
@@ -365,12 +413,14 @@ and see how that goes.</p>
 <li><p>The first 7 lines of that file were originally generated via the
 <code>rake</code> command invocation:</p>
 
-<p>% rake new_post[&quot;Hello World&quot;]</p></li>
+<pre><code>% rake new_post["Hello World"]
+</code></pre></li>
 <li><p>The command <code>rake generate</code> will convert the source into static html pages.</p></li>
 <li><p>After generating the file (and during subsequent editting), one can preview
 the state locally in a local Ruby webserver via:</p>
 
-<p>% rake preview</p>
+<pre><code>% rake preview
+</code></pre>
 
 <p>and then <a href="http://localhost:4000/">browsing localhost port 4000</a>.
 The <code>rake preview</code> invocation will continuously monitor your post
@@ -383,43 +433,47 @@ already set up and integrated with github (or something similar) so that
 there would be no password prompts.</p>
 
 <ul>
-<li>But of course I have not done this yet.</li>
-<li>One important detail about <code>rake deploy</code> with github pages is that
+<li><p>But of course I have not done this yet.</p></li>
+<li><p>One important detail about <code>rake deploy</code> with github pages is that
 the <code>_deploy/</code> subdirectory is itself a clone of the targetted
 github repository, with the <code>gh-pages</code> branch checked out.
 This can be confusing if your main source tree (the parent
 directory of <code>_deploy/</code>) is itself the same repository as the
-targetted github repository.</li>
-</ul></li>
+targetted github repository.</p></li>
+</ul>
+</li>
 <li><p>Update: <code>rake deploy</code> just worked fine for me, password prompts and all.
 I think my earlier difficulty was an artifact of some previous bad
 state, one of either:</p>
 
 <ul>
-<li>I had put in a malformatted url for the target repository</li>
-<li>My target repository already had a <code>gh-pages</code> branch (from earlier
+<li><p>I had put in a malformatted url for the target repository</p></li>
+<li><p>My target repository already had a <code>gh-pages</code> branch (from earlier
 testing) that needed to be pulled-and-merged (or discarded in some
-fashion, which was what my merge amounted to).</li>
-</ul></li>
+fashion, which was what my merge amounted to).</p></li>
+</ul>
+</li>
 <li><p>Update (26 march 2012): there are still some hiccups with <code>rake deploy</code>;
 you need to be careful about what you store in the <code>source/</code> directory.
 In particular, I was working on a draft post and threw various
 source files that I was hacking on in the same directory, along with
 some <code>.gitignore</code> files so that <code>git</code> would ignore build products
-generated when I compiled the source (to binaries or jars or fasls...).</p>
+generated when I compiled the source (to binaries or jars or fasls&hellip;).</p>
 
 <p>The headache came when I did <code>rake deploy</code>, and hit this error:</p>
-<div class="highlight"><pre><code class="bash">% rake deploy
-cp -r <span class="nb">source</span>/_posts/.gitignore public/_posts/.gitignore
+
+<pre><code class="bash">% rake deploy
+cp -r source/_posts/.gitignore public/_posts/.gitignore
 rake aborted!
 No such file or directory - public/_posts/.gitignore
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:230:in <span class="sb">`</span>block <span class="o">(</span>2 levels<span class="o">)</span> in &lt;top <span class="o">(</span>required<span class="o">)</span>&gt;<span class="s1">&#39;</span>
-<span class="s1">/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:229:in `block in &lt;top (required)&gt;&#39;</span>
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:219:in <span class="sb">`</span>block in &lt;top <span class="o">(</span>required<span class="o">)</span>&gt;<span class="err">&#39;</span>
-Tasks: <span class="nv">TOP</span> <span class="o">=</span>&gt; copydot
-<span class="o">(</span>See full trace by running task with --trace<span class="o">)</span>
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:230:in `block (2 levels) in &lt;top (required)&gt;'
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:229:in `block in &lt;top (required)&gt;'
+/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:219:in `block in &lt;top (required)&gt;'
+Tasks: TOP =&gt; copydot
+(See full trace by running task with --trace)
 %
-</code></pre></div>
+</code></pre>
+
 <p>The problem here, as far as I can tell, is that octopress
 is aggressively trying to copy over all dotfiles it can find
 (<a href="https://github.com/imathis/octopress/issues/104">Octopress Issue 104</a>)
@@ -434,6 +488,7 @@ This seems to have addressed the problem; I have also filed
 <a href="https://github.com/imathis/octopress/issues/1151">an issue</a>
 for this with Octopress.</p></li>
 </ul>
+
 ]]></content>
   </entry>
   

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: git | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/git/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-10-16T15:51:05+02:00</updated>
+  <updated>2015-10-20T22:34:50+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -21,27 +21,29 @@
     <content type="html"><![CDATA[<p>(This post started as a personal e-mail to Niko, and then I figured it
 was blog worthy.)</p>
 
-<p>There&#39;s plenty of problems when working atop &quot;OS X&quot;;
-but no need to be jealous of Shu&#39;s zsh setup
+<p>There&rsquo;s plenty of problems when working atop &ldquo;OS X&rdquo;;
+but no need to be jealous of Shu&rsquo;s zsh setup
 (at least not for its tab-completion on git stuff),
 at least not if you are already using Homebrew.
 Just install
-<a href="http://blog.jeffterrace.com/2012/09/bash-completion-for-mac-os-x.html">brew&#39;s bash completion package</a>!</p>
+<a href="http://blog.jeffterrace.com/2012/09/bash-completion-for-mac-os-x.html">brew&rsquo;s bash completion package</a>!</p>
 
-<p>Executive summary: </p>
-<div class="highlight"><pre><code class="bash">% brew install bash-completion
+<p>Executive summary:</p>
 
-% <span class="nb">echo</span> &gt;&gt; ~/.bash_profile <span class="s">&lt;&lt;END</span>
-<span class="s">  if [ -f $(brew --prefix)/etc/bash_completion ]; then</span>
-<span class="s">    . $(brew --prefix)/etc/bash_completion</span>
-<span class="s">  fi</span>
-<span class="s">END</span>
-</code></pre></div>
+<pre><code class="bash">% brew install bash-completion
+
+% echo &gt;&gt; ~/.bash_profile &lt;&lt;END
+  if [ -f $(brew --prefix)/etc/bash_completion ]; then
+    . $(brew --prefix)/etc/bash_completion
+  fi
+END
+</code></pre>
+
 <p>And voilà!</p>
 
 <p>See also potentially related topics from <a href="http://superuser.com/questions/288438/bash-completion-for-commands-in-mac-os">super user</a>, <a href="http://stackoverflow.com/questions/14970728/homebrews-git-not-using-completion">stack overflow</a>, <a href="http://milkbox.net/note/brace-completion-in-snow-leopard-upgrading-bash/">milkbox blog</a>.</p>
 
-<hr>
+<hr />
 
 <p>Note also that I did burn myself by trying to get too smart: In
 particular, after reading <a href="http://stackoverflow.com/questions/14970728/homebrews-git-not-using-completion">stack overflow</a>, I over-eagerly
@@ -65,22 +67,23 @@ in <code>/usr/local/bin/</code> out of the way, and</li>
 <li>redid the <code>brew install git</code></li>
 </ol>
 
-<hr>
+
+<hr />
 
 <p>Anyway, I should also give a shout-out to Axel Hecht; his post
-on Mozilla&#39;s Yammer instance is what got me to the point of even
+on Mozilla&rsquo;s Yammer instance is what got me to the point of even
 attempting to install this piece of marvelousness.</p>
 
 <p>(Also, further posts on yammer are lightly pushing for readers to consider
 zsh as an alternative to bash.  I do not think I am ready to switch to zsh,
 but I can at least link to the <a href="http://friedcpu.wordpress.com/2007/07/24/zsh-the-last-shell-youll-ever-need/">blog post arguing for zsh</a>.)</p>
 
-<hr>
+<hr />
 
 <p>Update (written 2013 april 16): Now that I have decent command/context
 sensitive completion in bash in my terminal, of <em>course</em> I
 want to have it in my Emacs <code>M-x shell</code> as well.  At first I
-was dismayed that I did not just get that &quot;out of the box&quot;;
+was dismayed that I did not just get that &ldquo;out of the box&rdquo;;
 then I was happy after some googling to discover:
 <a href="https://github.com/szermatt/emacs-bash-completion">bash-completion.el</a>, which forwards the completion
 requests onto a separate bash process, so that one inherits
@@ -92,7 +95,7 @@ with no Emacs hacking.</p>
 <p>It turns out that I had to do a little bit of Emacs hacking
 in order to get the setup working, at least for my idiosyncratic
 bash setup.  In particular, it seems like the Elisp code
-for bash-complete.el assumes that one is setting one&#39;s
+for bash-complete.el assumes that one is setting one&rsquo;s
 prompt via the <code>PS1</code> environment variable, while mine is often
 set via the <code>PROMPT_COMMAND</code> environment variable.
 After determining what is going on, it is easy enough to fix this (and
@@ -106,20 +109,18 @@ the github repo</a>).</p>
     <link href="http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world/"/>
     <updated>2013-01-08T00:55:00+01:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world</id>
-    <content type="html"><![CDATA[<h2 id="toc_0">It&#39;s Clobbering Time</h2>
+    <content type="html"><![CDATA[<h2>It&rsquo;s Clobbering Time</h2>
 
 <p>Remember that thing I said back <a href="/blog/2012/12/31/hello-world">at the end of 2012</a>?
 That thing?
 That thing about the important detail that:</p>
 
-<blockquote>
-<p>the <code>_deploy/</code> subdirectory is itself a clone of the targeted
-github repository, with the <code>gh-pages</code> branch checked out.</p>
-</blockquote>
+<blockquote><p>the <code>_deploy/</code> subdirectory is itself a clone of the targeted
+github repository, with the <code>gh-pages</code> branch checked out.</p></blockquote>
 
 <p>It turns out this is really important detail.</p>
 
-<p>Here&#39;s why: For my first blogging act of the new year, I inadvertently destroyed
+<p>Here&rsquo;s why: For my first blogging act of the new year, I inadvertently destroyed
 my own blog.</p>
 
 <p>I attempted to write a post from a computer other than the one out of
@@ -155,37 +156,35 @@ a blog if not to freely broadcast your mistakes?  :)</p>
 <p>So, directly from <a href="https://github.com/pnkfelix/pnkfx-blog/commit/f277b041de33a8e0eac02c6aecb3909231725db7">my commit message</a>, here is the description of how
 I clobbered my own blog:</p>
 
-<blockquote>
-<p>The easy way to sum it up is: The model
-employed by octopress when deploying to github is this: Your _deploy/
+<blockquote><p>The easy way to sum it up is: The model
+employed by octopress when deploying to github is this: Your <em>deploy/
 subdirectory must contain a checkout of the target repo, the one with
-the gh-pages branch, and you must have that _deploy/ subdirectory
-checked out and ready to go before running &#39;rake deploy&#39;.</p>
+the gh-pages branch, and you must have that </em>deploy/ subdirectory
+checked out and ready to go before running &lsquo;rake deploy&rsquo;.</p>
 
-<p>If you do not have a _deploy/ subdirectory at all and you let &#39;rake
-deploy&#39; create it for you but you also let &#39;rake deploy&#39; attempt to
+<p>If you do not have a _deploy/ subdirectory at all and you let &lsquo;rake
+deploy&rsquo; create it for you but you also let &lsquo;rake deploy&rsquo; attempt to
 push to github, and you are also managing the source itself on github,
 you will enter a world of pain where the rake invocation will push
 <em>this</em> root directory, presumably in the master branch (or in my case,
 blog.pnkfx.org branch) to the target repo in the gh-pages/ branch.
 Which will bust things terribly, especially if that causes the CNAME
-file to get deleted from the gh-pages/ branch of the target repo.</p>
-</blockquote>
+file to get deleted from the gh-pages/ branch of the target repo.</p></blockquote>
 
-<h2 id="toc_1">A note on self-reference</h2>
+<h2>A note on self-reference</h2>
 
 <p>Also, a quick half shout-out, or maybe corrective note, to
 <a href="http://www.seamusbradley.net/blog/blog/2012/04/24/how-to-link-to-your-own-blog-posts-in-octopress/">seamusbradley</a> for pointing out some details about linking back to
-one&#39;s own blog posts.</p>
+one&rsquo;s own blog posts.</p>
 
-<p>It is only a half shout-out because Seamus&#39;s note is only useful, I
+<p>It is only a half shout-out because Seamus&rsquo;s note is only useful, I
 think, if you have, like him, a customized setting for the <code>root:</code> in
 your <code>_config.yml</code>.  That, or Seamus has confused himself and changed
-his <code>root</code> setting in order to accommodate other url&#39;s that he
+his <code>root</code> setting in order to accommodate other url&rsquo;s that he
 observed, but those urls are in fact actually generated by settings
 for properties other than <code>root</code>.</p>
 
-<p>Here&#39;s the concrete details: I read (misread?) Seamus&#39;s post at first
+<p>Here&rsquo;s the concrete details: I read (misread?) Seamus&rsquo;s post at first
 as saying that a customized setting of <code>root</code> to <code>/blog</code> is a
 prerequisite for linking to your own posts.  It seems to me that the
 relevant detail is what the <em>permalink</em> setting is, not the root.
@@ -195,15 +194,19 @@ Seamus suggested, it seems like doing so broke <code>rake preview</code>.)</p>
 
 <p>In my case, the <code>root</code> and <code>permalink</code> for my <code>_config.yml</code>
 are set as follows:</p>
-<div class="highlight"><pre><code class="text">root: /
+
+<pre><code>root: /
 permalink: /blog/:year/:month/:day/:title/
-</code></pre></div>
+</code></pre>
+
 <p>and I format links to my own posts, such as the one you are reading,
 like so:
 <a href="/blog/2013/01/08/resurrected-hello-again-world"><code>/blog/2013/01/08/resurrected-hello-again-world</code></a>
 as you can see from looking at the source for the line above,</p>
-<div class="highlight"><pre><code class="text">[`/blog/2013/01/08/resurrected-hello-again-world`](/blog/2013/01/08/resurrected-hello-again-world)
-</code></pre></div>
+
+<pre><code>[`/blog/2013/01/08/resurrected-hello-again-world`](/blog/2013/01/08/resurrected-hello-again-world)
+</code></pre>
+
 <p>A bit of quoted self-reference is a good place to stop for the night.</p>
 ]]></content>
   </entry>
