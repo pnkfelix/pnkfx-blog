@@ -248,20 +248,20 @@ in the terminal output)</p>
 <span class='line-number'>62</span>
 <span class='line-number'>63</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">make_hand</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">10</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">spades</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">3</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">2</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">10</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">spades</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">3</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">2</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
 </span><span class='line'>    <span class="n">hand</span>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
 </span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">:</span> <span class="o">~</span><span class="n">card</span> <span class="o">=</span> <span class="n">make_hand</span><span class="p">();</span>
 </span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;initial hand: &quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">AceD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">AceD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">1</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
 </span><span class='line'>    <span class="n">AceD</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;place top: &quot;</span><span class="p">);</span>
 </span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_top</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">AceD</span><span class="p">);</span>
 </span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">SixD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">6</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">SixD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">6</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
 </span><span class='line'>    <span class="n">SixD</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;place bot: &quot;</span><span class="p">);</span>
 </span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_bot</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">SixD</span><span class="p">);</span>
 </span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
@@ -286,11 +286,11 @@ in the terminal output)</p>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="n">r</span><span class="o">:</span><span class="kt">u8</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="kt">str</span> <span class="p">{</span>
 </span><span class='line'>    <span class="k">match</span> <span class="n">r</span> <span class="p">{</span>
-</span><span class='line'>        <span class="mi">1</span>     <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;A&quot;</span><span class="p">,</span>
-</span><span class='line'>        <span class="mf">2.</span><span class="p">.</span><span class="mi">10</span> <span class="o">=&gt;</span> <span class="n">r</span><span class="p">.</span><span class="n">to_str</span><span class="p">(),</span>
-</span><span class='line'>        <span class="mi">11</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;J&quot;</span><span class="p">,</span>
-</span><span class='line'>        <span class="mi">12</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;Q&quot;</span><span class="p">,</span>
-</span><span class='line'>        <span class="mi">13</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;K&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">1</span>     <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;A&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">2.</span><span class="p">.</span><span class="m">10</span> <span class="o">=&gt;</span> <span class="n">r</span><span class="p">.</span><span class="n">to_str</span><span class="p">(),</span>
+</span><span class='line'>        <span class="m">11</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;J&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">12</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;Q&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">13</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;K&quot;</span><span class="p">,</span>
 </span><span class='line'>        <span class="n">_</span>     <span class="o">=&gt;</span> <span class="n">fail</span><span class="o">!</span><span class="p">()</span>
 </span><span class='line'>    <span class="p">}</span>
 </span><span class='line'><span class="p">}</span>
@@ -399,10 +399,6 @@ new hand: 2&diams;,3&spades;,10&clubs;</p>
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/blog/2015/10/16/gc-and-rust-part-1-the-roots-of-integration/">GC and Rust Part 1: The Roots of Integration</a>
-      </li>
-    
-      <li class="post">
         <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
@@ -416,6 +412,10 @@ new hand: 2&diams;,3&spades;,10&clubs;</p>
     
       <li class="post">
         <a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing syntax for associated items in Rust</a>
       </li>
     
   </ul>

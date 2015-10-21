@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-10-20T22:34:50+02:00</updated>
+  <updated>2015-10-21T14:17:33+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,155 +12,6 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
-  
-  <entry>
-    <title type="html"><![CDATA[GC and Rust Part 1: The Roots of Integration]]></title>
-    <link href="http://blog.pnkfx.org/blog/2015/10/16/gc-and-rust-part-1-the-roots-of-integration/"/>
-    <updated>2015-10-16T15:24:00+02:00</updated>
-    <id>http://blog.pnkfx.org/blog/2015/10/16/gc-and-rust-part-1-the-roots-of-integration</id>
-    <content type="html"><![CDATA[<p>This is the first in a series of posts will discuss why garbage
-collection is hard, especially for Rust, and brainstorm about
-solutions to the problems we face.</p>
-
-<p>The relationship between garbage collection (GC) and the Rust
-programming language has been an interesting one.</p>
-
-<p>GC was originally deeply integrated into the language, complete with
-dedicated syntax; then over time we found ways to lessen the
-dependency on GC, and then finally remove it from the language
-entirely.</p>
-
-<p>However, we still want to provide support for garbage collection.</p>
-
-<p>To explain why, I need to define the actual problems we seek to solve.</p>
-
-<!-- more -->
-
-
-<p>(The body of this post makes heavy use of client-side rendering.  You
-may need to wait a moment while the supporting Javascript loads.)</p>
-
-<script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"></script>
-
-
-<h2>What is Garbage Collection</h2>
-
-<p>A garbage collector is a component in the runtime for a programming
-language that periodically attempts to reclaim memory (without
-requiring explicit calls to memory-freeing routines in the programning
-language). To do this soundly, the collector must identify blocks of
-memory that cannot possibly be used in the future by the program
-(i.e., &ldquo;dead objects&rdquo;).</p>
-
-<p>Discussions of garbage collection often equate the notion of &ldquo;dead
-object&rdquo; with &ldquo;unreachable object&rdquo;: If no chain of references exists
-that could lead the program to an object, then that object cannot be
-reached (and therefore cannot be used in the future).<sup><a href="#footnote1">1</a></sup></p>
-
-<p>When one says &ldquo;garbage collector&rdquo;, one usually means a &ldquo;<em>tracing</em>
-garbage collector&rdquo;: a collector that works by identifying the
-reachable objects by computing from the object graph the connected
-components that include the &ldquo;roots&rdquo;, i.e. the starting points from
-which any chain of references originates.</p>
-
-<script>
-function make_graph0() {
-    return "digraph { A -> B; }"
-}
-function make_graph1() {
-    var dot_source = 'digraph { bgcolor="transparent";'
-    // dot_source += ' layout="neato"; inputscale=72;'
-    dot_source += ' overlap="false";' // if left out, nodes may overlap
-    dot_source += ' start=0;' // seed the RNG (for consistency)
-    dot_source += ' node [shape=record];'
-    dot_source += ' A [label="{A_top | A_bot}"];'
-    dot_source += ' B [label="{B_top | B_bot}"];'
-    dot_source += ' A -> B'
-    dot_source += '}'
-    return dot_source;
-}
-</script>
-
-
-<p id="target_anchor1"></p>
-
-
-<script>
-var g = make_graph1();
-var elem = document.getElementById("target_anchor1")
-elem.innerHTML += "<code>" + g + "</code>"
-</script>
-
-
-<script>
-var g = make_graph1()
-var elem = document.getElementById("target_anchor1")
-elem.innerHTML += Viz(g, "svg")
-</script>
-
-
-<hr />
-
-<p><a name="footnote1">1.</a> Researchers have explored methods exist to
-identify objects as dead even when reachable, such as using
-<a href="http://pop-art.inrialpes.fr/~fradet/PDFs/LISP94.pdf">&ldquo;parametricity&rdquo;</a>; but I am not aware of any
-such method being used outside of a research setting.</p>
-
-<h2>The Problem Space</h2>
-
-<p>I have identified two distinct kinds of support that we could provide:</p>
-
-<ol>
-<li><p>A pure Rust programming feature: We could add a collector
- interface, e.g. a <code>Gc&lt;T&gt;</code> type, that arbitrary library crates
- could use as they create or receive instances of <code>T</code>. The
- intention here would be similar to how <code>Rc&lt;T&gt;</code> is used: One does
- not want to track ownership precisely, but rather treat ownership
- as shared amongst all users of a value, and let the runtime
- system handle reclaiming the value.</p>
-
-<p> This kind of feature could be useful in any Rust library.</p>
-
-<p> However, it is also very difficult to add (at least with the
- ergonomics that one expects from a smart-pointer type like
- <code>Rc&lt;T&gt;</code>), and since <code>Rc&lt;T&gt;</code> is already a workable solution for
- many (though not all) use cases of <code>Gc&lt;T&gt;</code>, it is not the main
- priority right now.</p></li>
-<li><p>An interoperation feature: Provide introspective hooks to improve
- integration with application frameworks that are using their own
- garbage collector. An obvious example of this is Servo&rsquo;s use of
- the SpiderMonkey Virtual Machine for its Javascript support.</p>
-
-<p> Servo is relying on SpiderMonkey&rsquo;s garbage collection for memory
- management, not only for Javascript values, but even for
- <a href="https://blog.mozilla.org/research/2014/08/26/javascript-servos-only-garbage-collector/">native-code DOM objects</a>.</p>
-
-<p> That post describes (unchecked) scenarios where one can end up
- with dangling pointers &ndash; that is, they invite unsoundness.
- Proper support for GC-interoperation in Rust could address this;
- I will discuss this further down in this post.</p>
-
-<p> Critically, GC-interoperation does not require the same level of
- programmer ergonomics that <code>Rc&lt;T&gt;</code> provides. For example, it is
- acceptable to not support <a href="https://doc.rust-lang.org/std/ops/trait.Deref.html"><code>Deref</code></a>.</p></li>
-</ol>
-
-
-<p>These are two distinct features; there is overlap between them, but
-trying to find a single solution that solves both problems completely
-may not be possible, and in any case we do not want to wait for it to
-be discovered.</p>
-
-<p>Let us assume that for the short term we are more interested in
-providing GC-interoperation and are willing to forego GC as a pure
-Rust programming feature.</p>
-
-<script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"></script>
-
-
-
-]]></content>
-  </entry>
   
   <entry>
     <title type="html"><![CDATA[Vis-a-vis, part 1: Visualizing Graphs via viz.js]]></title>
@@ -1478,10 +1329,10 @@ combinator:</p>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">innocent_looking_victim</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">vec</span> <span class="o">=</span> <span class="o">~</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">];</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">vec</span> <span class="o">=</span> <span class="o">~</span><span class="p">[</span><span class="m">1</span><span class="p">,</span> <span class="m">2</span><span class="p">,</span> <span class="m">3</span><span class="p">];</span>
 </span><span class='line'>    <span class="n">conspirator</span><span class="p">(</span><span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="n">vec</span><span class="p">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">100</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">vec</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="mi">4</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">vec</span><span class="p">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="m">100</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">vec</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="m">4</span><span class="p">);</span>
 </span><span class='line'>            <span class="k">for</span> <span class="n">vec</span><span class="p">.</span><span class="n">each</span> <span class="o">|</span><span class="n">i</span><span class="o">|</span> <span class="p">{</span>
 </span><span class='line'>                <span class="n">f</span><span class="p">.</span><span class="n">c</span><span class="p">(</span><span class="o">&amp;</span><span class="n">f</span><span class="p">)</span>
 </span><span class='line'>            <span class="p">}</span>
@@ -2090,7 +1941,7 @@ example in Rust:</p>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 </pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">interface</span> <span class="nc">Transformation</span><span class="o">&lt;</span><span class="n">DISTANCETYPE</span><span class="o">,</span> <span class="n">DOMAIN</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">DOMAIN</span> <span class="nf">apply</span><span class="o">(</span><span class="n">DOMAIN</span> <span class="n">elem</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">DOMAIN</span> <span class="n">apply</span><span class="o">(</span><span class="n">DOMAIN</span> <span class="n">elem</span><span class="o">);</span>
 </span><span class='line'><span class="o">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
@@ -2148,7 +1999,7 @@ to the generic method.</p>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
 </pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">DT</span><span class="o">,</span> <span class="n">DOM</span><span class="o">,</span> <span class="n">F</span> <span class="kd">extends</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DT</span><span class="o">,</span> <span class="n">DOM</span><span class="o">&gt;</span> <span class="o">&gt;</span>
-</span><span class='line'>    <span class="n">DT</span> <span class="nf">distance</span><span class="o">(</span><span class="n">DOM</span> <span class="n">x</span><span class="o">,</span> <span class="n">DOM</span> <span class="n">y</span><span class="o">,</span> <span class="n">F</span> <span class="n">f</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">DT</span> <span class="n">distance</span><span class="o">(</span><span class="n">DOM</span> <span class="n">x</span><span class="o">,</span> <span class="n">DOM</span> <span class="n">y</span><span class="o">,</span> <span class="n">F</span> <span class="n">f</span><span class="o">)</span> <span class="o">{</span>
 </span><span class='line'>    <span class="cm">/* ... */</span>
 </span><span class='line'><span class="o">}</span>
 </span></code></pre></td></tr></table></div></figure>
@@ -2839,20 +2690,20 @@ in the terminal output)</p>
 <span class='line-number'>62</span>
 <span class='line-number'>63</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">make_hand</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">10</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">spades</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">3</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">2</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">10</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">spades</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">3</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">2</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
 </span><span class='line'>    <span class="n">hand</span>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
 </span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">:</span> <span class="o">~</span><span class="n">card</span> <span class="o">=</span> <span class="n">make_hand</span><span class="p">();</span>
 </span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;initial hand: &quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">AceD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">AceD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">1</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
 </span><span class='line'>    <span class="n">AceD</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;place top: &quot;</span><span class="p">);</span>
 </span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_top</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">AceD</span><span class="p">);</span>
 </span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">SixD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">6</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">SixD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">6</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
 </span><span class='line'>    <span class="n">SixD</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;place bot: &quot;</span><span class="p">);</span>
 </span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_bot</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">SixD</span><span class="p">);</span>
 </span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
@@ -2877,11 +2728,11 @@ in the terminal output)</p>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="n">r</span><span class="o">:</span><span class="kt">u8</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="kt">str</span> <span class="p">{</span>
 </span><span class='line'>    <span class="k">match</span> <span class="n">r</span> <span class="p">{</span>
-</span><span class='line'>        <span class="mi">1</span>     <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;A&quot;</span><span class="p">,</span>
-</span><span class='line'>        <span class="mf">2.</span><span class="p">.</span><span class="mi">10</span> <span class="o">=&gt;</span> <span class="n">r</span><span class="p">.</span><span class="n">to_str</span><span class="p">(),</span>
-</span><span class='line'>        <span class="mi">11</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;J&quot;</span><span class="p">,</span>
-</span><span class='line'>        <span class="mi">12</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;Q&quot;</span><span class="p">,</span>
-</span><span class='line'>        <span class="mi">13</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;K&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">1</span>     <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;A&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">2.</span><span class="p">.</span><span class="m">10</span> <span class="o">=&gt;</span> <span class="n">r</span><span class="p">.</span><span class="n">to_str</span><span class="p">(),</span>
+</span><span class='line'>        <span class="m">11</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;J&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">12</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;Q&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">13</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;K&quot;</span><span class="p">,</span>
 </span><span class='line'>        <span class="n">_</span>     <span class="o">=&gt;</span> <span class="n">fail</span><span class="o">!</span><span class="p">()</span>
 </span><span class='line'>    <span class="p">}</span>
 </span><span class='line'><span class="p">}</span>

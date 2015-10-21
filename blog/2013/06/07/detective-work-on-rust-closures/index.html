@@ -199,10 +199,10 @@ combinator:</p>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">innocent_looking_victim</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">vec</span> <span class="o">=</span> <span class="o">~</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">];</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">vec</span> <span class="o">=</span> <span class="o">~</span><span class="p">[</span><span class="m">1</span><span class="p">,</span> <span class="m">2</span><span class="p">,</span> <span class="m">3</span><span class="p">];</span>
 </span><span class='line'>    <span class="n">conspirator</span><span class="p">(</span><span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="n">vec</span><span class="p">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">100</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">vec</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="mi">4</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">vec</span><span class="p">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="m">100</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">vec</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="m">4</span><span class="p">);</span>
 </span><span class='line'>            <span class="k">for</span> <span class="n">vec</span><span class="p">.</span><span class="n">each</span> <span class="o">|</span><span class="n">i</span><span class="o">|</span> <span class="p">{</span>
 </span><span class='line'>                <span class="n">f</span><span class="p">.</span><span class="n">c</span><span class="p">(</span><span class="o">&amp;</span><span class="n">f</span><span class="p">)</span>
 </span><span class='line'>            <span class="p">}</span>
@@ -647,10 +647,6 @@ variables injected by macro invocations is addressed.</li>
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/blog/2015/10/16/gc-and-rust-part-1-the-roots-of-integration/">GC and Rust Part 1: The Roots of Integration</a>
-      </li>
-    
-      <li class="post">
         <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
@@ -664,6 +660,10 @@ variables injected by macro invocations is addressed.</li>
     
       <li class="post">
         <a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing syntax for associated items in Rust</a>
       </li>
     
   </ul>

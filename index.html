@@ -9,9 +9,9 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="This is the first in a series of posts will discuss why garbage
-collection is hard, especially for Rust, and brainstorm about
-solutions to the &hellip;">
+  <meta name="description" content="This is a post discussing a couple different ways to draw pictures,
+mostly those of graphs (nodes and edges, i.e. circles or boxes, and
+lines between &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -66,61 +66,6 @@ solutions to the &hellip;">
     <div id="content">
       <div class="blog-index">
   
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/10/16/gc-and-rust-part-1-the-roots-of-integration/">GC and Rust Part 1: The Roots of Integration</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2015-10-16T15:24:00+02:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>This is the first in a series of posts will discuss why garbage
-collection is hard, especially for Rust, and brainstorm about
-solutions to the problems we face.</p>
-
-<p>The relationship between garbage collection (GC) and the Rust
-programming language has been an interesting one.</p>
-
-<p>GC was originally deeply integrated into the language, complete with
-dedicated syntax; then over time we found ways to lessen the
-dependency on GC, and then finally remove it from the language
-entirely.</p>
-
-<p>However, we still want to provide support for garbage collection.</p>
-
-<p>To explain why, I need to define the actual problems we seek to solve.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/10/16/gc-and-rust-part-1-the-roots-of-integration/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
   
   
     <article>
@@ -990,10 +935,10 @@ combinator:</p>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">innocent_looking_victim</span><span class="p">()</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">vec</span> <span class="o">=</span> <span class="o">~</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">];</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">vec</span> <span class="o">=</span> <span class="o">~</span><span class="p">[</span><span class="m">1</span><span class="p">,</span> <span class="m">2</span><span class="p">,</span> <span class="m">3</span><span class="p">];</span>
 </span><span class='line'>    <span class="n">conspirator</span><span class="p">(</span><span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">if</span> <span class="n">vec</span><span class="p">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">100</span> <span class="p">{</span>
-</span><span class='line'>            <span class="n">vec</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="mi">4</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">vec</span><span class="p">.</span><span class="n">len</span><span class="p">()</span> <span class="o">&lt;</span> <span class="m">100</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">vec</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="m">4</span><span class="p">);</span>
 </span><span class='line'>            <span class="k">for</span> <span class="n">vec</span><span class="p">.</span><span class="n">each</span> <span class="o">|</span><span class="n">i</span><span class="o">|</span> <span class="p">{</span>
 </span><span class='line'>                <span class="n">f</span><span class="p">.</span><span class="n">c</span><span class="p">(</span><span class="o">&amp;</span><span class="n">f</span><span class="p">)</span>
 </span><span class='line'>            <span class="p">}</span>
@@ -1629,7 +1574,7 @@ example in Rust:</p>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 </pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">interface</span> <span class="nc">Transformation</span><span class="o">&lt;</span><span class="n">DISTANCETYPE</span><span class="o">,</span> <span class="n">DOMAIN</span><span class="o">&gt;</span> <span class="o">{</span>
-</span><span class='line'>    <span class="n">DOMAIN</span> <span class="nf">apply</span><span class="o">(</span><span class="n">DOMAIN</span> <span class="n">elem</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">DOMAIN</span> <span class="n">apply</span><span class="o">(</span><span class="n">DOMAIN</span> <span class="n">elem</span><span class="o">);</span>
 </span><span class='line'><span class="o">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
@@ -1687,7 +1632,7 @@ to the generic method.</p>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
 </pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">DT</span><span class="o">,</span> <span class="n">DOM</span><span class="o">,</span> <span class="n">F</span> <span class="kd">extends</span> <span class="n">Transformation</span><span class="o">&lt;</span><span class="n">DT</span><span class="o">,</span> <span class="n">DOM</span><span class="o">&gt;</span> <span class="o">&gt;</span>
-</span><span class='line'>    <span class="n">DT</span> <span class="nf">distance</span><span class="o">(</span><span class="n">DOM</span> <span class="n">x</span><span class="o">,</span> <span class="n">DOM</span> <span class="n">y</span><span class="o">,</span> <span class="n">F</span> <span class="n">f</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">DT</span> <span class="n">distance</span><span class="o">(</span><span class="n">DOM</span> <span class="n">x</span><span class="o">,</span> <span class="n">DOM</span> <span class="n">y</span><span class="o">,</span> <span class="n">F</span> <span class="n">f</span><span class="o">)</span> <span class="o">{</span>
 </span><span class='line'>    <span class="cm">/* ... */</span>
 </span><span class='line'><span class="o">}</span>
 </span></code></pre></td></tr></table></div></figure>
@@ -2432,20 +2377,20 @@ in the terminal output)</p>
 <span class='line-number'>62</span>
 <span class='line-number'>63</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">make_hand</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">10</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">spades</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">3</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">2</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">clubs</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">10</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">spades</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">3</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span> <span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">2</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">)</span> <span class="p">};</span>
 </span><span class='line'>    <span class="n">hand</span>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
 </span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">:</span> <span class="o">~</span><span class="n">card</span> <span class="o">=</span> <span class="n">make_hand</span><span class="p">();</span>
 </span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;initial hand: &quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">AceD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">AceD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">1</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
 </span><span class='line'>    <span class="n">AceD</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;place top: &quot;</span><span class="p">);</span>
 </span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_top</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">AceD</span><span class="p">);</span>
 </span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="kd">let</span> <span class="n">SixD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="mi">6</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">SixD</span> <span class="o">=</span> <span class="o">~</span><span class="n">card</span><span class="p">{</span> <span class="n">suit</span><span class="o">:</span> <span class="n">diamonds</span><span class="p">,</span> <span class="n">rank</span><span class="o">:</span> <span class="m">6</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">};</span>
 </span><span class='line'>    <span class="n">SixD</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;place bot: &quot;</span><span class="p">);</span>
 </span><span class='line'>    <span class="kd">let</span> <span class="n">hand</span> <span class="o">=</span> <span class="n">place_bot</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">hand</span><span class="p">),</span> <span class="n">SixD</span><span class="p">);</span>
 </span><span class='line'>    <span class="n">hand</span><span class="p">.</span><span class="n">report</span><span class="p">(</span><span class="o">~</span><span class="s">&quot;new hand: &quot;</span><span class="p">);</span>
@@ -2470,11 +2415,11 @@ in the terminal output)</p>
 </span><span class='line'>
 </span><span class='line'><span class="k">fn</span> <span class="n">rank_to_str</span><span class="p">(</span><span class="n">r</span><span class="o">:</span><span class="kt">u8</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">~</span><span class="kt">str</span> <span class="p">{</span>
 </span><span class='line'>    <span class="k">match</span> <span class="n">r</span> <span class="p">{</span>
-</span><span class='line'>        <span class="mi">1</span>     <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;A&quot;</span><span class="p">,</span>
-</span><span class='line'>        <span class="mf">2.</span><span class="p">.</span><span class="mi">10</span> <span class="o">=&gt;</span> <span class="n">r</span><span class="p">.</span><span class="n">to_str</span><span class="p">(),</span>
-</span><span class='line'>        <span class="mi">11</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;J&quot;</span><span class="p">,</span>
-</span><span class='line'>        <span class="mi">12</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;Q&quot;</span><span class="p">,</span>
-</span><span class='line'>        <span class="mi">13</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;K&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">1</span>     <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;A&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">2.</span><span class="p">.</span><span class="m">10</span> <span class="o">=&gt;</span> <span class="n">r</span><span class="p">.</span><span class="n">to_str</span><span class="p">(),</span>
+</span><span class='line'>        <span class="m">11</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;J&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">12</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;Q&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="m">13</span>    <span class="o">=&gt;</span> <span class="o">~</span><span class="s">&quot;K&quot;</span><span class="p">,</span>
 </span><span class='line'>        <span class="n">_</span>     <span class="o">=&gt;</span> <span class="n">fail</span><span class="o">!</span><span class="p">()</span>
 </span><span class='line'>    <span class="p">}</span>
 </span><span class='line'><span class="p">}</span>
@@ -2989,6 +2934,67 @@ as you can see from looking at the source for the line above,</p>
 
     </article>
   
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/01/02/osx-tiled-window-management/">OS X Tiled Window Management With Slate</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-01-02T22:34:00+01:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>I recently discovered <a href="https://github.com/jigish/slate" title="Slate: github repository">Slate</a>, an
+open-source window-management tool for Mac OS X.</p>
+
+<p>It is very cool, mainly in that it is very configurable (but with a
+reasonably readable syntax for its configuration file).</p>
+
+<p>Perhaps the most important thing to say is: Do not judge it solely
+based upon its default configuration file, which is very bare bones
+and does not illustrate anything near the full feature set that it
+offers.</p>
+
+<p>Instead, I recommend one at least read over Tristan Hume'e <a href="http://thume.ca/howto/2012/11/19/using-slate/" title="Tristan Hume: Using Slate">blog post</a>,
+which advertises Slate much more effectively than the project&rsquo;s
+github page.  The blog post describes some of the crucial features that are not
+exposed in the default configuration.  In particular, the
+window-switcher shortcut, which overlays each window with a
+letter to give that window focus, is much more tile-friendly
+if you also turn on</p>
+
+<pre><code>config windowHintsIgnoreHiddenWindows false
+config windowHintsShowIcons true
+</code></pre>
+
+<p>You can see this and other custimzations I have made for myself
+in my own <code>.slate</code> file, which I keep with my other dotfiles in
+<a href="https://github.com/pnkfelix/DotFiles/blob/master/slate" title="Felix's DotFiles github repo">my public repository</a>.</p>
+</div>
+  
+  
+
+
+    </article>
+  
   <div class="pagination">
     
       <a class="prev" href="2">&larr; Older</a>
@@ -3004,10 +3010,6 @@ as you can see from looking at the source for the line above,</p>
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/blog/2015/10/16/gc-and-rust-part-1-the-roots-of-integration/">GC and Rust Part 1: The Roots of Integration</a>
-      </li>
-    
-      <li class="post">
         <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
@@ -3021,6 +3023,10 @@ as you can see from looking at the source for the line above,</p>
     
       <li class="post">
         <a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing syntax for associated items in Rust</a>
       </li>
     
   </ul>
