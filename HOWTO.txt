@@ -15,11 +15,20 @@
     in one's `~/.profile`, which I suppose I will consider doing eventually
     if I encounter similar problems.
 
-* `rake preview` starts a local webserver for previewing generated content;
-  visit via http://localhost:4000/
-  Note that this preview version at port 4000 includes unpublished posts
-  (i.e. one's with `published: false`), while the pages in `_deploy/` will
-  not include unpublished posts.
+* `jekyll serve --drafts` starts a local webserver for previewing generated
+   content; visit via `http://localhost:4000/`
+
+   Note that this preview version at port 4000 includes unpublished posts
+   in the `source/_drafts/` folder, which will not be published on calls
+   to `rake generate` or `rake deploy`.
+
+   `rake preview` also starts a local webserver for previewing generated content,
+   but it has different behavior in how it handles drafting (it wants you to
+   embed `published: false` into draft files, at least originally, and I
+   cannot get even that to work with Octopress 3.0), and it seems like it is
+   generally less reliable than using `jekyll serve` directly (e.g. it seemed
+   to take an absurdly long time to pick up on when I made changes to my draft
+   posts).
 
 * `rake deploy` deploys the content to the target site (i.e.: takes it live).
 

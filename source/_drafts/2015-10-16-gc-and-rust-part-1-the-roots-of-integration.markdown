@@ -4,7 +4,6 @@ title: "GC and Rust Part 1: The Roots of Integration"
 date: 2015-10-16 15:24
 comments: true
 categories:
-published: false
 ---
 
 This is the first in a series of posts will discuss why garbage
