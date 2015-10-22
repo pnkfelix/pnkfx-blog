@@ -6,6 +6,129 @@ comments: true
 categories:
 ---
 
+<script>
+function digraph(content) {
+    return 'digraph { bgcolor="transparent"; ' +
+      ' overlap="false"; ' +  // if left out, nodes may overlap
+      ' start=0; ' +          // seed the RNG (for consistency)
+      '\n' + content  + '}';
+}
+
+function lr_digraph(content) {
+    return digraph('rankdir="LR"; '+content);
+}
+
+function make_regfile(rf_id) {
+    var rf = {
+        id: rf_id,
+        label: "<id>" + rf_id + " | <r0>r0 | <r1>r1 | <r2>r2 | <r3>r3",
+        shape: "record"
+    };
+
+    rf.link = function(source, target) {
+        if (!(0 <= source <= 3)) {
+            console.error("unknown regfile source: "+source);
+        }
+        this['r'+source] = {
+            source_port: ':r'+source+':e',
+            target: target,
+            is_edge: true,
+        };
+    }
+
+    return rf;
+}
+
+function simple_gc_structure() {
+    var rf = make_regfile("RF");
+    var a = { id: "A" };
+    var b = { id: "B" };
+    var c = { id: "C" };
+    var d = { id: "D" };
+    var e = { id: "E" };
+    var f = { id: "F" };
+    b.f0 = c;
+    d.f0 = a;
+    d.f1 = e;
+    e.f0 = f;
+    f.f0 = e;
+
+    rf.link(0, a);
+    rf.link(1, b);
+    rf.link(3, c);
+
+    return [rf, d];
+}
+
+function copied_gc_structure() {
+    var rf = make_regfile("RF");
+    var a = { id: "A" };
+    var b = { id: "B" };
+    var c = { id: "C" };
+    var d = { id: "D" };
+    var e = { id: "E" };
+    var f = { id: "F" };
+
+    var a2 = { id: "A2", label: "A'" };
+    var b2 = { id: "B2", label: "B'" };
+    var c2 = { id: "C2", label: "C'" };
+
+    b.f0 = c;
+    d.f0 = a;
+    d.f1 = e;
+    e.f0 = f;
+    f.f0 = e;
+
+    b2.f0 = c2;
+
+    a.fwd = a2;
+    b.fwd = b2;
+    c.fwd = c2;
+
+    rf.link(0, a2);
+    rf.link(1, b2);
+    rf.link(3, c2);
+
+    return [rf, d, a, b, c];
+}
+
+function simple_gc2() {
+    var [rf, d] = simple_gc_structure();
+    // for_each_reachable([d], hide, hide);
+    // for_each_reachable([rf], unhide);
+    var content = render_objects([rf, d]);
+    return lr_digraph(content);
+}
+
+// Warning: I have not yet managed to get `options` to work.
+function post_graph(target, g, options) {
+    var elem = document.getElementById(target)
+    // elem.innerHTML += "<code>" + g + "</code>"
+    if (options) {
+        elem.innerHTML += Viz(g, options);
+    } else {
+        elem.innerHTML += Viz(g, "svg");
+    }
+}
+
+function post_objects(target, objects) {
+    var g = lr_digraph(render_objects(objects));
+    var elem = document.getElementById(target)
+    // elem.innerHTML += "<code>" + g + "</code>"
+    elem.innerHTML += Viz(g, "svg")
+}
+</script>
+
+<script src="/javascripts/viz.js" charset="utf-8"></script>
+<script src="/javascripts/js_to_dot.js" charset="utf-8"></script>
+
+<p id="target_anchor1"></p>
+<script>
+post_graph("target_anchor1", simple_gc2());
+</script>
+
+## Post really starts here!
+
 This is the first in a series of posts will discuss why garbage
 collection is hard, especially for Rust, and brainstorm about
 solutions to the problems we face.
@@ -45,38 +168,38 @@ reached (and therefore cannot be used in the future).<sup>[1](#footnote1)</sup>
 
 When one says "garbage collector", one usually means a "*tracing*
 garbage collector": a collector that works by identifying the
-reachable objects by computing from the object graph the connected
-components that include the "roots", i.e. the starting points from
+reachable objects by computing the connected
+components that include the "roots" of the object graph, i.e. the starting points from
 which any chain of references originates.
 
+So, for example, we might have the following set of
+gc-managed objects (labelled "A" through "F" below),
+along with a register file labelled "RF".
+
+<p id="target_anchor2"></p>
 <script>
-function make_graph0() {
-    return "digraph { A -> B; }"
-}
-function make_graph1() {
-    var dot_source = 'digraph { bgcolor="transparent";'
-    // dot_source += ' layout="neato"; inputscale=72;'
-    dot_source += ' overlap="false";' // if left out, nodes may overlap
-    dot_source += ' start=0;' // seed the RNG (for consistency)
-    dot_source += ' node [shape=record];'
-    dot_source += ' A [label="{A_top | A_bot}"];'
-    dot_source += ' B [label="{B_top | B_bot}"];'
-    dot_source += ' A -> B'
-    dot_source += '}'
-    return dot_source;
-}
+post_objects("target_anchor2", simple_gc_structure());
 </script>
-<p id="target_anchor1"></p>
+
+In the simple model above, the roots *are* the processor
+registers. Such a model is applicable to a language runtime where all
+memory (*including* the stack frames) is managed by the garbage
+collector. (In other words, we are not talking about Rust yet.)
+
+The reachable objects, as stated above, are the connected
+components of the graph that includes the roots, highlighted
+in red below.
+
+<p id="target_anchor3"></p>
 <script>
-var g = make_graph0();
-var elem = document.getElementById("target_anchor1")
-elem.innerHTML += "<code>" + g + "</code>"
+var objects = simple_gc_structure();
+for_each_reachable([objects[0]], highlight, highlight);
+post_objects("target_anchor3", objects);
 </script>
-<script>
-var g = make_graph0()
-var elem = document.getElementById("target_anchor1")
-// elem.innerHTML += Viz(g, "svg")
-</script>
+
+A garbage collector would determine that the objects
+labelled "D", "E", and "F" are unreachable, and thus
+their storage can be reclaimed.
 
 ----
 
@@ -86,6 +209,251 @@ identify objects as dead even when reachable, such as using
 such method being used outside of a research setting.
 
 [collecting-more-garbage]: http://pop-art.inrialpes.fr/~fradet/PDFs/LISP94.pdf
+
+## How Garbage Collection works
+
+Garbage collectors are often divided into two categories: Copying
+collectors, and Mark-Sweep collectors. Both collectors accomplish the
+goal of identifying the reachable objects and reclaiming the
+remainder, but they do it in different ways.
+
+It is worthwhile to remember at this point that even though our object
+graphs are drawn as abstract circles and arrows, the objects are
+actually occupy space in memory and have a representation there.
+
+For example, here is one potential representation for the above object
+graph, where ` - ` denotes some value that the GC knows is not a
+memory reference. (Assume for this example that every GC allocated
+object is made from four consecutive words in memory.)
+
+<script>
+function make_memory_label(count, name_callback, val_callback) {
+    var addresses = "";
+    var contents = "";
+    var saw_one = false;
+    for (i = 0; i < count; i++) {
+        if (saw_one) { addresses += " | "; contents += " | ";}
+        var name;
+        if (name_callback) {
+            name = name_callback(i);
+        } else {
+            name = "0x1";
+            name += ("0000" + (i * 8).toString(16)).slice(-4);
+        }
+        addresses += name;
+        if (val_callback) { contents += val_callback(i, name); }
+        saw_one = true;
+    }
+    var label = "{ { " + addresses + " } | { " + contents + " } }";
+    return label;
+}
+
+function make_memory_addr_val(state) {
+var marks = (state == "marking") | (state == "post_sweep");
+var swept = (state == "post_sweep");
+
+var addr1=[
+          "<nd> 0x10000 (D) \\l",
+          "0x10004 \\l",
+          "0x10008 \\l",
+          "0x1000c \\l",
+          "<na> 0x10010 (A) \\l",
+          "0x10014 \\l",
+          "0x10018 \\l",
+          "0x1001c \\l",
+          "<ne> 0x10020 (E) \\l",
+          "0x10024 \\l",
+          "0x10028 \\l",
+          "0x1002c \\l",
+          "<nb> 0x10030 (B) \\l",
+          "0x10034 \\l",
+          "0x10038 \\l",
+          "0x1003c \\l",
+         ];
+var addr2 = [
+          "<nc> 0x10040 (C) \\l",
+          "0x10044 \\l",
+          "0x10048 \\l",
+          "0x1004c \\l",
+          "<ny> 0x10050 \\l",
+          "0x10054 \\l",
+          "0x10058 \\l",
+          "0x1005c \\l",
+          "<nf> 0x10060 (F) \\l",
+          "0x10064 \\l",
+          "0x10068 \\l",
+          "0x1006c \\l",
+          "<nz> 0x10070 \\l",
+          "0x10074 \\l",
+          "0x10078 \\l",
+          "0x1007c \\l",
+         ];
+var val1 = [
+           (swept ? "<vd> 0x10020" : "<vd> (header)"), // D
+           (swept ? " - "          : "<dpa> 0x10010"),
+           (swept ? " - "          : "<dpe> 0x10020"),
+           " - ",
+
+           (marks ? "<va> (marked)" : "<va> (header)"), // A
+           " - ",
+           " - ",
+           " - ",
+
+           (swept ? "<ve> 0x10050" : "<ve> (header)"), // (E)
+           (swept ? " - "          : "<epf> 0x10060"),
+           " - ",
+           " - ",
+
+           (marks ? "<vb> (marked)" : "<vb> (header)"), // (B)
+           "<bpc> 0x10040",
+           " - ",
+           " - ",
+          ];
+var val2 = [
+           (marks ? "<vc> (marked)" : "<vc> (header)"), // (C)
+           " - ",
+           " - ",
+           " - ",
+
+           (swept ? "<vy> 0x10060" : "<vy> (header)"), // unused
+           " - ",
+           " - ",
+           " - ",
+
+           (swept ? "<vf> 0x10070" : "<vf> (header)"), // (F)
+           " - ",
+           (swept ? " - "          : "<fpe> 0x10020"),
+           " - ",
+
+           (swept ? "<vz> null" : "<vz> (header) "), // unused
+           " - ",
+           " - ",
+           " - ",
+          ];
+
+    return [addr1, val1, addr2, val2];
+}
+</script>
+
+<script>
+function make_graph_in_memory(options) {
+    var original = options.original;
+    var marking  = options.marking;
+    var marked = options.marked;
+    var swept  = options.swept;
+
+    var rf = make_regfile("RF");
+    var addrval = make_memory_addr_val(options);
+    var addr1 = addrval[0];
+    var val1 = addrval[1];
+    var addr2 = addrval[2];
+    var val2 = addrval[3];
+
+    rf.label = "<id>RF | { { <r0>r0 | <r1>r1 | <r2>r2 | <r3>r3 } | " +
+        "{ <r0v>0x10010 | <r1v>0x10030 | <r2v> | <r3v>0x10040 } }";
+    rf.pos = "0,500!";
+    var graph_in_memory = ['digraph { node [fontsize=8]; ',
+        'bgcolor="transparent";',
+        'layout="neato"; inputscale=72;',
+        // 'overlap="false";',
+        // 'node [ pin=true ];',
+        'rankdir="LR";',
+        'nodesep=1.2;',
+        // 'rank="same";',
+        'splines="curved";',
+        // 'node [font = "10px Monospace"];',
+        render_node(rf),
+        'mem1 [shape="record",',
+        'pos="120,500!",',
+        'label=\"'+make_memory_label(16,
+            function (i) { return addr1[i]; },
+            function (i, addr) { return val1[i]; })+'\",',
+        '];',
+        'hidden_ra  [ penwidth="0.001", pos="-50,550!", shape="point", label="", width=0 ];',
+        'hidden_rb  [ penwidth="0.001", pos="-50,450!", shape="point", label="", width=0 ];',
+        'hidden_rc  [ penwidth="0.001", pos="-40,650!", shape="point", label="", width=0 ];',
+        'hidden_da  [ penwidth="0.001", pos="200,590!", shape="point", label="", width=0 ];',
+        'hidden_de  [ penwidth="0.001", pos="200,550!", shape="point", label="", width=0 ];',
+        'hidden_bc  [ penwidth="0.001", pos="220,600!", shape="point", label="", width=0 ];',
+        'hidden_fe1 [ penwidth="0.001", pos="375,350!", shape="point", label="", width=0 ];',
+        'hidden_fe2 [ penwidth="0.001", pos="25,350!", shape="point", label="", width=0 ];',
+        'mem2 [shape="record",',
+        'pos="300,500!",',
+        'label=\"'+make_memory_label(16,
+            function (i) { return addr2[i]; },
+            function (i, addr) { return val2[i]; })+'\",',
+        '];',
+        !marking ? 'RF:r0:w -> hidden_ra [arrowhead="none"];' : 'RF:r0:w -> hidden_ra [arrowhead="none",penwidth=3.0];',
+        !marking ? 'hidden_ra -> mem1:na:w;' : 'hidden_ra -> mem1:na:w [label="1", penwidth=3.0];',
+        !marking ? 'RF:r1:w -> hidden_rb [arrowhead="none"];' : 'RF:r1:w -> hidden_rb [arrowhead="none",penwidth=3.0];',
+        !marking ? 'hidden_rb -> mem1:nb:w;' : 'hidden_rb -> mem1:nb:w [label="2", penwidth=3.0,penwidth=3.0];',
+        !marking ? 'RF:r3:w -> hidden_rc [arrowhead="none"];' : 'RF:r3:w -> hidden_rc [arrowhead="none",penwidth=3.0];',
+        !marking ? 'hidden_rc -> mem2:nc:w;' : 'hidden_rc -> mem2:nc:w [label="4", penwidth=3.0];',
+        original ? 'mem1:dpa:e -> hidden_da [arrowhead="none"];' : '',
+        original ? 'hidden_da -> mem1:va:e;' : '',
+        original ? 'mem1:dpe:e -> hidden_de [arrowhead="none"];' : '',
+        original ? 'hidden_de -> mem1:ve:e;' : '',
+        original ? 'mem1:epf:e -> mem2:nf:w;' : '',
+        !marking ? 'mem1:bpc:e -> hidden_bc [arrowhead="none"];' :
+                 'mem1:bpc:e -> hidden_bc [arrowhead="none", label="3", penwidth=3.0];',
+        !marking ? 'hidden_bc -> mem2:nc:w;' : 'hidden_bc -> mem2:nc:w [penwidth=3.0];',
+        original? 'mem2:fpe:e -> hidden_fe1 [arrowhead="none"];' : '',
+        original ? 'hidden_fe1 -> hidden_fe2 [arrowhead="none"];' : '',
+        original ? 'hidden_fe2 -> mem1:ne:w' : '',
+        '}'].join('\n');
+    return graph_in_memory;
+}
+</script>
+
+<p id="target_anchor4"></p>
+<script>
+var graph_in_memory = make_graph_in_memory({original:true});
+post_graph("target_anchor4", graph_in_memory);
+</script>
+
+### Mark-Sweep Collection
+
+A Mark-Sweep collector works by first doing a traversal of the
+reachable memory, *marking* each object it finds (e.g. by setting a
+bit reserved in the object header, or in separate mark bitmap if there
+is no such bit reserved). This traversal requires some amount of extra
+memory on the side to track remaining work (e.g. a stack of objects we are in
+the midst of traversing, or a queue of objects scheduled for future
+traversal).
+
+
+<p id="target_anchor5"></p>
+<script>
+var graph_in_memory = make_graph_in_memory({marking:true, marked:true});
+post_graph("target_anchor5", graph_in_memory);
+</script>
+
+
+After that is finished, it then *sweeps* over the memory
+and builds up a free-list of blocks that were not marked during the
+traversal.
+
+<p id="target_anchor6"></p>
+<script>
+var graph_in_memory = make_graph_in_memory({marked:true, swept: true});
+post_graph("target_anchor6", graph_in_memory);
+</script>
+
+
+
+### Copying Collection
+
+A Copying collector moves objects from one location to another as part
+of its tracing process, and updates the references in reachable
+objects as it goes.
+
+
+<p id="target_anchor7"></p>
+<script>
+var objects = copied_gc_structure();
+post_objects("target_anchor7", objects);
+</script>
+
 
 ## The Problem Space
 
