@@ -47,11 +47,13 @@ function simple_gc_structure() {
     var d = { id: "D" };
     var e = { id: "E" };
     var f = { id: "F" };
+    var g = { id: "G" };
     b.f0 = c;
     d.f0 = a;
     d.f1 = e;
     e.f0 = f;
     f.f0 = e;
+    c.f0 = g;
 
     rf.link(0, a);
     rf.link(1, b);
@@ -68,22 +70,27 @@ function copied_gc_structure() {
     var d = { id: "D" };
     var e = { id: "E" };
     var f = { id: "F" };
+    var g = { id: "G" };
 
     var a2 = { id: "A2", label: "A'" };
     var b2 = { id: "B2", label: "B'" };
     var c2 = { id: "C2", label: "C'" };
+    var g2 = { id: "G2", label: "G'" };
 
     b.f0 = c;
+    c.f0 = g;
     d.f0 = a;
     d.f1 = e;
     e.f0 = f;
     f.f0 = e;
 
     b2.f0 = c2;
+    c2.f0 = g2;
 
-    a.fwd = a2;
-    b.fwd = b2;
-    c.fwd = c2;
+    a.fwd = dashed_edge(a2);
+    b.fwd = dashed_edge(b2);
+    c.fwd = dashed_edge(c2);
+    g.fwd = dashed_edge(g2);
 
     rf.link(0, a2);
     rf.link(1, b2);
@@ -149,8 +156,9 @@ To explain why, I need to define the actual problems we seek to solve.
 
 <!-- more -->
 
-(The body of this post makes heavy use of client-side rendering.  You
-may need to wait a moment while the supporting Javascript loads.)
+(The body of this post makes heavy use of client-side rendering,
+because of author idiosyncrasies.  You may need to wait a moment while
+the supporting Javascript loads.)
 
 <script src="/javascripts/viz.js" charset="utf-8"></script>
 
@@ -190,10 +198,16 @@ collector. (In other words, we are not talking about Rust yet.)
 
 The reachable objects, as stated above, are the connected
 components of the graph that includes the roots, highlighted
-in red below.
+below.
 
 <p id="target_anchor3"></p>
 <script>
+// Overriding the `highlight` I put into js_to_dot.js
+function highlight(object) {
+    object.penwidth = "3.0";
+    return object;
+}
+
 var objects = simple_gc_structure();
 for_each_reachable([objects[0]], highlight, highlight);
 post_objects("target_anchor3", objects);
@@ -203,7 +217,7 @@ A garbage collector would determine that the objects
 labelled "D", "E", and "F" are unreachable, and thus
 their storage can be reclaimed.
 
-----
+#### Footnotes I
 
 <a name="footnote1">1.</a> Researchers have explored methods exist to
 identify objects as dead even when reachable, such as using
@@ -213,14 +227,26 @@ such method being used outside of a research setting.
 [collecting-more-garbage]: http://pop-art.inrialpes.fr/~fradet/PDFs/LISP94.pdf
 
 ## How Garbage Collection works
+[how-gc-works]: #how-garbage-collection-works
 
-A Garbage collector is often presented as a *coroutine* that is linked
-in with the main program, which itself is often referred to as a
-"mutator", since it is the entity that *mutates* the object graph.
-(The collector does not modify the abstract object graph, but rather
-the *representation* of the object graph in memory.)
+(You can skip ahead to the [next section][problem-space] if you feel
+you are already well-versed in the low-level mechanics of garbage
+collection.)
 
-Garbage collectors are often divided into two categories: Copying
+A garbage collector is often presented as a
+*coroutine*<sup>[2](#footnote2)</sup> that is linked in with the main
+program, which itself is often referred to as a "mutator", since it is
+the entity that *mutates* the object graph.  (The collector does not
+modify the abstract object graph, but rather the *representation* of
+the object graph in memory.)
+
+The mutator requests memory from some allocation service (usually deeply
+integrated with the garbage collector for reasons we will see).
+If there is a memory block immediately available to satisfy the request,
+then the allocator hands that over. If there is not sufficient free
+memory, then the garbage collector coroutine is invoked.
+
+Garbage collectors are also often divided into two categories: Copying
 collectors, and Mark-Sweep collectors. Both collectors accomplish the
 goal of identifying the reachable objects and reclaiming the
 remainder, but they do it in different ways.
@@ -291,14 +317,14 @@ var addr2 = [
           "0x10064 \\l",
           "0x10068 \\l",
           "0x1006c \\l",
-          "<nz> 0x10070 \\l",
+          "<ng> 0x10070 (G) \\l",
           "0x10074 \\l",
           "0x10078 \\l",
           "0x1007c \\l",
          ];
 var val1 = [
-           (swept ? "<vd> 0x10020" : "<vd> (header)"), // D
-           (swept ? " - "          : "<dpa> 0x10010"),
+           (swept ? "<vd> (free) " : "<vd> (header)"), // D
+           (swept ? "<f0> 0x10020" : "<dpa> 0x10010"),
            (swept ? " - "          : "<dpe> 0x10020"),
            " - ",
 
@@ -307,8 +333,8 @@ var val1 = [
            " - ",
            " - ",
 
-           (swept ? "<ve> 0x10050" : "<ve> (header)"), // (E)
-           (swept ? " - "          : "<epf> 0x10060"),
+           (swept ? "<ve> (free) " : "<ve> (header)"), // (E)
+           (swept ? "<f1> 0x10050" : "<epf> 0x10060"),
            " - ",
            " - ",
 
@@ -319,21 +345,21 @@ var val1 = [
           ];
 var val2 = [
            (marks ? "<vc> (marked)" : "<vc> (header)"), // (C)
-           " - ",
-           " - ",
-           " - ",
-
-           (swept ? "<vy> 0x10060" : "<vy> (header)"), // unused
-           " - ",
+           "<cpg> 0x10070",
            " - ",
            " - ",
 
-           (swept ? "<vf> 0x10070" : "<vf> (header)"), // (F)
+           (swept ? "<vy> (free) " : "<vy> (header)"), // unused
+           (swept ? "<f2> 0x10060" : " - "),
            " - ",
+           " - ",
+
+           (swept ? "<vf> (free) " : "<vf> (header)"), // (F)
+           (swept ? "<f3> null " : " - "),
            (swept ? " - "          : "<fpe> 0x10020"),
            " - ",
 
-           (swept ? "<vz> null" : "<vz> (header) "), // unused
+           (marks ? "<vg> (marked)" : "<vg> (header) "), // (G)
            " - ",
            " - ",
            " - ",
@@ -383,10 +409,11 @@ function make_graph_in_memory(options) {
         'hidden_rc  [ pos="-30,660!", shape="point", label="", width=0 ];',
         'hidden_da  [ pos="200,590!", shape="point", label="", width=0 ];',
         'hidden_de  [ pos="200,540!", shape="point", label="", width=0 ];',
-        'hidden_bc  [ pos="220,600!", shape="point", label="", width=0 ];',
+        'hidden_bc  [ pos="220,590!", shape="point", label="", width=0 ];',
+        'hidden_cg  [ pos="375,590!", shape="point", label="", width=0 ];',
         'hidden_fe1 [ pos="375,350!", shape="point", label="", width=0 ];',
         'hidden_fe2 [ pos="25,350!", shape="point", label="", width=0 ];',
-        'hidden_yf [ pos="375,550!", shape="point", label="", width=0 ];',
+        'hidden_yf [ pos="375,500!", shape="point", label="", width=0 ];',
         'hidden_fz [ pos="375,450!", shape="point", label="", width=0 ];',
         free_list ? 'free_list [ pos="0,620!", shape="rectangle", label="free-list" ];' : '',
         'mem2 [shape="record",',
@@ -401,7 +428,7 @@ function make_graph_in_memory(options) {
         !marking ? 'RF:r1:w -> hidden_rb [arrowhead="none"];' : 'RF:r1:w -> hidden_rb [arrowhead="none",penwidth=3.0];',
         !marking ? 'hidden_rb -> mem1:nb:w;' : 'hidden_rb -> mem1:nb:w [label="2", penwidth=3.0,penwidth=3.0];',
         !marking ? 'RF:r3:w -> hidden_rc [arrowhead="none"];' : 'RF:r3:w -> hidden_rc [arrowhead="none",penwidth=3.0];',
-        !marking ? 'hidden_rc -> mem2:nc:w;' : 'hidden_rc -> mem2:nc:w [label="4", penwidth=3.0];',
+        !marking ? 'hidden_rc -> mem2:nc:w;' : 'hidden_rc -> mem2:nc:w [label="5", penwidth=3.0];',
         original ? 'mem1:dpa:e -> hidden_da [arrowhead="none"];' : '',
         original ? 'hidden_da -> mem1:va:e;' : '',
         original ? 'mem1:dpe:e -> hidden_de [arrowhead="none"];' : '',
@@ -410,17 +437,18 @@ function make_graph_in_memory(options) {
         !marking ? 'mem1:bpc:e -> hidden_bc [arrowhead="none"];' :
                  'mem1:bpc:e -> hidden_bc [arrowhead="none", label="3", penwidth=3.0];',
         !marking ? 'hidden_bc -> mem2:nc:w;' : 'hidden_bc -> mem2:nc:w [penwidth=3.0];',
+        !marking ? 'mem2:cpg:e -> hidden_cg [arrowhead="none"];' :
+                 'mem2:cpg:e -> hidden_cg [arrowhead="none", label="4", penwidth=3.0];',
+        !marking ? 'hidden_cg -> mem2:vg:e;' : 'hidden_cg -> mem2:vg:e [penwidth=3.0];',
         original? 'mem2:fpe:e -> hidden_fe1 [arrowhead="none"];' : '',
         original ? 'hidden_fe1 -> hidden_fe2 [arrowhead="none"];' : '',
         original ? 'hidden_fe2 -> mem1:ne:w' : '',
-        free_list ? 'free_list -> mem1:nd:w [style="dashed"]' : '',
-        free_list ? 'mem1:vd:e -> hidden_de [style="dashed", arrowhead="none"]' : '',
-        free_list ? 'hidden_de -> mem1:ve:e [style="dashed"]' : '',
-        free_list ? 'mem1:ve:e -> mem2:ny:w [style="dashed"]' : '',
-        free_list ? 'mem2:vy:e -> hidden_yf [style="dashed", arrowhead="none"]' : '',
-        free_list ? 'hidden_yf -> mem2:vf:e [style="dashed"]' : '',
-        free_list ? 'mem2:vf:e -> hidden_fz [style="dashed", arrowhead="none"]' : '',
-        free_list ? 'hidden_fz -> mem2:vz:e [style="dashed"]' : '',
+        free_list ? 'free_list -> mem1:nd:w [style="dashed",penwidth=3.0]' : '',
+        free_list ? 'mem1:f0:e -> hidden_de [style="dashed",penwidth=3.0, arrowhead="none"]' : '',
+        free_list ? 'hidden_de -> mem1:ve:e [style="dashed",penwidth=3.0]' : '',
+        free_list ? 'mem1:f1:e -> mem2:ny:w [style="dashed",penwidth=3.0]' : '',
+        free_list ? 'mem2:f2:e -> hidden_yf [style="dashed",penwidth=3.0, arrowhead="none"]' : '',
+        free_list ? 'hidden_yf -> mem2:vf:e [style="dashed",penwidth=3.0]' : '',
 
         '}'].join('\n');
 
@@ -450,18 +478,24 @@ var graph_in_memory = make_graph_in_memory({marking:true, marked:true});
 post_graph("target_anchor5", graph_in_memory);
 </script>
 
-(The numbers on the arcs above are meant to correspond to a
+The numbers on the arcs above are meant to correspond to a
 hypothetical traversal order as the GC marks the memory; particular
-tracing strategies may yield different orders. Also, I have left the
+tracing strategies may yield different orders. (No matter what, we
+will not trace object "G" until after we have seen "C" via some
+route.)
+
+Also, I have left the
 memory for the mark-stack out of the picture; in this case the
 mark-stack would not grow very large, but in general one must
 anticipate the mark-stack growing as large as the longest path through
-the object graph.)
+the reachable object graph. (The longest path in this case is three
+objects long.)
 
 A Mark-Sweep collector does not move objects, so it must resort to
 metadata such as a free-list to track reclaimed memory.  So, after the
-marking is finished, the GC then *sweeps* over the memory and builds
-up a free-list of blocks that were not marked during the traversal.
+marking is finished, the GC then *sweeps* over the memory: it walks
+over the GC-managed address space<sup>[3](#footnote3)</sup> and
+builds up a free-list of blocks that were not marked during the traversal.
 
 <p id="target_anchor6"></p>
 <script>
@@ -470,7 +504,9 @@ post_graph("target_anchor6", graph_in_memory);
 </script>
 
 (The arcs that make up the free-list above are dashed, to distinguish
-them from the "real" references that make up the object graph.)
+them from the "real" references that make up the object graph. In the
+above scheme, the pointer to the next element in the free list is held
+in the second word of each free block.<sup>[4](#footnote4)</sup>.)
 
 With that, the GC is done; the mutator (i.e. main program) is now free
 to take blocks off of the free-list to satisfy memory requests.
@@ -488,8 +524,37 @@ var objects = copied_gc_structure();
 post_objects("target_anchor7", objects);
 </script>
 
+#### Footnotes II
+
+<a name="footnote2">2.</a> Coroutines are much like subroutines,
+except that instead of having a parent-child relationship (where the
+child subroutine "returns" to the parent caller), a call from
+coroutine A to coroutine B:
+
+  1. saves the current context of where A curretly is,
+
+  2. transfers control to B,
+
+  3. the next time B calls A, resume the context that was saved in step 1.
+
+<a name="footnote3">3.</a> Note that the sweeping step in a Mark-Sweep
+collector requires that the GC-managed memory be formatted in a way
+such that the collector can "parse" it. For example, the mark bit for
+each object needs to be located at predictable location, and the GC
+needs to be able to derive the size of each object it looks at. (The
+address-space could be partitioned into size classes, as we did above;
+or the size could be recorded in the header of each object if they are
+to be variable sized. There are clever representation techniques that
+avoid the use of header words for small objects like pairs without
+requiring size-class partitioning; but I digress.)
+
+<a name="footnote4">4.</a> Putting the `next`-pointers for the
+free-list into the second word of each four-word block is one way of
+satisfying the aforementioned requirement that the GC-managed memory
+be parseable.
 
 ## The Problem Space
+[problem-space]: #the-problem-space
 
 I have identified two distinct kinds of support that we could provide:
 
