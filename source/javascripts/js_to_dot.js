@@ -182,6 +182,10 @@ function unhide(object) {
     return object;
 }
 
+function dashed_edge(target) {
+    return { is_edge: true, target: target, style: "dashed" };
+}
+
 function highlighted_edge(target) {
     return highlight({ is_edge: true,  target: target });
 }
