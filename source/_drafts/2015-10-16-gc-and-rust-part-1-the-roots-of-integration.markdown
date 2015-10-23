@@ -124,7 +124,9 @@ function post_objects(target, objects) {
 
 <p id="target_anchor1"></p>
 <script>
-post_graph("target_anchor1", simple_gc2());
+var [rf, d] = simple_gc_structure();
+var content = render_objects([rf]);
+post_graph("target_anchor1", lr_digraph(content));
 </script>
 
 ## Post really starts here!
@@ -212,6 +214,12 @@ such method being used outside of a research setting.
 
 ## How Garbage Collection works
 
+A Garbage collector is often presented as a *coroutine* that is linked
+in with the main program, which itself is often referred to as a
+"mutator", since it is the entity that *mutates* the object graph.
+(The collector does not modify the abstract object graph, but rather
+the *representation* of the object graph in memory.)
+
 Garbage collectors are often divided into two categories: Copying
 collectors, and Mark-Sweep collectors. Both collectors accomplish the
 goal of identifying the reachable objects and reclaiming the
@@ -228,9 +236,9 @@ object is made from four consecutive words in memory.)
 
 <script>
 function make_memory_label(count, name_callback, val_callback) {
-    var addresses = "";
-    var contents = "";
-    var saw_one = false;
+    var addresses = "ADDRESS";
+    var contents = "CONTENT";
+    var saw_one = true;
     for (i = 0; i < count; i++) {
         if (saw_one) { addresses += " | "; contents += " | ";}
         var name;
@@ -249,8 +257,8 @@ function make_memory_label(count, name_callback, val_callback) {
 }
 
 function make_memory_addr_val(state) {
-var marks = (state == "marking") | (state == "post_sweep");
-var swept = (state == "post_sweep");
+var marks = state.marked;
+var swept = state.swept;
 
 var addr1=[
           "<nd> 0x10000 (D) \\l",
@@ -341,6 +349,7 @@ function make_graph_in_memory(options) {
     var marking  = options.marking;
     var marked = options.marked;
     var swept  = options.swept;
+    var free_list = options.free_list;
 
     var rf = make_regfile("RF");
     var addrval = make_memory_addr_val(options);
@@ -369,22 +378,26 @@ function make_graph_in_memory(options) {
             function (i) { return addr1[i]; },
             function (i, addr) { return val1[i]; })+'\",',
         '];',
-        'hidden_ra  [ penwidth="0.001", pos="-50,550!", shape="point", label="", width=0 ];',
-        'hidden_rb  [ penwidth="0.001", pos="-50,450!", shape="point", label="", width=0 ];',
-        'hidden_rc  [ penwidth="0.001", pos="-40,650!", shape="point", label="", width=0 ];',
-        'hidden_da  [ penwidth="0.001", pos="200,590!", shape="point", label="", width=0 ];',
-        'hidden_de  [ penwidth="0.001", pos="200,550!", shape="point", label="", width=0 ];',
-        'hidden_bc  [ penwidth="0.001", pos="220,600!", shape="point", label="", width=0 ];',
-        'hidden_fe1 [ penwidth="0.001", pos="375,350!", shape="point", label="", width=0 ];',
-        'hidden_fe2 [ penwidth="0.001", pos="25,350!", shape="point", label="", width=0 ];',
+        'hidden_ra  [ pos="-50,550!", shape="point", label="", width=0 ];',
+        'hidden_rb  [ pos="-50,450!", shape="point", label="", width=0 ];',
+        'hidden_rc  [ pos="-30,660!", shape="point", label="", width=0 ];',
+        'hidden_da  [ pos="200,590!", shape="point", label="", width=0 ];',
+        'hidden_de  [ pos="200,540!", shape="point", label="", width=0 ];',
+        'hidden_bc  [ pos="220,600!", shape="point", label="", width=0 ];',
+        'hidden_fe1 [ pos="375,350!", shape="point", label="", width=0 ];',
+        'hidden_fe2 [ pos="25,350!", shape="point", label="", width=0 ];',
+        'hidden_yf [ pos="375,550!", shape="point", label="", width=0 ];',
+        'hidden_fz [ pos="375,450!", shape="point", label="", width=0 ];',
+        free_list ? 'free_list [ pos="0,620!", shape="rectangle", label="free-list" ];' : '',
         'mem2 [shape="record",',
         'pos="300,500!",',
         'label=\"'+make_memory_label(16,
             function (i) { return addr2[i]; },
             function (i, addr) { return val2[i]; })+'\",',
         '];',
-        !marking ? 'RF:r0:w -> hidden_ra [arrowhead="none"];' : 'RF:r0:w -> hidden_ra [arrowhead="none",penwidth=3.0];',
-        !marking ? 'hidden_ra -> mem1:na:w;' : 'hidden_ra -> mem1:na:w [label="1", penwidth=3.0];',
+        // !marking ? 'RF:r0:w -> hidden_ra [arrowhead="none"];' : 'RF:r0:w -> hidden_ra [arrowhead="none",penwidth=3.0];',
+        // !marking ? 'hidden_ra -> mem1:na:w;' : 'hidden_ra -> mem1:na:w [label="1", penwidth=3.0];',
+        !marking ? 'RF:r0v:e -> mem1:na:w;' : 'RF:r0v:e -> mem1:na:w [label="1", penwidth=3.0];',
         !marking ? 'RF:r1:w -> hidden_rb [arrowhead="none"];' : 'RF:r1:w -> hidden_rb [arrowhead="none",penwidth=3.0];',
         !marking ? 'hidden_rb -> mem1:nb:w;' : 'hidden_rb -> mem1:nb:w [label="2", penwidth=3.0,penwidth=3.0];',
         !marking ? 'RF:r3:w -> hidden_rc [arrowhead="none"];' : 'RF:r3:w -> hidden_rc [arrowhead="none",penwidth=3.0];',
@@ -400,7 +413,17 @@ function make_graph_in_memory(options) {
         original? 'mem2:fpe:e -> hidden_fe1 [arrowhead="none"];' : '',
         original ? 'hidden_fe1 -> hidden_fe2 [arrowhead="none"];' : '',
         original ? 'hidden_fe2 -> mem1:ne:w' : '',
+        free_list ? 'free_list -> mem1:nd:w [style="dashed"]' : '',
+        free_list ? 'mem1:vd:e -> hidden_de [style="dashed", arrowhead="none"]' : '',
+        free_list ? 'hidden_de -> mem1:ve:e [style="dashed"]' : '',
+        free_list ? 'mem1:ve:e -> mem2:ny:w [style="dashed"]' : '',
+        free_list ? 'mem2:vy:e -> hidden_yf [style="dashed", arrowhead="none"]' : '',
+        free_list ? 'hidden_yf -> mem2:vf:e [style="dashed"]' : '',
+        free_list ? 'mem2:vf:e -> hidden_fz [style="dashed", arrowhead="none"]' : '',
+        free_list ? 'hidden_fz -> mem2:vz:e [style="dashed"]' : '',
+
         '}'].join('\n');
+
     return graph_in_memory;
 }
 </script>
@@ -417,10 +440,9 @@ A Mark-Sweep collector works by first doing a traversal of the
 reachable memory, *marking* each object it finds (e.g. by setting a
 bit reserved in the object header, or in separate mark bitmap if there
 is no such bit reserved). This traversal requires some amount of extra
-memory on the side to track remaining work (e.g. a stack of objects we are in
-the midst of traversing, or a queue of objects scheduled for future
-traversal).
-
+memory in reserve to track remaining work for the trace (e.g. a "mark
+stack" of objects we are in the midst of traversing, and/or a queue of
+objects scheduled for future traversal).
 
 <p id="target_anchor5"></p>
 <script>
@@ -428,18 +450,30 @@ var graph_in_memory = make_graph_in_memory({marking:true, marked:true});
 post_graph("target_anchor5", graph_in_memory);
 </script>
 
+(The numbers on the arcs above are meant to correspond to a
+hypothetical traversal order as the GC marks the memory; particular
+tracing strategies may yield different orders. Also, I have left the
+memory for the mark-stack out of the picture; in this case the
+mark-stack would not grow very large, but in general one must
+anticipate the mark-stack growing as large as the longest path through
+the object graph.)
 
-After that is finished, it then *sweeps* over the memory
-and builds up a free-list of blocks that were not marked during the
-traversal.
+A Mark-Sweep collector does not move objects, so it must resort to
+metadata such as a free-list to track reclaimed memory.  So, after the
+marking is finished, the GC then *sweeps* over the memory and builds
+up a free-list of blocks that were not marked during the traversal.
 
 <p id="target_anchor6"></p>
 <script>
-var graph_in_memory = make_graph_in_memory({marked:true, swept: true});
+var graph_in_memory = make_graph_in_memory({marked:true, swept: true, free_list: true});
 post_graph("target_anchor6", graph_in_memory);
 </script>
 
+(The arcs that make up the free-list above are dashed, to distinguish
+them from the "real" references that make up the object graph.)
 
+With that, the GC is done; the mutator (i.e. main program) is now free
+to take blocks off of the free-list to satisfy memory requests.
 
 ### Copying Collection
 
