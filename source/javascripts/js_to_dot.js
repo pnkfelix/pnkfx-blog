@@ -198,3 +198,22 @@ function object_record(id, contents) {
     return { id: id, shape: "record",
              label: "<id>" + id + "| " + contents }
 }
+
+function edge_from_port(source_port, target) {
+    return edge_from_to_ports(source_port, "", target);
+}
+
+function edge_to_port(target_port, target) {
+    return edge_from_to_ports("", target_port, target);
+}
+
+function edge_from_to_ports(source_port, target_port, target) {
+    if (source_port.length > 0 && source_port[0] != ':') {
+        console.error("source_port "+source_port+" should start with colon");
+    }
+    if (target_port.length > 0 && target_port[0] != ':') {
+        console.error("target_port "+target_port+" should start with colon");
+    }
+    return { is_edge: true, source_port: source_port, target_port: target_port,
+             target: target };
+}
