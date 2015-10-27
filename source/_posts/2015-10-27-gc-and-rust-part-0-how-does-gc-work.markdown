@@ -4,6 +4,7 @@ title: "GC and Rust Part 0: Garbage Collection Background"
 date: 2015-10-27 14:09
 comments: true
 categories: gc
+published: true
 ---
 
 This post is a prequel to a series of posts discussing why garbage
