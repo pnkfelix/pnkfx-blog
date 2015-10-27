@@ -275,7 +275,7 @@ identify objects as dead even when reachable, such as using
 <a href="http://pop-art.inrialpes.fr/~fradet/PDFs/LISP94.pdf">&ldquo;parametricity&rdquo;</a>; but I am not aware of any
 such method being used outside of a research setting.</p>
 
-<h2>How Garbage Collection works</h2>
+<h2><span id="how-gc-works">How Garbage Collection works</span></h2>
 
 <p>A garbage collector is often presented as a
 <em>coroutine</em><sup><a href="#footnote2">2</a></sup> that is linked in with the main
@@ -727,7 +727,7 @@ free-list into the second word of each four-word block is one way of
 satisfying the aforementioned requirement that the GC-managed memory
 be parseable.</p>
 
-<h3>Conservative Collection</h3>
+<h3><span id="conservative-gc">Conservative Collection</span></h3>
 
 <p>A conservative collector is a particular kind of Mark-Sweep collector
 where it is not provided enough information to know whether one or
@@ -927,7 +927,7 @@ objects reachable solely via precisely-scanned words <em>can</em> be moved,
 and memory blocks made up solely of such objects can be reclaimed via
 a copying-collection strategy.</p>
 
-<h3>Pinning Support</h3>
+<h3><span id="pinning-support">Pinning Support</span></h3>
 
 <p>In our discussion to follow, rather than attempt to characterize a
 collector as &ldquo;mark-sweep&rdquo; or &ldquo;copying&rdquo;, it will be more useful to
@@ -1056,7 +1056,7 @@ I certainly learned a lot about techniques for wrestling with
 graphviz.  :)</p>
 
 <p>There will be a followup post soon-ish that will bring Rust into the
-picture, discussing what GC and Rust integration even <em>means</em>, and
+picture, discussing what GC and Rust integration even means, and
 the host of problems that crop up.</p>
 </div>
 
