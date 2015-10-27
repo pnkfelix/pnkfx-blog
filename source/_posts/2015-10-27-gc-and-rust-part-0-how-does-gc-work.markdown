@@ -172,8 +172,8 @@ such method being used outside of a research setting.
 
 [collecting-more-garbage]: http://pop-art.inrialpes.fr/~fradet/PDFs/LISP94.pdf
 
-## How Garbage Collection works
-[how-gc-works]: #how-garbage-collection-works
+## <span id="how-gc-works">How Garbage Collection works</span>
+[how-gc-works]: #how-gc-works
 
 A garbage collector is often presented as a
 *coroutine*<sup>[2](#footnote2)</sup> that is linked in with the main
@@ -610,8 +610,8 @@ free-list into the second word of each four-word block is one way of
 satisfying the aforementioned requirement that the GC-managed memory
 be parseable.
 
-### Conservative Collection
-[conservative-gc]: #conservative-collection
+### <span id="conservative-gc">Conservative Collection</span>
+[conservative-gc]: #conservative-gc
 
 A conservative collector is a particular kind of Mark-Sweep collector
 where it is not provided enough information to know whether one or
@@ -791,8 +791,7 @@ objects reachable solely via precisely-scanned words *can* be moved,
 and memory blocks made up solely of such objects can be reclaimed via
 a copying-collection strategy.
 
-### Pinning Support
-[pinning-support]: #pinning-support
+### <span id="pinning-support">Pinning Support</span>
 
 In our discussion to follow, rather than attempt to characterize a
 collector as "mark-sweep" or "copying", it will be more useful to
