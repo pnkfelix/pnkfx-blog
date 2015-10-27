@@ -1,9 +1,9 @@
 ---
 layout: post
 title: "GC and Rust Part 1: The Roots of Integration"
-date: 2015-10-16 15:24
+date: 2015-10-28 15:24
 comments: true
-categories:
+categories: gc rust
 ---
 
 This is the first in a series of posts will discuss why garbage
@@ -35,8 +35,12 @@ the supporting Javascript loads.)
 ## The Problem Space
 [problem-space]: #the-problem-space
 
-Now that we have [reviewed](/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work.html) what GC is and how it works,
-let us discuss what GC could mean to Rust.
+Now that we have [reviewed][part0] what GC is and how it works, let us
+discuss what GC could mean to Rust.
+
+[part0]: /blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/
+[conservative-gc]: /blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/#conservative-gc
+[pinning-support]: /blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/#pinning-support
 
 I have identified two distinct kinds of support that we could provide:
 a feature for pure Rust programs, versus an 3rd-party runtime
@@ -70,10 +74,11 @@ use cases of `Gc<T>`, it is not a main priority right now.
 
 ### GC as Interoperation Feature
 
-An interoperation feature: Provide introspective hooks to improve
-integration with application frameworks that are using their own
-garbage collector. An obvious example of this is Servo's use of the
-SpiderMonkey Virtual Machine for its Javascript support.
+GC as an interoperation feature means that Rust would provide
+introspective hooks to improve integration with application frameworks
+that are using their own garbage collector. An obvious example of this
+is Servo's use of the SpiderMonkey Virtual Machine for its Javascript
+support.
 
 Servo is relying on SpiderMonkey's garbage collection for memory
 management, not only for Javascript values, but even for
@@ -92,6 +97,21 @@ acceptable to not support [`Deref`][Deref trait].
 
 [Deref trait]: https://doc.rust-lang.org/std/ops/trait.Deref.html
 
+However, it still requires defining a standard interface that the
+third-party collector implementation has to conform with.
+
+In a simple world (e.g., a conservative collector designed to
+interoperate with C/C++, such as [boehm-demers-weiser][BDW]), this
+standard interface could be nothing more than just "swap in a
+different [`#[allocator]` crate][custom_alloc] that your GC provides."
+
+[BDW]: http://www.hboehm.info/gc/
+
+[custom_alloc]: https://doc.rust-lang.org/nightly/book/custom-allocators.html
+
+(The actual interface is unlikely to be so simple, but the point is,
+there is a wide design space to be explored here.)
+
 ### Objectives and Requirements
 
 The two kinds of support described above are two distinct features;
@@ -103,23 +123,25 @@ There are a number of other objectives for Rust/GC integration that
 are worth noting, which I will list here and then define and discuss
 below.
 
-  1. Modularity
-  2. Safety
-  3. Zero-Cost
-  4. Compositionality
-  5. Precision
+  1. [Modularity][modularity]
+  2. [Safety][safety]
+  3. [Zero-Cost][zero-cost]
+  4. [Compositionality][compositionality]
+  5. [Precision][precision]
 
-### Modularity with respect to GC
+### <span id="modularity">Modularity with respect to GC</span>
+[modularity]: #modularity
 
-A Rust program that uses GC should be able to link
-with a crate whose source code was authored without knowledge of
-GC.
+A Rust program that uses GC should be able to link with a crate whose
+source code was authored without knowledge of GC.
 
 For example, if I make a parsing library today that works on string
 slices, you should be able to link that parsing library into a program
 that uses GC, without having to worry about whether the parsing
 library carries hidden requirements that invalidate linking its crate
 together with yours.
+
+
 
 Note: A crate being "authored without knowledge of GC" is a
 property of the source code, not the generated object code. Given
@@ -148,7 +170,8 @@ incompatible with a program that uses GC. I need to find a way to
 incorporate these caveats into the above definition of "modularity",
 without weakening it to the point of uselessness.
 
-### Safety with respect to GC
+### <span id="safety">Safety with respect to GC</span>
+[safety]: #safety
 
 If a Rust crate does not use `unsafe` constructs
 (`unsafe` blocks, attributes or types with "unsafe" in their
@@ -172,7 +195,8 @@ original program. (But it should still be feasible to compile and
 run the new version linked with `C`, even if it is no longer
 guaranteed to be safe.)
 
-### Zero-Cost GC
+### <span id="zero-cost">Zero-Cost GC</span>
+[zero-cost]: #zero-cost
 
 If you don't use the GC feature (in whatever form it
 takes), your code should not pay for it.
@@ -181,20 +205,89 @@ This applies to the quality of the generated code (in execution
 time and code size), and also to the source code, with respect to
 difficulty in writing a program or library.
 
-### Compositional GC
+### <span id="compositionality">Compositional GC</span>
+[compositionality]: #compositionality
 
-One can use a reference to a gc-allocated object as the field type in
-a `struct`, store it into a `Vec<Gc<T>>`, and generally anything else
-one can do with a Rust value.
+One can use a reference to a gc-allocated object, call it a `GcRef`,
+as the field type in a `struct`, store it into a `Vec<GcRef>`, and
+generally anything else one can do with a Rust value.
 
 Furthermore, one should be able to describe, via a Rust type
-definition, the layout of a value allocated on the GC heap.
+definition, the layout of a value allocated on the GC heap, allocate
+such values there, and acquire a suitable `GcRef` to the allocated
+object.
 
-To be concrete about this, consider the following diagram:
+To be concrete about this, consider the following program,
+which uses a hypothetical `make_gc_ref` function to move
+values into a newly-allocated spot on the GC heap, and returns
+a reference to that spot. (In the future one will probably use
+the `box` syntax for this, and rely on type-context to inform
+box that this is a GC-allocation.)
+
+```rust
+fn demo() {
+    let gc_v = {
+        let ref_x1 = make_gc_ref("data_one");
+        let ref_x2 = make_gc_ref("data_two");
+        let v = vec![x1, x1, x2];
+        make_gc_ref(v)
+    };
+    ...
+}
+```
+
+This results in the following diagram:
 
 <p id="target_anchor_demo_composition_1"></p>
 <script>
-var stack = { id: "cluster_stack", label: "Stack", is_subgraph: true, color: "blue" };
+var stack = { id: "cluster_stack", label: "Stack", is_subgraph: true };
+var rust_heap = { rankdir:"LR", id: "cluster_rust_heap", label: "Rust Heap", is_subgraph: true };
+var gc_heap = { id: "cluster_gc_heap", label: "GC Heap", is_subgraph: true, style: "rounded" };
+
+var x1 = object_record("X1", "<f0> 'data_one'");
+var x2 = object_record("X2", "<f0> 'data_two'");
+
+x1.style = "rounded";
+x2.style = "rounded";
+
+var gc_v = { id: "gc_v", label: "Gc(V)", shape: "record" };
+
+var v = object_record("V", "<f0> len: 3 | cap: 4 | <f2> ptr: Arr");
+v.style = "rounded";
+var arr = object_record("Arr", "<f0> Gc(X1) | <f1> Gc(X1) | <f2> Gc(X2)");
+arr.color = "blue";
+
+v.f2 = edge_from_to_ports(":f2", ":id", arr);
+gc_v.f0 = edge_to_port(":id", v);
+
+arr.f0 = edge_from_to_ports(":f0", ":id", x1);
+arr.f1 = edge_from_to_ports(":f1", ":id", x1);
+arr.f2 = edge_from_to_ports(":f2", ":id", x2);
+
+stack[0] = gc_v;
+rust_heap[0] = arr;
+gc_heap[0] = v;
+gc_heap[1] = x1;
+gc_heap[2] = x2;
+
+var objects = [stack, gc_heap, rust_heap];
+post_objects("target_anchor_demo_composition_1", objects, { rankdir:"LR", nodesep:0.2 });
+</script>
+
+Here, I have made explicit the heap-allocated backing store `Arr` (in
+blue) for the vector that holds the references to `x1` and `x2`.
+
+This shows that if we want GC to reasonably usable (i.e., allow GC
+references to be used like other Rust values), we need to support
+references out of the GC heap and into the Rust heap, and likewise
+references out of the Rust heap and into the GC heap.
+
+It can sometimes be simpler (without necessarily eliminating the
+fundamental problem) to just a `Box` rather than a `Vec`:
+
+<p id="target_anchor_demo_composition_2"></p>
+<script>
+var stack = { id: "cluster_stack", label: "Stack", is_subgraph: true };
 var rust_heap = { rankdir:"LR", id: "cluster_rust_heap", label: "Rust Heap", is_subgraph: true };
 var gc_heap = { id: "cluster_gc_heap", label: "GC Heap", is_subgraph: true, style: "rounded" };
 var c = object_record("C", "<f0> Gc(X) | <f1> Box(O)");
@@ -217,31 +310,44 @@ gc_heap[0] = c;
 gc_heap[1] = x;
 
 var objects = [stack, gc_heap, rust_heap];
-post_objects("target_anchor_demo_composition_1", objects, { rankdir:"LR", nodesep:0.2 });
+post_objects("target_anchor_demo_composition_2", objects, { rankdir:"LR", nodesep:0.2 });
 </script>
 
-Here, the stack (which, as we shall see, will now be considered part
-of our root set), holds a local variable that is a reference to a
-GC-allocated object `C`. The object `C` itself holds two references:
-the first points to another GC-allocated object, `X`, and the second
-references an object `O` on the *Rust Heap*. The object `O` holds a
-second reference to `X`, and `X` itself just has some non-reference
-data embedded within it.
+
+The program to construct the above picture might look like
+this:
+
+```rust
+fn demo() {
+    struct C(Gc<str>, Box<Gc<str>>);
+    let gc_c = {
+        let ref_x = make_gc_ref("data");
+        let box_o = Box::new(ref_x);
+        make_gc_ref(C(ref_x, box_o))
+    };
+    ...
+}
+```
+
+(The types in the demo program above assume certain features like
+allowing `Gc<T>` for `T: ?Sized`, which may or may not be reasonable.)
 
 The compositionality constraint may seem obvious (especially if one starts by
 assuming that references to gc-allocated objects will be values
-of type `Gc<T>` for arbtrary `T`). But a hypothetical library for
-implementing a particular language could completely insulate the
-representations of garbage-collected values, offering only
-accessor methods for manipulating their internals. Such a
-constrained setting makes the GC implementors job much easier,
-but at the cost of more difficult interoperation (since, for
-example, in such a setting one cannot extract a reference to the
+of type `Gc<T>` for arbtrary `T`).
+
+But a hypothetical library for implementing a particular language
+could completely insulate the representations of garbage-collected
+values, offering only accessor methods for manipulating their
+internals. Such a constrained setting makes the GC implementors job
+much easier, but at the cost of more difficult interoperation (since,
+for example, in such a setting one cannot extract a reference to the
 internal structure of a garbage-collected value as a `&T`).
 
 [crates.io]: https://crates.io/
 
-### Precision
+### <a id="precision">Precision</a>
+[precision]: #precision
 
 A precise GC is one that is eventually able to reclaim all garbage,
 without being subverted by particular details of the host program or
