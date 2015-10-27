@@ -4,7 +4,7 @@
   <title><![CDATA[Category: osx | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/osx/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-10-21T14:17:33+02:00</updated>
+  <updated>2015-10-27T16:00:22+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -24,6 +24,9 @@ this computer at home to Mac OS X Mavericks (10.9.2).</p>
 
 <p>So of course my existing set of commands for Octopress workflow did
 not work.</p>
+
+<!-- more -->
+
 
 <p>At first there were dependencies like <code>chunky_png-1.2.7</code> that had to
 be satisfied (re-installed, I assume; I am pretty sure I blew away my
@@ -287,6 +290,9 @@ but no need to be jealous of Shu&rsquo;s zsh setup
 at least not if you are already using Homebrew.
 Just install
 <a href="http://blog.jeffterrace.com/2012/09/bash-completion-for-mac-os-x.html">brew&rsquo;s bash completion package</a>!</p>
+
+<!-- more -->
+
 
 <p>Executive summary:</p>
 

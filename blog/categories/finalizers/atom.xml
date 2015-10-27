@@ -4,7 +4,7 @@
   <title><![CDATA[Category: finalizers | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/finalizers/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-10-21T14:17:33+02:00</updated>
+  <updated>2015-10-27T16:00:22+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -28,6 +28,9 @@ discussion of this topic.
 However, a significant portion of the destructor/finalizer design space is
 only briefly discussed in that paper, and I worry that Niko&rsquo;s post overlooks
 it.</p>
+
+<!-- more -->
+
 
 <p>There are designs that do not run finalizers directly from the garbage
 collection process (whether that collector be a coroutine with the mutator, or

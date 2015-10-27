@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-10-21T14:17:33+02:00</updated>
+  <updated>2015-10-27T16:00:22+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -20,6 +20,9 @@
     <id>http://blog.pnkfx.org/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust</id>
     <content type="html"><![CDATA[<p>Executive summary: <code>type</code> = <code>unsized</code> ⊎ <code>sized</code>, so we should use
 <code>type</code> as our generalization marker, not <code>unsized</code>.</p>
+
+<!-- more -->
+
 
 <ul>
 <li><a href="#background_dst">Background: Dynamically Sized Types (DST)</a></li>
@@ -332,6 +335,9 @@ always be intelligible.</p>
 <p>This post is my attempt to condense all of this information down into
 something where I can see all the pieces at once, and discard the
 red herrings along the way.</p>
+
+<!-- more -->
+
 
 <h2><a id="background_fns">Background: Closures (recurring and otherwise)</a></h2>
 
@@ -1154,6 +1160,9 @@ combinator:
 <span class='line-number'>785</span>
 <span class='line-number'>786</span>
 <span class='line-number'>787</span>
+<span class='line-number'>788</span>
+<span class='line-number'>789</span>
+<span class='line-number'>790</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">struct</span> <span class="n">R</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="bp">self</span><span class="o">&gt;</span> <span class="p">{</span>
 </span><span class='line'>    <span class="c1">// This struct is needed to create the</span>
 </span><span class='line'>    <span class="c1">// otherwise infinite type of a fn that</span>
@@ -1541,6 +1550,9 @@ combinator:
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">Executive</span> <span class="n">summary</span><span class="o">:</span> <span class="k">if</span> <span class="n">you</span> <span class="n">don</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">t</span> <span class="n">want</span> <span class="n">or</span> <span class="n">need</span> <span class="n">the</span> <span class="n">background</span> <span class="n">information</span>
 </span><span class='line'><span class="n">or</span> <span class="n">the</span> <span class="n">discussion</span> <span class="n">motivating</span> <span class="n">the</span> <span class="n">proposal</span><span class="p">,</span> <span class="n">then</span> <span class="n">just</span> <span class="n">jump</span>
 </span><span class='line'><span class="n">straight</span> <span class="n">to</span> <span class="n">the</span> <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;#proposal&quot;</span><span class="o">&gt;</span><span class="n">proposal</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="n">itself</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;!--</span> <span class="n">more</span> <span class="o">--&gt;</span>
+</span><span class='line'>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h2</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;background&quot;</span><span class="o">&gt;</span><span class="n">Background</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h2</span><span class="o">&gt;</span>
 </span><span class='line'>
@@ -2164,6 +2176,9 @@ simple exercies, maybe taken from Knuth&rsquo;s
 <a href="http://www-cs-faculty.stanford.edu/~uno/taocp.html">TAOCP</a>&rdquo;
 This was indeed a much simpler goal, but it was more difficult than
 I had expected.</p>
+
+<!-- more -->
+
 
 <p>So, here is a Rust hacking puzzle that I struggled with.</p>
 

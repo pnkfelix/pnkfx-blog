@@ -4,7 +4,7 @@
   <title><![CDATA[Category: macosx | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/macosx/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-10-21T14:17:33+02:00</updated>
+  <updated>2015-10-27T16:00:22+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -23,6 +23,9 @@ open-source window-management tool for Mac OS X.</p>
 
 <p>It is very cool, mainly in that it is very configurable (but with a
 reasonably readable syntax for its configuration file).</p>
+
+<!-- more -->
+
 
 <p>Perhaps the most important thing to say is: Do not judge it solely
 based upon its default configuration file, which is very bare bones

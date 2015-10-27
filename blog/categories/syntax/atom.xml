@@ -4,7 +4,7 @@
   <title><![CDATA[Category: syntax | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/syntax/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-10-21T14:17:33+02:00</updated>
+  <updated>2015-10-27T16:00:22+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -41,6 +41,9 @@
 <p>Executive summary: if you don&rsquo;t want or need the background information
 or the discussion motivating the proposal, then just jump
 straight to the <a href="#proposal">proposal</a> itself.</p>
+
+<!-- more -->
+
 
 <h2><a id="background">Background</a></h2>
 

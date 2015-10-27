@@ -4,7 +4,7 @@
   <title><![CDATA[Category: github | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/github/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-10-21T14:17:33+02:00</updated>
+  <updated>2015-10-27T16:00:22+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -31,6 +31,9 @@ github repository, with the <code>gh-pages</code> branch checked out.</p></block
 
 <p>Here&rsquo;s why: For my first blogging act of the new year, I inadvertently destroyed
 my own blog.</p>
+
+<!-- more -->
+
 
 <p>I attempted to write a post from a computer other than the one out of
 which I had already worked all the octopress-compatibility kinks.

@@ -102,6 +102,9 @@ However, a significant portion of the destructor/finalizer design space is
 only briefly discussed in that paper, and I worry that Niko&rsquo;s post overlooks
 it.</p>
 
+<!-- more -->
+
+
 <p>There are designs that do not run finalizers directly from the garbage
 collection process (whether that collector be a coroutine with the mutator, or
 a concurrently running thread), and instead run finalization code
@@ -459,6 +462,10 @@ hack one up in the future.</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
@@ -472,10 +479,6 @@ hack one up in the future.</p>
     
       <li class="post">
         <a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing syntax for associated items in Rust</a>
       </li>
     
   </ul>

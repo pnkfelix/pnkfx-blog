@@ -9,9 +9,8 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="First post!
-I am attempting to move my blog to GitHub Pages. After seeing the results of others, I figure I will start with Octopress
-and see how &hellip;">
+  <meta name="description" content="I recently discovered Slate, an
+open-source window-management tool for Mac OS X. It is very cool, mainly in that it is very configurable (but with a &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -72,6 +71,51 @@ and see how &hellip;">
       
   <header>
     
+      <h1 class="entry-title"><a href="/blog/2013/01/02/osx-tiled-window-management/">OS X Tiled Window Management With Slate</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-01-02T22:34:00+01:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>I recently discovered <a href="https://github.com/jigish/slate" title="Slate: github repository">Slate</a>, an
+open-source window-management tool for Mac OS X.</p>
+
+<p>It is very cool, mainly in that it is very configurable (but with a
+reasonably readable syntax for its configuration file).</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2013/01/02/osx-tiled-window-management/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/blog/2012/12/31/hello-world/">Hello World</a></h1>
     
     
@@ -114,93 +158,12 @@ I am attempting to move my blog to GitHub Pages.</p>
 <p>After seeing the results of others, I figure I will start with Octopress
 and see how that goes.</p>
 
-<p>Just so I can remind myself of the Octopress basics in the immediate future:</p>
-
-<ul>
-<li><p>Much of the page generation is controlled by configuration file <code>_config.yml</code></p></li>
-<li><p>The content is all stored in <code>source/_posts/</code></p></li>
-<li><p>This particular entry corresponds to the file <code>2012-12-31-hello-world.markdown</code></p></li>
-<li><p>The first 7 lines of that file were originally generated via the
-<code>rake</code> command invocation:</p>
-
-<pre><code>% rake new_post["Hello World"]
-</code></pre></li>
-<li><p>The command <code>rake generate</code> will convert the source into static html pages.</p></li>
-<li><p>After generating the file (and during subsequent editting), one can preview
-the state locally in a local Ruby webserver via:</p>
-
-<pre><code>% rake preview
-</code></pre>
-
-<p>and then <a href="http://localhost:4000/">browsing localhost port 4000</a>.
-The <code>rake preview</code> invocation will continuously monitor your post
-source files so that you can keep working on your post and then
-reload in your web browser without rerunning <code>rake</code> itself.</p></li>
-<li><p>The command <code>rake deploy</code> is supposed to deploy the content into its intended
-live location.  I have been having difficulty using this command,
-in part because I think it is written assuming you have your ssh-key
-already set up and integrated with github (or something similar) so that
-there would be no password prompts.</p>
-
-<ul>
-<li><p>But of course I have not done this yet.</p></li>
-<li><p>One important detail about <code>rake deploy</code> with github pages is that
-the <code>_deploy/</code> subdirectory is itself a clone of the targetted
-github repository, with the <code>gh-pages</code> branch checked out.
-This can be confusing if your main source tree (the parent
-directory of <code>_deploy/</code>) is itself the same repository as the
-targetted github repository.</p></li>
-</ul>
-</li>
-<li><p>Update: <code>rake deploy</code> just worked fine for me, password prompts and all.
-I think my earlier difficulty was an artifact of some previous bad
-state, one of either:</p>
-
-<ul>
-<li><p>I had put in a malformatted url for the target repository</p></li>
-<li><p>My target repository already had a <code>gh-pages</code> branch (from earlier
-testing) that needed to be pulled-and-merged (or discarded in some
-fashion, which was what my merge amounted to).</p></li>
-</ul>
-</li>
-<li><p>Update (26 march 2012): there are still some hiccups with <code>rake deploy</code>;
-you need to be careful about what you store in the <code>source/</code> directory.
-In particular, I was working on a draft post and threw various
-source files that I was hacking on in the same directory, along with
-some <code>.gitignore</code> files so that <code>git</code> would ignore build products
-generated when I compiled the source (to binaries or jars or fasls&hellip;).</p>
-
-<p>The headache came when I did <code>rake deploy</code>, and hit this error:</p>
-
-<pre><code class="bash">% rake deploy
-cp -r source/_posts/.gitignore public/_posts/.gitignore
-rake aborted!
-No such file or directory - public/_posts/.gitignore
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:230:in `block (2 levels) in &lt;top (required)&gt;'
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:229:in `block in &lt;top (required)&gt;'
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:219:in `block in &lt;top (required)&gt;'
-Tasks: TOP =&gt; copydot
-(See full trace by running task with --trace)
-%
-</code></pre>
-
-<p>The problem here, as far as I can tell, is that octopress
-is aggressively trying to copy over all dotfiles it can find
-(<a href="https://github.com/imathis/octopress/issues/104">Octopress Issue 104</a>)
-and that code was not written to create any subdirectories as
-necessary.</p>
-
-<p>My Ruby development knowledge is sufficiently under-developed that I
-am not going to try to fix this myself.  Instead I have simply
-moved all of the source code I was hacking <em>out</em> of the <code>source/</code>
-directory and into a separate <code>hacks/</code> directory.
-This seems to have addressed the problem; I have also filed
-<a href="https://github.com/imathis/octopress/issues/1151">an issue</a>
-for this with Octopress.</p></li>
-</ul>
-
 </div>
   
+  
+    <footer>
+      <a rel="full-article" href="/blog/2012/12/31/hello-world/">Read on &rarr;</a>
+    </footer>
   
 
 
@@ -221,6 +184,10 @@ for this with Octopress.</p></li>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
@@ -234,10 +201,6 @@ for this with Octopress.</p></li>
     
       <li class="post">
         <a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing syntax for associated items in Rust</a>
       </li>
     
   </ul>
