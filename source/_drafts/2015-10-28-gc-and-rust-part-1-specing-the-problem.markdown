@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "GC and Rust Part 1: The Roots of Integration"
+title: "GC and Rust Part 1: Specifying the Problem (... now you have two problems)"
 date: 2015-10-28 15:24
 comments: true
 categories: gc rust
@@ -93,11 +93,30 @@ further down in this post.
 
 Critically, GC-interoperation does not require the same level of
 programmer ergonomics that `Rc<T>` provides. For example, it is
-acceptable to not support [`Deref`][Deref trait].
+acceptable in that context to not support [`Deref`][Deref trait].
 
 [Deref trait]: https://doc.rust-lang.org/std/ops/trait.Deref.html
 
-However, it still requires defining a standard interface that the
+Without a `Deref` trait, such interoperation might end up looking
+something like this:
+
+```rust
+fn double_last(x: Gc<Vec<i32>>) {
+    unsafe {
+        let ptr: *mut Vec<i32> = x.get_ptr();
+
+        // during the extent of this block, it is my responbility to
+        // ensure the GC never gets invoked (i.e., do not do any
+        // allocations to GC heap during this unsafe-block).
+
+        if Some(i) = (*ptr).last_mut() {
+            *i = *i * 2;
+        }
+    }
+}
+```
+
+Interoperation still requires defining a standard interface that the
 third-party collector implementation has to conform with.
 
 In a simple world (e.g., a conservative collector designed to
@@ -141,8 +160,6 @@ that uses GC, without having to worry about whether the parsing
 library carries hidden requirements that invalidate linking its crate
 together with yours.
 
-
-
 Note: A crate being "authored without knowledge of GC" is a
 property of the source code, not the generated object code. Given
 such a crate, the Rust compiler may itself inject metadata
@@ -176,30 +193,31 @@ without weakening it to the point of uselessness.
 If a Rust crate does not use `unsafe` constructs
 (`unsafe` blocks, attributes or types with "unsafe" in their
 name, etc.), then linking it with another crate that uses GC
-should maintain soundness.
+should be guaranteed to maintain soundness.
 
 In other words, linking in a crate C that uses no `unsafe`
 construct should not inject any dereferences of dangling
 pointers, nor any data races.
 
-This objective arguably should be lumped in with modularity.
+This objective arguably could be lumped in with modularity.
 
-I list it as a separate item, because (I claim) it is a non-goal
-for the Rust compiler to ensure safety if I start with a sound
-program, and then I swap one of its sub-crates with some
-arbitrary other crate, `C`, that uses `unsafe { ... }`.
+I list it as a separate item, because (I claim) it is a non-goal for
+the Rust compiler itself to ensure safety if I start with a sound
+program, and then I swap one of its sub-crates with some arbitrary
+other crate, `C`, that uses `unsafe { ... }`. But it should still be
+feasible to compile and run the new version linked with `C`, even if
+it is no longer guaranteed to be safe.
 
-It is simply too easy for the crate `C` to perform operations in
-the `unsafe`-block that invalidate the assumptions of the
-original program. (But it should still be feasible to compile and
-run the new version linked with `C`, even if it is no longer
-guaranteed to be safe.)
+By the way, we absolutely do need to provide criteria that says what
+`unsafe` code *is* allowed to do when linked with a crate that uses
+GC. I am going to assume for these initial posts that we will solve
+that problem eventually, but not attempt to address it at the outset.
 
 ### <span id="zero-cost">Zero-Cost GC</span>
 [zero-cost]: #zero-cost
 
-If you don't use the GC feature (in whatever form it
-takes), your code should not pay for it.
+If you don't use the GC feature (in whatever form it takes), your code
+should not pay for it.
 
 This applies to the quality of the generated code (in execution
 time and code size), and also to the source code, with respect to
@@ -360,73 +378,9 @@ We would like to be able to interoperate with 100% precise collectors.
 Ideally, we would also like to be able to interoperate with collectors
 that do not support [pinning][pinning-support].
 
-## Rust complicates GC
-[rust-complicates-gc]: #rust-complicates-gc
+## Conclusion
 
-Let us assume that for the short term we are more interested in
-providing GC-interoperation and are willing to forego GC as a pure
-Rust programming feature.
+This post was dedicated to identifying criteria that we would
+like GC-integration with Rust to satisfy.
 
-Even with that assumption, there are still serious obstacles.
-
-### Identifying the Root Set
-
-<script>
-function root_set_objects() {
-    var gc_a = { id: "gc_a", label: "Gc(A)", shape: "record" };
-    var box_b = { id: "box_b", label: "Box(B)", shape: "record" };
-
-    var a = object_record("A", "<f0> Gc(C)");
-    a.style = "rounded";
-    var b = object_record("B", "<f0> Gc(C)");
-
-    var c = object_record("C", "<f0> Gc(X) | <f1> Box(O)");
-    c.style = "rounded";
-    var g = object_record("G", "<f0> Vec(V)");
-    g.style = "rounded";
-    var v = object_record("V", "");
-    var o = object_record("O", "<f0> Gc(X)");
-    var x = object_record("X", "<f0> 'data'");
-    x.style = "rounded";
-
-    gc_a.val = edge_to_port(":id", a);
-    box_b.val = edge_to_port(":id", b);
-    a.f0 = edge_from_to_ports(":f0", ":id", c);
-    b.f0 = edge_from_to_ports(":f0", ":id", c);
-    c.f0 = edge_from_port(":f0", x);
-    c.f1 = edge_from_port(":f1", o);
-    g.f0 = edge_from_to_ports(":f0", ":id", v);
-    o.f0 = edge_from_to_ports(":f0", ":id", x);
-
-    // You need the .id of a subgraph to start with "cluster" if you want
-    // it to show up with the outline (and label, if present).
-    var stack = { id: "cluster_stack", label: "Stack", is_subgraph: true, color: "blue" };
-    var rust_heap = { rankdir:"LR", id: "cluster_rust_heap", label: "Rust Heap", is_subgraph: true };
-    var gc_heap = { id: "cluster_gc_heap", label: "GC Heap", is_subgraph: true, style: "rounded" };
-
-    stack.rank = "same";
-    stack[1] = gc_a;
-    stack[0] = box_b;
-
-    rust_heap.rank = "same";
-    rust_heap[0] = o;
-    rust_heap[1] = box_b;
-    rust_heap[2] = b;
-    rust_heap[3] = v;
-
-    gc_heap.rank = "same";
-    gc_heap[0] = a;
-    gc_heap[1] = c;
-    gc_heap[2] = x;
-    gc_heap[3] = g;
-
-    var objects = [stack, gc_heap, rust_heap];
-    return objects;
-}
-</script>
-
-<p id="target_anchor_identifying_the_root_set"></p>
-<script>
-var objects = root_set_objects();
-post_objects("target_anchor_identifying_the_root_set", objects, { rankdir:"RL", with_code: true, nodesep:0.2 });
-</script>
+Next up: Why is it hard to satisfy the above criteria?
