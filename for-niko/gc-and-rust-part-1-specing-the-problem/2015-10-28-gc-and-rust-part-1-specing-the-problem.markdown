@@ -28,9 +28,9 @@ To explain why, I need to define the actual problems we seek to solve.
 because of author idiosyncrasies.  You may need to wait a moment while
 the supporting Javascript loads.)
 
-<script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"></script>
-<script src="http://blog.pnkfx.org/javascripts/js_to_dot.js" charset="utf-8"></script>
-<script src="http://blog.pnkfx.org/javascripts/gc_rendering.js" charset="utf-8"></script>
+<script src="https://cdn.rawgit.com/pnkfelix/pnkfx-blog/for-niko/source/javascripts/viz.js" charset="utf-8"></script>
+<script src="https://rawgit.com/pnkfelix/pnkfx-blog/for-niko/source/javascripts/js_to_dot.js" charset="utf-8"></script>
+<script src="https://rawgit.com/pnkfelix/pnkfx-blog/for-niko/source/javascripts/gc_rendering.js" charset="utf-8"></script>
 
 ## The Problem Space
 [problem-space]: #the-problem-space
