@@ -105,7 +105,7 @@ fn double_last(x: Gc<Vec<i32>>) {
     unsafe {
         let ptr: *mut Vec<i32> = x.get_ptr();
 
-        // during the extent of this block, it is my responbility to
+        // during the extent of this block, it is my responsibility to
         // ensure the GC never gets invoked (i.e., do not do any
         // allocations to GC heap during this unsafe-block).
 
