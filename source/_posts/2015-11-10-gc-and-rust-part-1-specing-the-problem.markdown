@@ -156,8 +156,8 @@ post_objects("target_anchor_gc_demo_1", objects, { rankdir:"LR", nodesep:0.2 });
 </script>
 
 The GC would be allowed to collect the objects labelled "E", "G", and
-"H" in the picture, since it is not reachable from the roots.
-(However, the GC is not obligated to reclaim "E" at any particular
+"H" in the picture, since they are not reachable from the roots.
+(However, the GC is not obligated to reclaim them at any particular
 time. Usually GC's provide little guarantees about how soon objects
 will be reclaimed.)
 
