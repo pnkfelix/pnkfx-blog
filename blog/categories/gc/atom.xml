@@ -4,7 +4,7 @@
   <title><![CDATA[Category: gc | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/gc/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-11-10T17:52:10+01:00</updated>
+  <updated>2015-11-10T18:00:05+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -175,7 +175,7 @@ will be reclaimed.)</p>
 
 <h4>Advantages of Gc<T> over Rc<T></h4>
 
-<p>The main hypothesized advantages over <code>Rc&lt;T&gt;</code> over <code>Gc&lt;T&gt;</code> are:</p>
+<p>The main hypothesized advantages over <code>Gc&lt;T&gt;</code> over <code>Rc&lt;T&gt;</code> are:</p>
 
 <ul>
 <li><p><code>Gc&lt;T&gt;</code> is <code>Copy</code>, which makes it possible to construct types like
