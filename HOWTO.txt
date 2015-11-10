@@ -1,8 +1,14 @@
 * `rake new_post["Title goes here."]`: creates template for a new post
   in `source/_posts/`.
 
-* `rake generate` converts post source into static html pages,
+* `bundle exec rake generate` converts post source into static html pages,
   rooted at `_deploy/index.html`.
+
+  * (Originally I just had `rake generate` above, but then recently
+    that yielded page generation errors, see discussion here:
+    https://github.com/imathis/octopress/issues/585
+
+    *SO* close to dropping octopress...)
 
   * One might need to use `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 rake generate`
     or `LC_CTYPE=en_US.UTF-8 rake generate` to get around encoding issues.
