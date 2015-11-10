@@ -165,7 +165,7 @@ This kind of feature could be useful in any Rust library.
 
 #### Advantages of Gc<T> over Rc<T>
 
-The main hypothesized advantages over `Rc<T>` over `Gc<T>` are:
+The main hypothesized advantages over `Gc<T>` over `Rc<T>` are:
 
   * `Gc<T>` is `Copy`, which makes it possible to construct types like
     `Cell<Gc<T>>`.
