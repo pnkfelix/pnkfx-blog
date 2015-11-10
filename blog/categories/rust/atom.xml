@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-11-10T18:00:05+01:00</updated>
+  <updated>2015-11-10T18:04:26+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -166,8 +166,8 @@ post_objects("target_anchor_gc_demo_1", objects, { rankdir:"LR", nodesep:0.2 });
 
 
 <p>The GC would be allowed to collect the objects labelled &ldquo;E&rdquo;, &ldquo;G&rdquo;, and
-&ldquo;H&rdquo; in the picture, since it is not reachable from the roots.
-(However, the GC is not obligated to reclaim &ldquo;E&rdquo; at any particular
+&ldquo;H&rdquo; in the picture, since they are not reachable from the roots.
+(However, the GC is not obligated to reclaim them at any particular
 time. Usually GC&rsquo;s provide little guarantees about how soon objects
 will be reclaimed.)</p>
 
