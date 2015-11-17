@@ -32,7 +32,8 @@ Update (17 November 2015): It has come to my attention that portions
 of the post are not rendering properly in Google Chrome. I will try to
 fix this, but in the meantime, you should be able to get the proper
 renderings in Safari or Firefox. (I do not yet know about other
-browsers.)
+browsers.) If your browser is working as original expected, then
+you should see a picture load immediately beneath this text.
 
 <script src="/javascripts/viz.js" charset="utf-8"></script>
 <script src="/javascripts/js_to_dot.js" charset="utf-8"></script>
