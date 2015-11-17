@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-11-10T18:04:26+01:00</updated>
+  <updated>2015-11-17T20:54:46+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -1009,6 +1009,13 @@ barriers&rdquo;.</p>
 <p>(The body of this post makes heavy use of client-side rendering,
 because of author idiosyncrasies.  You may need to wait a moment while
 the supporting Javascript loads.)</p>
+
+<p>Update (17 November 2015): It has come to my attention that portions
+of the post are not rendering properly in Google Chrome. I will try to
+fix this, but in the meantime, you should be able to get the proper
+renderings in Safari or Firefox. (I do not yet know about other
+browsers.) If your browser is working as original expected, then
+you should see a picture load immediately beneath this text.</p>
 
 <script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"></script>
 
