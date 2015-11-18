@@ -35,6 +35,11 @@ renderings in Safari or Firefox. (I do not yet know about other
 browsers.) If your browser is working as original expected, then
 you should see a picture load immediately beneath this text.
 
+Update (18 Novemer 2015): many thanks to `othermike` on reddit who
+pointed out [my bug](https://www.reddit.com/r/rust/comments/3t6nk7/gc_and_rust_part_1_specifying_the_problem/cx40odj).
+The content should now render properly on Chrome (and hopefully other
+browsers too).
+
 <script src="/javascripts/viz.js" charset="utf-8"></script>
 <script src="/javascripts/js_to_dot.js" charset="utf-8"></script>
 <script src="/javascripts/gc_rendering.js" charset="utf-8"></script>
@@ -100,7 +105,9 @@ function copied_gc_structure() {
 }
 
 function simple_gc2() {
-    var [rf, d] = simple_gc_structure();
+    var gc_struct = simple_gc_structure();
+    var rf = gc_struct[0];
+    var d = gc_struct[1];
     // for_each_reachable([d], hide, { on_edge: hide });
     // for_each_reachable([rf], unhide);
     var content = render_objects([rf, d]);
@@ -110,7 +117,9 @@ function simple_gc2() {
 
 <p id="target_anchor1"></p>
 <script>
-var [rf, d] = simple_gc_structure();
+var gc_struct = simple_gc_structure();
+var rf = gc_struct[0];
+var d = gc_struct[1];
 var content = render_objects([rf]);
 post_graph("target_anchor1", digraph(content, { rankdir:"LR" }));
 </script>
@@ -832,7 +841,9 @@ be easier for you to read, and (just as important) for me to write.
 
 <p id="target_anchor12"></p>
 <script>
-var [rf, d] = simple_gc_structure();
+var gc_struct = simple_gc_structure();
+var rf = gc_struct[0];
+var d = gc_struct[1];
 
 var a = rf.r0.target;
 var b = rf.r1.target;
