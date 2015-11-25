@@ -346,7 +346,10 @@ them.{% sidenote 'is-ul-really-gone' 'Or rather, it does away with the bullet si
 
 If you are curious about Tufte's argument against the use of bulleted
 lists, I highly recommend you pick up his essay
-["The Cognitive Style of PowerPoint"][books_pp],{% marginnote 'the-be-book' 'I suspect your local library is more likely to carry "Beautiful Evidence" than the PowerPoint essay (which one might deem a pamphlet).'%}
+["The Cognitive Style of PowerPoint"][books_pp],{% marginblock %}
+Your local library is more likely to carry "Beautiful Evidence"
+than the PowerPoint essay on its own (which one might deem a pamphlet).
+{% endmarginblock %}
 (which you can acquire on its own, or can be found as a chapter of his book
 ["Beautiful Evidence"][books_be]).
 
@@ -372,8 +375,9 @@ bullet."). I do not really have an argument against that.
    ... or if it is a continuation of the previous item.
 
 (Then again, since the standard Octopress format does not indent
-unordered lists, the same problem arises, unless one has customized its
-SCSS in the same manner that I now have done.)
+unordered lists, the same problem arises unless one
+customizes{% sidenote 'scss-indented-list' 'See the `$indented-lists` variable in `_layout.scss`' %}
+its SCSS in the same manner that I now have done.)
 
 I *am* trying to learn how to make my blog posts more stream of thought
 (for quick generation and publication), rather than carefully crafted
