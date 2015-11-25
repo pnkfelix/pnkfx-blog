@@ -206,9 +206,10 @@ figure.code {
 
 figure.code pre, figure.code code, figure.code table, figure.code .pre-code {
      // width: calc(100% - 0.8em);
+     // width: calc(90% - 0.8em);
      // width: auto;
      width: auto;
-     padding-left: 0.8em;
+     padding-left: 0.4em;
      // overflow-x: auto;
 }
 
