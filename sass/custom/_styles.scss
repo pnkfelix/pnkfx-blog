@@ -3,6 +3,28 @@
 
 .pre-code { .n { color: $base1 !important } }
 
+// From:
+//
+// http://stackoverflow.com/questions/11093233/how-to-support-scrolling-when-using-pygments-with-jekyll
+//
+// -- selector prefixed to the wrapper div for collision prevention
+
+// .highlight pre code * {
+//   white-space: nowrap;    // this sets all children inside to nowrap
+// }
+// 
+// .highlight pre {
+//   overflow-x: auto;       // this sets the scrolling in x
+// }
+// 
+// .highlight pre code {
+//   white-space: pre;       // forces <code> to respect <pre> formatting
+// }
+
+pre {
+  overflow-x: scroll;       // this sets the scrolling in x
+}
+
 // I would like to experiment with the Tufte CSS, but
 // getting a usable result is *not* as simple as just
 // adding a few imports like the below.
@@ -11,3 +33,14 @@
 // for later.
 
 // @import url("/tufte-css/tufte.css")
+
+// h2 { color: "felixred" }
+// $solarized: light;
+
+@import "tufte";
+
+article {
+  ol, ul {
+//    padding-left: 3em;
+  }
+}
