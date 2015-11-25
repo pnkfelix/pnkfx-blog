@@ -212,7 +212,7 @@ Important Caveat: this hacked `marginblock` plugin can only handle
 inline elements.
 
 {% marginblock 'demo-code-in-margin' %}
-`<code>blocks</code>` do work (via HTML or Markdown backticks), but
+`<code>styling</code>` does work (via HTML or Markdown backticks), but
 fenced code blocks do not, because they generate `figure` and `table`
 elements.
 {% endmarginblock %}
