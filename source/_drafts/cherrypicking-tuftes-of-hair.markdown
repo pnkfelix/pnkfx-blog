@@ -252,7 +252,7 @@ the "main text", while the code block spans the full extent of the
 page, flowing into the margin area.
 
 I have hacked the CSS so that all of the figures for code are given
-the full width of the page (otherwise I almost overflowed the
+the full width of the page (otherwise, they always overflowed the
 available space, yielding unfortunate scroll bars).
 
 Still, it might well be that some SVG diagrams will likewise need the
