@@ -52,19 +52,21 @@ previous customizations.)
 
 But the reality is that I do not really want to spend that much time on this;
 having a presentation that matches every aspect of [tufte-jekyll] is not
-currently that important to me. (At least, not yet.) Instead, what I really
-want is to cherry-pick certain aspects that I find important.
+currently that important to me. (At least, not yet.)
+
+What I really wanted was to cherry-pick certain aspects that I find
+important.
 
 In particular, I *really* want sidenotes (and margin notes/figures),
-and the option for full width figures. Below, I'll discuss the
-motivation for each in turn.
+and an option for full width figures. I'll discuss each in turn.
 
 Luckily for me, the presentation of [tufte-jekyll][] is itself
-dedicated to spelling out how each feature was added. In other words,
-it seems *perfect* to use as the basis for cherry-picking.
+somewhat dedicated to spelling out how each feature was added.  In
+other words, it seems *perfect* to use as the basis for such
+cherry-picking.
 
 Pretty much all of the things I wanted were implemented in
-[tufte-jekyll][] via Jekyll Plugins. Lets go through them one by one,
+[tufte-jekyll][] via Jekyll Plugins. Let's go through them one by one,
 largely just to prove to myself that it is all working as I expect,
 
 (In actual practice, what this actually meant is that iteratively
