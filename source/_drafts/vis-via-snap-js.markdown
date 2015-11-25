@@ -7,6 +7,24 @@ categories:
 published: true
 ---
 
+[Previously][part1] I discussed visualizing graphs (`G = (V,E)`)
+specified in DOT syntax (`digraph { a -> b; }`) via
+`viz.js`, which is `graphviz` compiled to Javascript.
+
+[part1]: /blog/2015/10/12/viz-a-viz-js/
+
+However, I have decided that it is too difficult to convince
+graphviz to produce particular layouts. Therefore, I am going
+to try out other tools for working with SVG; in this post, I'm
+going to discuss a relative newcomer to the scene, [snap.svg][].
+
+<!-- more -->
+
+Control over layout is
+particularly important to me, especially when I am showing a
+series of graphs and want to ensure that the visual diff between
+each one is minimal.
+
 <script src="/javascripts/snap.svg-min.js" charset="utf-8"></script>
 
 <script>
@@ -55,6 +73,140 @@ Snap.plugin(function(Snap,Element,Paper,global) {
 });
 </script>
 
+<script>
+// Absolute cartesian coordinates
+function A(x, y) {
+    var a = [x, y];
+    a.is_relative = false;
+    a.is_polar = false;
+    return a;
+}
+
+// Relative cartesian coordinates
+function D(dx, dy) {
+    var a = [dx, dy];
+    a.is_relative = true;
+    a.is_polar = false;
+    return a;
+}
+
+// Relative polar coordinates
+function P(dist, theta) {
+    var a = [];
+    a.is_relative = true;
+    a.is_polar = true;
+    a.dist = dist;
+    a.theta = theta;
+    return a;
+}
+
+function Node(label, pos) {
+    this.is_node = true;
+    this.label = label;
+    this.pos = pos;
+    this.edges = [];
+}
+
+function Edge(to, thru) {
+    this.is_edge = true;
+    this.to = to;
+    this.thru = thru;
+}
+
+Node.prototype.node = function(label, dpos) {
+    var n2;
+    if (dpos.is_relative) {
+	if (dpos.is_polar) {
+	    var dx = dpos.dist * Math.cos(2 * Math.PI * dpos.theta / 360);
+	    var dy = dpos.dist * Math.sin(2 * Math.PI * dpos.theta / 360);
+	    n2 = [this.pos[0] + dx, this.pos[1] + dy];
+	} else {
+	    n2 = [this.pos[0] + dpos[0], this.pos[1] + dpos[1]];
+	}
+    } else {
+	n2 = [dpos[0], dpos[1]];
+    }
+    return new Node(label, n2);
+}
+
+Node.prototype.to_node = function(label, dpos, thru) {
+    var n = this.node(label, dpos);
+    this.edges.push(new Edge(n, thru));
+    return n;
+}
+
+function node(label, pos) { return new Node(label, pos); }
+function edge(to, thru) { return new Edge(to, thru); }
+</script>
+
+
+Goal: render the graph `a -> b -> c -> e -> a; b -> d -> e;` in a nice
+way.
+
+<script>
+function build_graph() {
+    var a = node("a", [100,100]);
+    var b = a.to_node("b", D(50,0)); // node("b", [150,100]);
+    var c = b.to_node("c", P(50, -45));
+    var d = b.to_node("d", P(50,  45));
+    var e = d.to_node("e", P(50, -45));
+
+    c.next = edge(e);
+    d.next = edge(e);
+    e.next = edge(a);
+
+    return [a,b,c,d,e];
+}
+</script>
+    
+<svg id="demo_neg16" height="200" width="100%"></svg>
+<script>
+var s = Snap("#demo_neg16");
+var svg = document.getElementById("demo_neg15");
+s.rect(0, 0, "100%", "100%").attr({ fill: grid_pat() });
+
+(function () {
+    g = build_graph();
+    for (i in g) {
+	if (g[i].is_node) {
+	    var n = g[i];
+	    var p = n.pos;
+	    var rx = n.rx || 20;
+	    var ry = n.ry || 10;
+	    if (n.label) {
+                var t = s.text(p[0], p[1] + 5, n.label);
+		t.attr({textAnchor: "middle"});
+	    }
+
+	    var c = s.ellipse(p[0], p[1], rx, ry);
+	    c.attr({fill: "none", stroke: "blue"});
+
+	    function consider_edge(n, e) {
+		if (e.is_edge) {
+		    // var l = s.line(p[0], p[1], e.to.pos[0], e.to.pos[1]);
+		    var l = s.path(Snap.format(
+			("M {start.x},{start.y} " +
+			 "C {c1.x},{c1.y} {c2.x},{c2.y} {finis.x},{finis.y}"),
+			{start: {x: p[0], y: p[1]},
+			 c1: {x: p[0] * 0.66 + e.to.pos[0] * 0.33, y: p[1] * 0.33 + e.to.pos[1] * 0.66},
+			 c2: {x: p[0] * 0.33 + e.to.pos[0] * 0.66, y: p[1] * 0.66 + e.to.pos[1] * 0.33},
+			 finis: {x: e.to.pos[0], y: e.to.pos[1]}}
+		    ));
+		    l.attr({fill: "none", stroke: "blue"});
+		}
+	    }
+	    
+	    for (j in n) {
+		consider_edge(n, n[j]);
+	    }
+	    for (j in n.edges) {
+		consider_edge(n, n.edges[j]);
+	    }
+	}
+    }
+})();
+</script>
+
 <svg id="demo_neg15" height="200" width="100%">
 </svg>
 <script>
@@ -67,6 +219,12 @@ var model = {
     ctrl: [{ x:390, y:190 }, { x: 10, y: 10 }],
     finis: { x:210, y: 90 },
 };
+
+var e1 = s.ellipse(100, 100, 75, 50)
+    .attr({stroke: "green", fill: dev_color, fillOpacity: 0.2});
+
+var e2 = s.ellipse(300, 100, 75, 50)
+    .attr({stroke: "purple", fill: dev_color, fillOpacity: 0.2});
 
 var p = s.path().attr({stroke: "blue", fill: "none" });
 var cs = s.circle(0,0,5).attr({stroke:"blue", fill:dev_color});
@@ -128,8 +286,24 @@ var make_drag_move = (function() {
 
 cs.altDrag(make_drag_move(model.start), function(x,y,e) {}, function(e) {});
 cf.altDrag(make_drag_move(model.finis), function(x,y,e) {}, function(e) {});
-c1.altDrag(make_drag_move(model.ctrl[0]), function(x,y,e) {}, function(e) {});
+c1.altDrag(make_drag_move(model.ctrl[0]), function(x,y,e2) {}, function(e) {});
 c2.altDrag(make_drag_move(model.ctrl[1]), function(x,y,e) {}, function(e) {});
+
+function make_ellipse_draggable(e) {
+    var my_e = e;
+    var dcx;
+    var dcy;
+    e.altDrag(function(dx, dy, x, y, evt) { true;// console.log("got here x:"+x+" y:"+y);
+					    my_e.attr({cx:x - dcx, cy:y - dcy});
+					  },
+	      function(x, y, evt) {
+		  dcx = x - my_e.attr("cx");
+		  dcy = y - my_e.attr("cy");
+	      },
+	      function(evt) { });
+}
+make_ellipse_draggable(e1);
+make_ellipse_draggable(e2);
 </script>
 
 <svg id="demo_neg14" height="100" width="100%"/>
@@ -181,7 +355,7 @@ var s = Snap("#demo_neg12");
 s.rect(0, 0, "100%", "100%").attr({ fill: grid_pat() });
 
 function arc_p(large, sweep) {
-    return "M 110,70 A 50 30 20 "+large+" "+sweep+" 160 110"
+    return "M 110,70 A 50 330 20 "+large+" "+sweep+" 160 110"
 }
 s.path("M 110,10 Q 20,20 30,10 T 110,70").attr({ stroke: "blue", fill: "none" });
 s.path(arc_p(0,0)).attr({ stroke: "#f00", fill: "none" });
@@ -677,8 +851,6 @@ uncontrollable.
 Therefore, I want to explore using SVG (scalable vector graphics) more
 directly, but still using some Javascript library to ease encoding the
 `<svg>` elements.
-
-<!-- more -->
 
 ### Installing JS for snap.svg
 
