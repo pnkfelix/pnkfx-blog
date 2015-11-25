@@ -150,11 +150,8 @@ main content{% marginnote 'uniq-id' 'margin content' %}
 Another topic I have touched on (and plan to do more with soon) is
 drawing diagrams of graph structures. This usually involves SVG in
 some manner.
-
-Here is a relatively simple bit of SVG:
-
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-     id="demo_svg_main" height="50" width="100%">
+     id="demo_svg_defs" height="0" viewBox="0 0 32 32">
 <defs>
 <pattern id="grid_cell" width=10 height=10 patternUnits="userSpaceOnUse">
 <path d="M 0,0 v10 h10" fill="none" stroke="#aaa" stroke-width=1/>
@@ -162,15 +159,27 @@ Here is a relatively simple bit of SVG:
 <pattern id="grid" width=100 height=100 patternUnits="userSpaceOnUse">
 <path d="M 0,0 v100 h100 v-100 z" stroke="#555" stroke-width=1 fill="url(#grid_cell)"/>
 </pattern>
-</defs>
+<g id="the_pic">
 <rect x=0 y=0 width="100%" height="100%" fill="url(#grid)"/>
 <circle cx=20 cy=20 r=10 stroke="green" fill="none"/>
 <path d="M 80,30 C 90,20 30,20 10,40" stroke="blue" fill="none"/>
+</g>
+</defs>
 </svg>
 
-In any case, I want to be able to present such diagrams
-in the same manner that `tufte-css` and `tufte-jekyll` presents margin
-figures, full-width figures, and column width figures.
+Here is a relatively simple bit of SVG:
+
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     id="demo_svg_main" height="50" width="100%">
+<use xlink:href="#the_pic"/>
+</svg>
+<!-- If you're looking at this source code, then you can see that the
+     actual content definitions are above, in the SVG group (`g`)
+     element identified by `the_pic` -->
+
+I want to be able to present such diagrams in the same manner that
+`tufte-css` and `tufte-jekyll` presents margin figures, full-width
+figures, and column width figures.
 
 However, `tufte-jekyll` assumes in its plugin for these features that
 whatever figure you want to present is held in a separate file.
@@ -178,17 +187,7 @@ whatever figure you want to present is held in a separate file.
 {% marginblock 'svg-margin-figure' %}
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
      id="demo_svg_margin" height="50" width="100%">
-<defs>
-<pattern id="grid_cell" width=10 height=10 patternUnits="userSpaceOnUse">
-<path d="M 0,0 v10 h10" fill="none" stroke="#aaa" stroke-width=1/>
-</pattern>
-<pattern id="grid" width=100 height=100 patternUnits="userSpaceOnUse">
-<path d="M 0,0 v100 h100 v-100 z" stroke="#555" stroke-width=1 fill="url(#grid_cell)"/>
-</pattern>
-</defs>
-<rect x=0 y=0 width="100%" height="100%" fill="url(#grid)"/>
-<circle cx=20 cy=20 r=10 stroke="green" fill="none"/>
-<path d="M 80,30 C 90,20 30,20 10,40" stroke="blue" fill="none"/>
+<use xlink:href="#the_pic"/>
 </svg>
 Here is a margin figure; it shows a circle and a cubic bezier curve
 (along with helpful grid lines, which I need to figure out how to
@@ -262,45 +261,44 @@ much like with its `marginfigure` plugin,
 the `fullwidth` plugin assumes that
 the content to be rendered lives in a separate file. Analogously to
 how I dealt with that by making my own version of plugin,
-`margin_block`, I have here made my own `fullwidth_block` plugin.
+`margin_block`, I have here made my own `fullwidth_figure` plugin.
 
-{% fullwidthblock %}
+Here is that circle and bezier curve again, this time spanning
+the full width of the page:
+
+{% fullwidthfigure %}
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
      id="demo_svg_main" height="50" width="100%">
-<defs>
-<pattern id="grid_cell" width=10 height=10 patternUnits="userSpaceOnUse">
-<path d="M 0,0 v10 h10" fill="none" stroke="#aaa" stroke-width=1/>
-</pattern>
-<pattern id="grid" width=100 height=100 patternUnits="userSpaceOnUse">
-<path d="M 0,0 v100 h100 v-100 z" stroke="#555" stroke-width=1 fill="url(#grid_cell)"/>
-</pattern>
-</defs>
-<rect x=0 y=0 width="100%" height="100%" fill="url(#grid)"/>
-<circle cx=20 cy=20 r=10 stroke="green" fill="none"/>
-<path d="M 80,30 C 90,20 30,20 10,40" stroke="blue" fill="none"/>
+<use xlink:href="#the_pic"/>
 </svg>
-{% endfullwidthblock %}
+{% endfullwidthfigure %}
 
 So, all you need to do is write:
 {% raw %}
 ```
-{% fullwidthblock %}
-The lines of full Width Block content will extend across the full
+{% fullwidthfigure %}
+The lines of fullwidth figure content will extend across the full
 width of the page before line wrapping. (Some block elements will end
 up being mishandled, so don't use elements like `p` or `ul`, et
 cetera, or Markdown that generates them.)
-{% endfullwidthblock %}
+As the name implies, this is nested within a `figure` element;
+that means, for example, you can use `figcaption` to add a caption:
+<figcaption>Caption for `fullwidthfigure` demo</figcaption>
+{% endfullwidthfigure %}
 ```
 {% endraw %}
 which renders as:
-{% fullwidthblock %}
-The lines of full Width Block content will extend across the full
+{% fullwidthfigure %}
+The lines of fullwidth figure content will extend across the full
 width of the page before line wrapping. (Some block elements will end
 up being mishandled, so don't use elements like `p` or `ul`, et
 cetera, or Markdown that generates them.)
-{% endfullwidthblock %}
+As the name implies, this is nested within a `figure` element;
+that means, for example, you can use `figcaption` to add a caption:
+<figcaption>Caption for `fullwidthfigure` demo</figcaption>
+{% endfullwidthfigure %}
 
-## Drawbacks for Authorship
+## Drawbacks, Rendering Bugs and/or Gotcha's
 
 Originally I had a whole section here decrying the fact that I could
 not put *any* line breaks into the source for a `sidenote` or
@@ -338,7 +336,7 @@ is not such a bad thing.
 
 [IJ]: https://en.wikipedia.org/wiki/Infinite_Jest
 
-## <a id="on-bulleted-lists">On Bulleted Lists</a>
+## <a id="on-bulleted-lists"></a>On Bulleted Lists
 [on-bullets]: #on-bulleted-lists
 
 Speaking of bulleted lists: I implied up above that Tufte has a
