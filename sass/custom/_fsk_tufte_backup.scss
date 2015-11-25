@@ -1,0 +1,484 @@
+// Global Resets
+// 
+* { margin: 0; padding: 0; }
+
+/* clearfix hack after Cederholm (group class name) */
+.group:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+html, body { height: 100%; }
+
+// First significant deviation from CSS on tufte.css site - variable font size as browser width expands or contracts
+//html { font-size: 15px; }
+
+html{
+    text-align: baseline;
+    font-size: 11px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+  }
+
+@media screen and (min-width: 800px){ html{ font-size: 12px;} }
+
+@media screen and (min-width: 900px){ html{ font-size: 13px;} }
+
+@media screen and (min-width: 1000px){ html{ font-size: 14px;} }
+
+@media screen and (min-width: 1100px){ html{ font-size: 15px; } }
+
+@media screen and (min-width: 1200px){ html{ font-size: 16px; } }
+
+@media screen and (min-width: 1300px){ html{ font-size: 17px; } }
+
+body { // width: 87.5%;
+       margin-left: auto;
+       margin-right: auto;
+       // padding-left: 12.5%;
+       color: $text-color;
+       max-width: 1400px;
+       counter-reset: sidenote-counter; }
+
+// --------- Typography stuff -----------//
+// added rational line height and margins ala http://webtypography.net/intro/ 
+
+p .subtitle { font-style: italic;
+             margin-top: 2.1777777777777778rem;
+             margin-bottom: 2.1777777777777778rem;
+             font-size: 1.8rem;
+             display: block;
+             line-height: 1.08888888888889; }
+
+
+p, ol, ul { font-size: 1.4rem; }
+
+p, li { line-height: 2rem;        }
+p, li { margin-top: 1.4rem;       }
+p, li { padding-right: 2rem;      } //removed because,  why?
+p, li { vertical-align: baseline; }
+
+blockquote p {  font-size: 1.1rem;
+                line-height: 1.78181818;
+                margin-top: 1.78181818rem;
+                margin-bottom: 1.78181818rem; 
+                width: 45%;
+                padding-left: 2.5%;
+                padding-right: 2.5%;
+}
+
+blockquote footer { width: 45%;
+                    text-align: right; }
+
+h1 code, h2 code, h3 code { font-size: 0.80em; } //left in for no real reason
+
+/* Basic Layout stuff --*/
+
+article { position: relative;
+          padding: 1
+
+          rem 0rem 2.5rem 0rem;  // reduced top and bottom padding by 50%
+}
+
+section { padding-top: 1rem;
+          padding-bottom: 1rem; }
+
+
+span.tufte > ul, ul.tufte { width: 45%;
+     -webkit-padding-start: 5%;
+     -webkit-padding-end: 5%;
+     list-style-type: none;
+     }
+
+//li { padding: 0.5em 0; } //vertical padding on list items screws up vertical rhythym 
+
+figure, figure img.maincolumn { max-width: 65%;
+         -webkit-margin-start: 0;
+         -webkit-margin-end: 0;
+         margin-bottom: 3em; }
+
+figcaption { float: right;
+             clear: right;
+             margin-right: -48%;
+             margin-top: 0;
+             margin-bottom: 0;
+             font-size: 1.0rem;
+             line-height: 1.6;
+             vertical-align: baseline;
+             position: relative;
+             max-width: 40%; }
+
+figure.fullwidth figcaption { margin-right: 24%; }
+
+
+
+img { max-width: 100%; }
+
+p, footer, div.table-wrapper { width: 65%; }
+
+.sidenote, .marginnote { float: right;
+                         clear: right;
+                         margin-right: -40%;
+                         width: 35%;
+                         margin-top: 0;
+                         margin-bottom: 1.96rem;
+                         font-size: 1.0rem;
+//                         line-height: 1.96; //changed to bring line heights into rational pattern
+                         line-height: 1.8; // Felix playing with line height option; tufte-css's seems like too much space
+
+                         vertical-align: baseline;
+                         position: relative; }
+
+// li .sidenote, li .marginnote{ margin-right: -80%; } //added to allow for the fact that lists are indented and marginnotes and sidenotes push to right
+
+.sidenote-number { counter-increment: sidenote-counter; }
+
+.sidenote-number:after, .sidenote:before { content: counter(sidenote-counter) " ";
+                                           font-family: et-bembo-roman-old-style;
+                                           color: $contrast-color; //added color 
+                                           position: relative;
+                                           vertical-align: baseline; }
+
+.sidenote-number:after { content: counter(sidenote-counter);
+                         font-size: 1rem;
+                         top: -0.5rem;
+                         left: 0.1rem; }
+
+.sidenote:before { content: counter(sidenote-counter) ".\000a0"; // this is unicode for a non-breaking space
+                   color: $contrast-color;
+                   top: 0rem; } //removed superscripting for numerical reference in sidenote
+
+// div.table-wrapper { overflow-x: auto; } //changed all overflow values to 'auto' so scroll bars appear only as needed
+
+@media screen and (max-width: 760px) { p, footer { width: 90%; }
+                                       pre code { width: 87.5%; }
+                                       ul { width: 85%; }
+                                       figure { max-width: 90%; }
+                                       figcaption, figure.fullwidth figcaption { margin-right: 0%;
+                                                                                 max-width: none; }
+                                       blockquote p, blockquote footer {  width: 80%;
+                                                                          padding-left: 5%;
+                                                                          padding-right: 5%;
+                                                                        }}
+
+.marginnote code, .sidenote code { font-size: 1rem; } //more .code class removal
+
+pre, pre code, p pre code {
+     width: 60%;
+     // padding-left: 0;
+     overflow-x: auto;
+}
+
+figure.code {
+     // width: 100%;
+     width: auto;
+     max-width: calc(100% - 0.8em);
+}
+
+// figure.code pre, figure.code code, figure.code table {
+//      width: 100%;
+//      padding: 0;
+// //   overflow-x: auto;
+// }
+
+figure.code pre, figure.code code, figure.code table, figure.code .pre-code {
+     // width: calc(100% - 0.8em);
+     width: auto;
+     padding-left: 0.8em;
+//   overflow-x: auto;
+}
+
+.fullwidth, li.listing div{ max-width: 90%; }
+
+span.newthought { font-variant: small-caps;
+                  font-size: 1.2em;
+                  letter-spacing: 0.05rem; }
+
+input.margin-toggle { display: none; }
+
+label.sidenote-number { display: inline; }
+
+label.margin-toggle:not(.sidenote-number) { display: none; }
+
+@media (max-width: 760px) { label.margin-toggle:not(.sidenote-number) { display: inline; color: $contrast-color; }
+                            .sidenote, .marginnote { display: none; }
+                            .margin-toggle:checked + .sidenote, 
+                            .margin-toggle:checked + .marginnote { display: block;
+                                                                   float: left;
+                                                                   left: 1rem;
+                                                                   clear: both;
+                                                                   width: 95%;
+                                                                   margin: 1rem 2.5%;
+                                                                   vertical-align: baseline;
+                                                                   position: relative; }
+                            label { cursor: pointer; }
+
+//                            pre, pre code, p code, p pre code { width: 90%; padding: 0; }
+                            pre, pre code, p pre code { width: 90%; padding: 0; }
+
+                            .table-caption { display: block;
+                                             float: right;
+                                             clear: both;
+                                             width: 98%;
+                                             margin-top: 1rem;
+                                             margin-bottom: 0.5rem;
+                                             margin-left: 1%;
+                                             margin-right: 1%;
+                                             vertical-align: baseline;
+                                             position: relative; }
+                            div.table-wrapper, table, table.booktabs { width: 85%; }
+                            div.table-wrapper { border-right: 1px solid #efefef; }
+                            img { max-width: 100%; } }
+/*--- End of Basic Layout stuff from tufte.css ---*/
+
+/* -- Jekyll specific styling --*/
+//helper classes
+
+.contrast { color: $contrast-color;}
+.smaller { font-size: 80%;}
+//Nav and Footer styling area
+
+header > nav.group, body footer { 
+  width: 95%;
+  padding-top: 2rem;
+}
+
+nav.group a.active:before{ content:"\0003c\000a0";} // escaped unicode for the carats and then a space on active menu links
+nav.group a.active:after{ content:"\000a0\0003e" ;}
+
+header > nav  a{
+  font-size: 1.2rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: $contrast-color;
+  padding-top: 1.5rem;
+  text-decoration: none;
+  display: inline-block;
+  float: left;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-right: 2rem;
+  //margin-left: 1rem;
+  vertical-align: baseline;
+}
+header > nav a img{
+  height: 5rem;
+  position: relative;
+  max-width: 100%;
+  top:-1.5rem;
+}
+ul.footer-links, .credits{
+  list-style: none;
+  text-align: center;
+  margin: 0 auto;
+}
+ul.footer-links li{
+  display: inline;
+  padding: 0.5rem 0.25rem;
+}
+.credits{
+  padding: 1rem 0rem;
+}
+
+// End of Nav and Footer styling area
+
+//Full width page styling stuff
+
+body.full-width, .content-listing, ul.content-listing li.listing{ width: 90%;
+       margin-left: auto;
+       margin-right: auto;
+       padding: 0% 5%;
+
+}
+.full-width article p{
+  width: 90%;
+}
+
+
+h1.content-listing-header{
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.2rem;
+  font-size: 1.8rem;
+}
+
+li.listing hr{
+  width:100%;
+}
+.listing, .listing h3
+{
+  display: inline-block;
+  margin:0;
+}
+li.listing {
+  margin:0;
+  & p{
+    width: 100%
+  }
+}
+
+
+li.listing:last-of-type{
+  border-bottom: none;
+  margin-bottom: 1.4rem;
+}
+li.listing h3.new {
+  text-transform: uppercase;
+  font-style: normal;
+}
+hr.slender {
+    border: 0;
+    height: 1px;
+    margin-top: 1.4rem;
+    margin-bottom:1.4rem;
+    background-image: -webkit-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0)); 
+    background-image:    -moz-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0)); 
+    background-image:     -ms-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0)); 
+    background-image:      -o-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0));
+}
+// End of front listing page stuff
+
+
+// Printing ands screen media queries
+
+// Does not display a print-footer for screen display
+@media screen{
+  .print-footer{
+    display: none;
+  }
+}
+
+//printing stuff
+@media print {
+    *,
+    *:before,
+    *:after {
+        background: transparent !important;
+        color: #000 !important; // Black prints faster:http://www.sanbeiji.com/archives/953 
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+    @page {
+        margin: 0.75in 0.5in 0.75in 0.5in;
+        orphans:4; widows:2;
+    }
+    
+    body {
+        font-size:  12pt;
+          
+    }
+    html body span.print-footer{
+      font-family: $sans-font;
+      font-size: 9pt;
+      margin-top: 22.4pt;
+      padding-top: 4pt;
+      border-top: 1px solid #000;
+    }
+
+    thead {
+        display: table-header-group;
+    }
+
+    tr,
+    img {
+        page-break-inside: avoid;
+    }
+
+    img {
+        max-width: 100% !important;
+    }
+
+    p,
+    h2,
+    h3 {
+        orphans: 4;
+        widows: 4;
+    }
+    article h2, article h2 h3, article h3, article h3 h4, article h4, article h4 h5 {
+        page-break-after: avoid;
+    }
+
+    body header , body footer {
+      display:none;
+    }
+}
+
+
+/* --- Icomoon icon fonts CSS --*/
+@font-face {
+  font-family: 'icomoon';
+  src:url('../fonts/icomoon.eot?rgwlb8');
+  src:url('../fonts/icomoon.eot?#iefixrgwlb8') format('embedded-opentype'),
+    url('../fonts/icomoon.woff?rgwlb8') format('woff'),
+    url('../fonts/icomoon.ttf?rgwlb8') format('truetype'),
+    url('../fonts/icomoon.svg?rgwlb8#icomoon') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+[class^="icon-"], [class*=" icon-"] {
+  font-family: 'icomoon';
+  speak: none;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  color: $contrast-color;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-pencil:before {
+  content: "\e600";
+}
+.icon-film:before {
+  content: "\e60f";
+}
+.icon-calendar:before {
+  content: "\e601";
+}
+.icon-link:before {
+  content: "\e602";
+}
+.icon-info:before {
+  content: "\e603";
+}
+.icon-cancel-circle:before {
+  content: "\e604";
+}
+.icon-checkmark-circle:before {
+  content: "\e605";
+}
+.icon-spam:before {
+  content: "\e606";
+}
+.icon-mail:before {
+  content: "\e607";
+}
+.icon-googleplus:before {
+  content: "\e608";
+}
+.icon-facebook:before {
+  content: "\e609";
+}
+.icon-twitter:before {
+  content: "\e60a";
+}
+.icon-feed:before {
+  content: "\e60b";
+}
+.icon-flickr:before {
+  content: "\e60c";
+}
+.icon-github:before {
+  content: "\e60d";
+}
+.icon-box-add:before {
+  content: "\e60e";
+}
+/*-- End of Icomoon icon font section --*/            
