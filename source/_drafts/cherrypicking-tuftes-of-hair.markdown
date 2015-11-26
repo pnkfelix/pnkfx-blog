@@ -382,7 +382,7 @@ its SCSS in the same manner that I now have done.)
 I *am* trying to learn how to make my blog posts more stream of thought
 (for quick generation and publication), rather than carefully crafted
 pieces of art. The bulleted list approach certainly provides a
-quick-and-dirty way to do that.{% sidenote 'long-text' 'Speaking of quick-and-dirty, here is some really long text because I want to see what happens to the horizontal rule that divides the two parts of the main text below. From what I have observed, some (but not all) browsers stop the rendering of the horizontal rule from crossing into the text here.' %}
+quick-and-dirty way to do that.{% sidenote 'long-text' 'Speaking of quick-and-dirty, here is some really long text because I want to see what happens to the horizontal rule that divides the two parts of the main text below. At first different browsers handled the rendering in different ways; but now I have customized my SCSS so that `hr` has the same `width` constraint as a `p` element.' %}
 
 ----
 
