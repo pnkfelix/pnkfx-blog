@@ -349,7 +349,7 @@ lists, I highly recommend you pick up his essay
 ["The Cognitive Style of PowerPoint"][books_pp],{% marginblock %}
 Your local library is more likely to carry "Beautiful Evidence"
 than the PowerPoint essay on its own (which one might deem a pamphlet).
-Alterantively, you can also 
+Alternatively, you can also 
 <a href="http://www.edwardtufte.com/tufte/ebooks">purchase</a>
 the Powerpoint essay as a PDF-format e-book on Tufte's website.
 {% endmarginblock %}
