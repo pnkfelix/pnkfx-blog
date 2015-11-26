@@ -349,6 +349,9 @@ lists, I highly recommend you pick up his essay
 ["The Cognitive Style of PowerPoint"][books_pp],{% marginblock %}
 Your local library is more likely to carry "Beautiful Evidence"
 than the PowerPoint essay on its own (which one might deem a pamphlet).
+Alterantively, you can also 
+<a href="http://www.edwardtufte.com/tufte/ebooks">purchase</a>
+the Powerpoint essay as a PDF-format e-book on Tufte's website.
 {% endmarginblock %}
 (which you can acquire on its own, or can be found as a chapter of his book
 ["Beautiful Evidence"][books_be]).
@@ -374,53 +377,135 @@ bullet."). I do not really have an argument against that.
 
    ... or if it is a continuation of the previous item.
 
-(Then again, since the standard Octopress format does not indent
-unordered lists, the same problem arises unless one
-customizes{% sidenote 'scss-indented-list' 'See the `$indented-lists` variable in `_layout.scss`' %}
-its SCSS in the same manner that I now have done.)
+ * Then again, since the standard Octopress format does not indent
+   unordered lists, the same problem arises unless one
+   customizes{% sidenote 'scss-indented-list' 'See the `$indented-lists` variable in `_layout.scss`' %}
+   its SCSS to turn it on. (I tried this, but it ends up being more
+   trouble than its worth in terms of it breaking other things in the
+   CSS implementing this main-and-margin presentation.)
+
+ * Have you noticed that the indentation of the margin notes
+   that are attached to list-elements are a little screwy?
+
+    * This is because of how the CSS is implemented; the main content elements
+      (like `p`, `ul`, et cetera) are all assigned `width: 60%`,
+      so that the remaining 40% is available for the margin content,
+      which is then assigned `margin-right: -40%` in the CSS.
+
+   * The problem, as far as I can tell, is that the `-40%` is computed
+     relative to the width of the parent element.{% sidenote 'relative-margins-and-list-indents' 'When list content gets indented, the width of a list element is less than that of a paragraph element in the main text, and so its computed `margin-right: -40%` is likewise a little bit smaller than the value computed for other margin content, causing a slight (but annoyingly noticeable) difference.' %}
+
+   * I have spent some time trying to puzzle this out, but at this point
+     I am willing to just say "avoid attaching margin content to list
+     elements."
 
 I *am* trying to learn how to make my blog posts more stream of thought
 (for quick generation and publication), rather than carefully crafted
 pieces of art. The bulleted list approach certainly provides a
 quick-and-dirty way to do that.{% sidenote 'long-text' 'Speaking of quick-and-dirty, here is some really long text because I want to see what happens to the horizontal rule that divides the two parts of the main text below. At first different browsers handled the rendering in different ways; but now I have customized my SCSS so that `hr` has the same `width` constraint as a `p` element.' %}
 
-----
 
-In any case, there is a technical problem that arises when mixing
-lists with side or margin notes.
+## How'd He Do Dat?
 
-I already mentioned above that the margin inset for a sidenote may get
-a little screwy.
+So how did I do all this?
 
-For some reason, it gets particularly bad when I try to use sidenotes
-with direct `<ul>` element written in raw HTML.
+I started by copying the [tufte-jekyll][] plugins and SCSS support
+files into my blog source tree. Since I use Octopress, I had to move
+things around a bit:
 
-Check this out; I have preserved access to the original `tufte-css` style for `ul`,
-by putting it under a class named `"tufte"`. Compare:
+ 1. The `tufte.scss` that you find in tufte-jekyll's `css/`
+    needs to go somewhere; I put a copy of it into `sass/custom`.
 
-<ul>
- <li> a "normal" (class-less){% sidenote 'normal-bullet' 'kind of odd; "far-out!"' %}</li>
- <li> unordered (aka bulleted)</li>
- <li> list </li>
-</ul>
+    Then I made a copy of the copy and named it `_fsk_tufte.scss`{% marginnote 'on-renaming' 'In truth, the renamed copy came later, but it is good practice and simplifies the current discussion to assume I did it at the outset.' %}
 
-to:
+ 2. After putting the `.scss` files into place, I had to actually load the
+    main one into the Jekyll's page generation system. That is accomplished
+    via an `@import` in `sass/custom/_styles.scss`:
 
-<ul class="tufte">
- <li> Tufte-style (class="tufte"){% sidenote 'tufte-bullet' 'also kind of odd; "fall-in!"' %}</li>
- <li> unordered (and unbulleted)</li>
- <li> list </li>
-</ul>
+    ```
+    @import "fsk_tufte";
+    ```
 
-The original [tufte-jekyll][] code has workarounds in its CSS for the
-latter case above. I have not yet attempted to isolate those workarounds
-and apply them to my own code here.{% marginnote 'my-own-code' "At this point I have diverged in many ways from the original <code>tufte-jekyll</code> code; for example, I want to devote more than 50% of the page to my main text; the margin notes don't need to be given half of the browser's screen real estate." %}
+ 3. Running the `rake generate` task to generate the CSS and the pages showed that
+    there were references to undefined variables like `$constrast-color`.
+    I skimmed through `fsk_tufte.scss` and either removed such references
+    or figured out where those variables were defined in the original
+    tufte-jekyll source repository, and ported them over accordingly.
+    For example, `$contrast-color` was defined in `_sass/_settings.scss`;
+    I cut-and-pasted it into `sass/custom/_color.scss`.
 
-Either way, it is super weird that the inset goes in different
-directions for the two cases. (It is especially unfortunate for the
-"far-out!" case above; if you collapse the sidebar for the page, the
-"far-out!" can easily fall outside of the visible portion of the
-presentation.
+ 4. I initially copied all of the plugins from tufte-jekyll's
+    `_plugins/` into my `plugins/`.
+
+ 5. Even after doing this, a lot of things were broken. I spent a *long*
+    time with a web browser's "Inspect Element" tool, comparing how
+    the tufte-jekyll post was being rendered to how my own draft blog
+    post was rendered.
+
+    Over the course of doing this, I found it necessary to revise my
+    `_fsk_tufte.scss` in myriad ways.
+
+### Revisions to _fsk_tufte.scss
+
+ 1. I removed any content that I hypothesized was not related to my
+    margin-rendering related goals. For example, `tufte.scss`
+    automatically increases the font size as the browser window
+    width increases. I find this distracting as a programmer (and
+    annoying as a reader), so I removed it.
+
+ 2. I changed the footnote font-size selection strategy.
+
+    * Tufte-jekyll's strategy is to use `1.0rem`{% marginblock %}
+      "rem" stands for "root em" which in turn means "unit equal to the
+      height of a capital M in the root (i.e. `html`) element of the document"
+      {% endmarginblock %}
+      as the `font-size` for the margin text and then scaling up the font-size
+      for the main content to be `1.4rem` (so that the main text ends up 1.4x
+      the size of the margin text).
+
+    * I instead used `font-size: 0.8rem;` for margin text, and leave the
+      font-size for the main text unchanged (so that in principle it will
+      remain at `1rem`).
+
+    * My reasoning here is that the majority of the text should be
+      occuring in the main content area, and we should be respecting
+      the font settings chosen by the user in their browser for such
+      text. If the user has selected a font size of 14, then that is
+      what we should use for the main text; we should not be using 14
+      for the margin notes and scale the main text up to 1.4*14 (=
+      19.6).
+
+ 3. After I noticed that my main-and-margin presentation style was
+    begin applied even to things like the *sidebar* of the blog,
+    I added guards to all of the relevant parts of `_fsk_tufte.scss`
+    so that the main-and-margin styling *only* applies to elements
+    that occur within an `article` element (since the main content
+    blocks always fall under an article).
+
+    Those were rules like this:
+
+    ```
+    // If a `ul`/`ol` occurs *immediately* (>) under an `article`
+    article > ul, article > ol {
+        width: 60%
+    }
+    ```
+
+    I also added customization to try to avoid double-applications of
+    the percentage-based width restrictions; for example, I added
+    a rule like:
+
+    ```
+    p, ul, ol { p, ul, ol: width: 100 ]
+    ```
+
+    (In hindsight, perhaps this last rule would be redundant if I were
+    to generalize the previous rule in a suitable fashion...)
+
+Anyway, those are the main customizations of the SCSS that I can think
+of off-hand. You can of course just go peek at its source code
+if you want to see what it currently looks like (and perhaps offer
+tips on how I might revise it).
 
 [tufte-latex]: https://tufte-latex.github.io/tufte-latex/
 
