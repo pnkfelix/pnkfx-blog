@@ -96,7 +96,7 @@ blockquote p {  font-size: 1.1rem;
                 padding-right: 2.5%;
 }
 
-blockquote footer { width: 45%;
+article blockquote footer { width: 45%;
                     text-align: right; }
 
 // h1 code, h2 code, h3 code { font-size: 0.80em; } //left in for no real reason
@@ -112,6 +112,17 @@ article { position: relative;
 section { padding-top: 1rem;
           padding-bottom: 1rem; }
 
+article ul {
+    // Restrict the width of a `ul` within the presented `article`
+    // to <= 65% so that it does not extend into the margin area,
+    // and then further restrict it to 60% to compensate for
+    // the list indentation I put back in.
+    width: 60%;
+
+    // reset the width of `p` to 100% when it is in such a context,
+    // so that it does not get doubly-shrunk down.
+    p { width: 100%; }
+}
 
 span.tufte > ul, ul.tufte { width: 45%;
      -webkit-padding-start: 5%;
@@ -121,12 +132,12 @@ span.tufte > ul, ul.tufte { width: 45%;
 
 //li { padding: 0.5em 0; } //vertical padding on list items screws up vertical rhythym 
 
-figure, figure img.maincolumn { max-width: 65%;
+article figure, article figure img.maincolumn { max-width: 65%;
          -webkit-margin-start: 0;
          -webkit-margin-end: 0;
          margin-bottom: 3em; }
 
-figcaption { float: right;
+article figcaption { float: right;
              clear: right;
              margin-right: -48%;
              margin-top: 0;
@@ -143,7 +154,9 @@ figure.fullwidth figcaption { margin-right: 24%; }
 
 img { max-width: 100%; }
 
-p, hr, footer, div.table-wrapper { width: 65%; }
+article {
+  p, hr, footer, div.table-wrapper { width: 65%; }
+}
 
 .sidenote, .marginnote { float: right;
                          clear: right;
@@ -181,7 +194,9 @@ p, hr, footer, div.table-wrapper { width: 65%; }
 
 // div.table-wrapper { overflow-x: auto; } //changed all overflow values to 'auto' so scroll bars appear only as needed
 
-@media screen and (max-width: 760px) { p, footer { width: 100%; }
+@media screen and (max-width: 760px) {
+    article {
+                                       p, footer { width: 100%; }
                                        pre code { width: 87.5%; }
                                        ul { width: 85%; }
                                        figure { max-width: 100%; }
@@ -190,17 +205,19 @@ p, hr, footer, div.table-wrapper { width: 65%; }
                                        blockquote p, blockquote footer {  width: 80%;
                                                                           padding-left: 5%;
                                                                           padding-right: 5%;
-                                                                        }}
+                                                                        }}}
 
 // .marginnote code, .sidenote code { font-size: 1rem; } //more .code class removal
 
-pre, pre code, p pre code {
-     width: 60%;
-     // padding-left: 0;
-     overflow-x: auto;
+article {
+    pre, pre code, p pre code {
+        width: 60%;
+        // padding-left: 0;
+        overflow-x: auto;
+    }
 }
 
-figure.code {
+article figure.code {
      // width: 100%;
      // width: auto;
      // max-width: calc(100% - 0.8em);
@@ -214,16 +231,18 @@ figure.code {
 // //   overflow-x: auto;
 // }
 
-figure.code pre, figure.code code, figure.code table, figure.code .pre-code {
-     // width: calc(100% - 0.8em);
-     // width: calc(90% - 0.8em);
-     // width: auto;
-     width: auto;
-     padding-left: 0.4em;
-     // overflow-x: auto;
+figure.code {
+    pre, code, table, .pre-code {
+        // width: calc(100% - 0.8em);
+        // width: calc(90% - 0.8em);
+        // width: auto;
+        width: auto;
+        padding-left: 0.4em;
+        // overflow-x: auto;
+    }
 }
 
-.fullwidth, li.listing div{ max-width: 90%; }
+article { .fullwidth, li.listing div { max-width: 90%; } }
 
 span.newthought { font-variant: small-caps;
                   font-size: 1.2em;
@@ -321,6 +340,9 @@ ul.footer-links li{
   padding: 1rem 0rem;
 }
 
+// // Don't let `ul` get set to the percentage-based width that is set below
+// nav ul { width: auto; }
+
 // End of Nav and Footer styling area
 
 //Full width page styling stuff
@@ -331,7 +353,7 @@ body.full-width, .content-listing, ul.content-listing li.listing{ width: 90%;
        padding: 0% 5%;
 
 }
-.full-width article p{
+.full-width article p {
   width: 90%;
 }
 
@@ -343,8 +365,8 @@ h1.content-listing-header{
   font-size: 1.8rem;
 }
 
-li.listing hr{
-  width:100%;
+li.listing hr {
+  width: 100%;
 }
 .listing, .listing h3
 {
