@@ -112,18 +112,32 @@ article { position: relative;
 section { padding-top: 1rem;
           padding-bottom: 1rem; }
 
-article ul {
-    // Restrict the width of a `ul` within the presented `article`
+article > ul, article > ol {
+    // Restrict the width of a `ul`/`ol` (when *immediately*
+    // within the presented `article`)
     // to <= 65% so that it does not extend into the margin area,
     // and then further restrict it to 60% to compensate for
     // the list indentation I put back in.
     width: 60%;
-
-    // reset the width of `p` to 100% when it is in such a context,
-    // so that it does not get doubly-shrunk down.
-    p { width: 100%; }
 }
 
+p, ul, ol {
+    // reset the width of shrunken elements when in the context of another
+    // so that they do not get doubly-shrunk down.
+    // (but maybe make it a little less than 100%, to compensate for
+    // the space occupied by the indentation).
+    p, ul, ol {
+        // width: calc(100% - 1.3em);
+        // width: 95%;
+        // width: 90%;
+        width: 100%;
+    }
+}
+
+// This is a hack to let me opt into some of the original
+// CSS via `<span class="tufte"> ... </span> in my markdown
+// document. It is probably unnecessary at this point for
+// many reasons.
 span.tufte > ul, ul.tufte { width: 45%;
      -webkit-padding-start: 5%;
      -webkit-padding-end: 5%;
@@ -172,7 +186,7 @@ article {
                          vertical-align: baseline;
                          position: relative; }
 
-// li .sidenote, li .marginnote{ margin-right: -80%; } //added to allow for the fact that lists are indented and marginnotes and sidenotes push to right
+// li .sidenote, li .marginnote{ margin-right: -50%; } // added to allow for the fact that lists are indented and marginnotes and sidenotes push to right
 
 .sidenote-number { counter-increment: sidenote-counter; }
 
@@ -198,7 +212,7 @@ article {
     article {
                                        p, footer { width: 100%; }
                                        pre code { width: 87.5%; }
-                                       ul { width: 85%; }
+                                       ul, ol { width: 85%; }
                                        figure { max-width: 100%; }
                                        figcaption, figure.fullwidth figcaption { margin-right: 0%;
                                                                                  max-width: none; }
@@ -209,20 +223,25 @@ article {
 
 // .marginnote code, .sidenote code { font-size: 1rem; } //more .code class removal
 
-article {
-    pre, pre code, p pre code {
-        width: 60%;
-        // padding-left: 0;
-        overflow-x: auto;
-    }
-}
+// article {
+//     pre, pre code {
+//         width: 60%;
+//         // padding-left: 0;
+//         overflow-x: auto;
+//     }
+//     p, ul, ol {
+//         // Whether or not the above is a good idea, we definitely do not
+//         // want to double up the effect, (so undo the above styling here).
+//         pre, pre code { width: 100%; }
+//     }
+// }
 
 article figure.code {
      // width: 100%;
      // width: auto;
      // max-width: calc(100% - 0.8em);
      // max-width: calc(90% - 0.8em);
-     max-width: 90%;
+     max-width: 100%;
 }
 
 // figure.code pre, figure.code code, figure.code table {
