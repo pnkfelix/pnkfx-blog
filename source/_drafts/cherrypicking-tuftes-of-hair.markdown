@@ -365,7 +365,8 @@ For me, when writing markdown, the visible bullets serve a purpose.
 According to some conventions, my argument here is a strawman,
 because I have already failed by putting more than six words on a
 single bullet ("any more words per bullet, and you don't have a
-bullet."). I do not really have an argument against that.
+bullet."). I do not really have an argument against that,
+(except that Tufte himself seems to lambast such rules of thumb).
 {% endmarginblock %}
 
  * In particular, I sometimes attach more than one paragraph of text
