@@ -405,6 +405,16 @@ I *am* trying to learn how to make my blog posts more stream of thought
 pieces of art. The bulleted list approach certainly provides a
 quick-and-dirty way to do that.{% sidenote 'long-text' 'Speaking of quick-and-dirty, here is some really long text because I want to see what happens to the horizontal rule that divides the two parts of the main text below. At first different browsers handled the rendering in different ways; but now I have customized my SCSS so that `hr` has the same `width` constraint as a `p` element.' %}
 
+Update: a draft verison of this blog post had an `hr`-element between the
+previous paragraph and this point in the text. Then shortly before publication,
+I changed the `hr`-element to a new section heading, and didn't notice that
+the fix I had put into the CSS to make the span of `hr`-element shorter
+did not apply to the dotted line being rendered above the section header.
+
+----
+
+So, now (post publication) I have put back in an `hr`-element at roughly the point
+I expect it in the text.{% sidenote 'section-headers-todo' 'It would still be good to address the issue with the dotted line above section headers though.' %}
 
 ## How'd He Do Dat?
 
