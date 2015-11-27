@@ -394,7 +394,7 @@ bullet."). I do not really have an argument against that,
       which is then assigned `margin-right: -40%` in the CSS.
 
    * The problem, as far as I can tell, is that the `-40%` is computed
-     relative to the width of the parent element.{% sidenote 'relative-margins-and-list-indents' 'When list content gets indented, the width of a list element is less than that of a paragraph element in the main text, and so its computed `margin-right: -40%` is likewise a little bit smaller than the value computed for other margin content, causing a slight (but annoyingly noticeable) difference.' %}
+     relative to the width of the parent element.{% sidenote 'relative-margins-and-list-indents' 'When list content gets indented, the width of a list element is less than that of paragraphs in the main text, and so its computed `margin-right: -40%` is a bit smaller than that for other margin content, causing a slight (but annoyingly noticeable) difference.' %}
 
    * I have spent some time trying to puzzle this out, but at this point
      I am willing to just say "avoid attaching margin content to list
