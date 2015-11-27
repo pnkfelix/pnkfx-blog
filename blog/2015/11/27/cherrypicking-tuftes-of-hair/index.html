@@ -490,6 +490,9 @@ so that the remaining 40% is available for the margin content,
 which is then assigned <code>margin-right: -40%</code> in the CSS.</p></li>
 <li><p>The problem, as far as I can tell, is that the <code>-40%</code> is computed
 relative to the width of the parent element.<label for='relative-margins-and-list-indents' class='margin-toggle sidenote-number'></label><input type='checkbox' id='relative-margins-and-list-indents' class='margin-toggle'/><span class='sidenote'>When list content gets indented, the width of a list element is less than that of paragraphs in the main text, and so its computed <code>margin-right: -40%</code> is a bit smaller than that for other margin content, causing a slight (but annoyingly noticeable) difference. </span></p></li>
+<li><p>(Update: For that matter, the <em>width</em> of the text in nested list elements,
+ like this one, does not play well with the margin content; the text
+ of the list element in the main column is creeping into the margin.)</p></li>
 <li><p>I have spent some time trying to puzzle this out, but at this point
 I am willing to just say &ldquo;avoid attaching margin content to list
 elements.&rdquo;</p></li>
@@ -512,7 +515,7 @@ did not apply to the dotted line being rendered above the section header.</p>
 <hr />
 
 <p>So, now (post publication) I have put back in an <code>hr</code>-element at roughly the point
-I expect it in the text.<label for='section-headers-todo' class='margin-toggle sidenote-number'></label><input type='checkbox' id='section-headers-todo' class='margin-toggle'/><span class='sidenote'>It would still be good to address the issue with the dotted line above section headers though. </span></p>
+I expect it in the text.</p>
 
 <h2>How&rsquo;d He Do Dat?</h2>
 
@@ -604,13 +607,26 @@ a rule like:</p>
 <pre><code>p, ul, ol { p, ul, ol: width: 100 ]
 </code></pre>
 
-<p>(In hindsight, perhaps this last rule would be redundant if I were
-to generalize the previous rule in a suitable fashion&hellip;)</p></li>
+<p>Update: Then I discovered that:</p>
+
+<ol>
+<li><p>this rule was not necessary for the cases where I had originally needed it,</p></li>
+<li><p>it is not actually being applied since it is overridden by other rules
+ (presumably due to some resolution logic for CSS that I have not digested),
+ and,</p></li>
+<li><p>if you get it to apply, it has a negative overall effect on
+ e.g. nested lists: it causes them to be assigned a width corresponding
+ to main <em>plus</em> margin. (Clearly my mental model of what how these percentages
+ relate to the parent element is flawed in various ways.)</p></li>
+</ol>
+
+
+<p>So I have since removed that last rule.</p></li>
 </ol>
 
 
 <p>Anyway, those are the main customizations of the SCSS that I can think
-of off-hand. You can of course just go peek at its source code
+of off-hand. You can of course just go peek at <a href="https://github.com/pnkfelix/pnkfx-blog/">its source code</a>
 if you want to see what it currently looks like (and perhaps offer
 tips on how I might revise it).</p>
 </div>
