@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Cherry-picking from the shoulders of giants"
-date: 2015-11-24 18:00
+date: 2015-11-27 14:00
 comments: true
 categories: octopress css
 published: true
