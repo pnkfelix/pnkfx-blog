@@ -4,7 +4,7 @@
   <title><![CDATA[Category: octopress | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/octopress/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-11-27T14:59:20+01:00</updated>
+  <updated>2015-11-27T15:06:05+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -521,7 +521,7 @@ article &gt; ul, article &gt; ol {
 the percentage-based width restrictions; for example, I added
 a rule like:</p>
 
-<pre><code>p, ul, ol { p, ul, ol: width: 100 ]
+<pre><code>p, ul, ol { p, ul, ol: width: 100 }
 </code></pre>
 
 <p>Update: Then I discovered that:</p>
