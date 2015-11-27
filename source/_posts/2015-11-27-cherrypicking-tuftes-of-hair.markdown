@@ -469,7 +469,7 @@ things around a bit:
       remain at `1rem`).
 
     * My reasoning here is that the majority of the text should be
-      occuring in the main content area, and we should be respecting
+      occurring in the main content area, and we should be respecting
       the font settings chosen by the user in their browser for such
       text. If the user has selected a font size of 14, then that is
       what we should use for the main text; we should not be using 14
