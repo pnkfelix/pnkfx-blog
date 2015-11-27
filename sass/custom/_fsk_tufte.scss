@@ -121,18 +121,18 @@ article > ul, article > ol {
     width: 60%;
 }
 
-p, ul, ol {
-    // reset the width of shrunken elements when in the context of another
-    // so that they do not get doubly-shrunk down.
-    // (but maybe make it a little less than 100%, to compensate for
-    // the space occupied by the indentation).
-    p, ul, ol {
-        // width: calc(100% - 1.3em);
-        // width: 95%;
-        // width: 90%;
-        width: 100%;
-    }
-}
+// article p, article ul, article ol {
+//     // reset the width of shrunken elements when in the context of another
+//     // so that they do not get doubly-shrunk down.
+//     // (but maybe make it a little less than 100%, to compensate for
+//     // the space occupied by the indentation).
+//     p {
+//         // width: calc(100% - 1.3em);
+//         // width: 95%;
+//         // width: 90%;
+//         width: 65%;
+//     }
+// }
 
 // This is a hack to let me opt into some of the original
 // CSS via `<span class="tufte"> ... </span> in my markdown
@@ -169,7 +169,7 @@ figure.fullwidth figcaption { margin-right: 24%; }
 img { max-width: 100%; }
 
 article {
-  p, hr, footer, div.table-wrapper { width: 65%; }
+  p, hr, footer, div.table-wrapper, h2, h3, h4, h5, h6 { width: 65%; }
 }
 
 .sidenote, .marginnote { float: right;
