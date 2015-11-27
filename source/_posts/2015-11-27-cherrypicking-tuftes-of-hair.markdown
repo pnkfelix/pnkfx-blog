@@ -396,6 +396,10 @@ bullet."). I do not really have an argument against that,
    * The problem, as far as I can tell, is that the `-40%` is computed
      relative to the width of the parent element.{% sidenote 'relative-margins-and-list-indents' 'When list content gets indented, the width of a list element is less than that of paragraphs in the main text, and so its computed `margin-right: -40%` is a bit smaller than that for other margin content, causing a slight (but annoyingly noticeable) difference.' %}
 
+   * (Update: For that matter, the *width* of the text in nested list elements,
+      like this one, does not play well with the margin content; the text
+      of the list element in the main column is creeping into the margin.)
+
    * I have spent some time trying to puzzle this out, but at this point
      I am willing to just say "avoid attaching margin content to list
      elements."
@@ -414,7 +418,7 @@ did not apply to the dotted line being rendered above the section header.
 ----
 
 So, now (post publication) I have put back in an `hr`-element at roughly the point
-I expect it in the text.{% sidenote 'section-headers-todo' 'It would still be good to address the issue with the dotted line above section headers though.' %}
+I expect it in the text.
 
 ## How'd He Do Dat?
 
@@ -507,16 +511,30 @@ things around a bit:
     a rule like:
 
     ```
-    p, ul, ol { p, ul, ol: width: 100 ]
+    p, ul, ol { p, ul, ol: width: 100 }
     ```
 
-    (In hindsight, perhaps this last rule would be redundant if I were
-    to generalize the previous rule in a suitable fashion...)
+    Update: Then I discovered that:
+
+      1. this rule was not necessary for the cases where I had originally needed it,
+
+      2. it is not actually being applied since it is overridden by other rules
+         (presumably due to some resolution logic for CSS that I have not digested),
+         and,
+
+      3. if you get it to apply, it has a negative overall effect on
+         e.g. nested lists: it causes them to be assigned a width corresponding
+         to main *plus* margin. (Clearly my mental model of what how these percentages
+         relate to the parent element is flawed in various ways.)
+
+    So I have since removed that last rule.
 
 Anyway, those are the main customizations of the SCSS that I can think
-of off-hand. You can of course just go peek at its source code
+of off-hand. You can of course just go peek at [its source code][pnkfx-blog-source]
 if you want to see what it currently looks like (and perhaps offer
 tips on how I might revise it).
+
+[pnkfx-blog-source]: https://github.com/pnkfelix/pnkfx-blog/
 
 [tufte-latex]: https://tufte-latex.github.io/tufte-latex/
 
