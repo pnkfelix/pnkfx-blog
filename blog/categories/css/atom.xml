@@ -4,7 +4,7 @@
   <title><![CDATA[Category: css | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/css/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-11-27T14:06:16+01:00</updated>
+  <updated>2015-11-27T14:15:57+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -419,6 +419,17 @@ elements.&rdquo;</p></li>
 (for quick generation and publication), rather than carefully crafted
 pieces of art. The bulleted list approach certainly provides a
 quick-and-dirty way to do that.<label for='&lsquo;long-text&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;long-text&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Speaking </span></p>
+
+<p>Update: a draft verison of this blog post had an <code>hr</code>-element between the
+previous paragraph and this point in the text. Then shortly before publication,
+I changed the <code>hr</code>-element to a new section heading, and didn&rsquo;t notice that
+the fix I had put into the CSS to make the span of <code>hr</code>-element shorter
+did not apply to the dotted line being rendered above the section header.</p>
+
+<hr />
+
+<p>So, now (post publication) I have put back in an <code>hr</code>-element at roughly the point
+I expect it in the text.<label for='&lsquo;section-headers-todo&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;section-headers-todo&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;It </span></p>
 
 <h2>How&rsquo;d He Do Dat?</h2>
 
