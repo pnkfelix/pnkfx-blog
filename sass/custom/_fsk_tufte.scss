@@ -261,7 +261,7 @@ figure.code {
     }
 }
 
-article { .fullwidth, li.listing div { max-width: 90%; } }
+article { li.listing div { max-width: 90%; } }
 
 span.newthought { font-variant: small-caps;
                   font-size: 1.2em;
@@ -366,16 +366,16 @@ ul.footer-links li{
 
 //Full width page styling stuff
 
-body.full-width, .content-listing, ul.content-listing li.listing{ width: 90%;
+// article { .fullwidth { max-width: 90%; } }
+article { .fullwidth { max-width: 100%; } }
+
+body.full-width, .content-listing, ul.content-listing li.listing{ width: 100%;
        margin-left: auto;
        margin-right: auto;
        padding: 0% 5%;
 
 }
-.full-width article p {
-  width: 90%;
-}
-
+.full-width article p { width: 100%; }
 
 h1.content-listing-header{
   font-style: normal;
