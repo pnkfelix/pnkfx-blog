@@ -1,0 +1,794 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Cherry-picking from the shoulders of giants - The {pnk}f(eli)x Blog</title>
+  <meta name="author" content="Felix S. Klock II">
+
+  
+  <meta name="description" content="This post: I describe some changes to my blog&rsquo;s presentation
+format, and how I hacked them in by cherry-picking from the shoulders
+of giants. I &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://blog.pnkfx.org/blog/2015/11/27/cherrypicking-tuftes-of-hair/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="The {pnk}f(eli)x Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">The {pnk}f(eli)x Blog</a></h1>
+  
+    <h2>The informal ramblings of an ex-pat PL enthusiast</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:blog.pnkfx.org" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Cherry-picking From the Shoulders of Giants</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-11-27T14:00:00+01:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>This post: I describe some changes to my blog&rsquo;s presentation
+format, and how I hacked them in by cherry-picking from the shoulders
+of giants.</p>
+
+<!-- more -->
+
+
+<p>I&rsquo;m a big fan of Edward Tufte&rsquo;s work on presentation of
+information. He mostly focuses on graphical presentations, especially
+of statistical data. But really one can learn much from his overall
+presentation style, e.g. from how he formats his text.</p>
+
+<p>Of course I am not the first person to recognize this. :)</p>
+
+<p>Lots of people have been adapting Tufte&rsquo;s style to formats compatible
+with standard electronic authoring environments.</p>
+
+<ul>
+<li><p><a href="https://tufte-latex.github.io/tufte-latex/">tufte-latex</a> is pretty cool, if you&rsquo;re working in the realm of
+LaTeX. (For example, <a href="http://www.mpi-sws.org/~turon/turon-thesis.pdf">aturon&rsquo;s thesis</a>
+uses this style.)</p></li>
+<li><p><a href="https://edwardtufte.github.io/tufte-css/">tufte-css</a> is pretty cool, if you&rsquo;re working in the realm of
+writing HTML and want to just plug in a style sheet and go.</p></li>
+</ul>
+
+
+<p>(I&rsquo;m sure the hardcore Tufte fans in the audience are now saying &ldquo;How
+can you claim to want to emulate Tufte&rsquo;s work in a post that uses a
+bulleted list!?!&rdquo; I think there remains a time and place for a
+bulleted list; this digression continues <a href="#on-bulleted-lists">below</a>.)</p>
+
+<ul>
+<li><p>What if you&rsquo;re trying to work with a blog system like
+Octopress?</p>
+
+<p>Well, you&rsquo;re actually in luck; other people have already done the
+work of adapting the style rules in <a href="https://edwardtufte.github.io/tufte-css/">tufte-css</a> to Jekyll (the
+infrastructure that Octopress is built upon), yielding
+<a href="http://clayh53.github.io/tufte-jekyll/articles/15/tufte-style-jekyll-blog">tufte-jekyll</a>.</p></li>
+</ul>
+
+
+<p>After skimming over the presentation over at <a href="http://clayh53.github.io/tufte-jekyll/articles/15/tufte-style-jekyll-blog">tufte-jekyll</a> and
+suffering with recurrent Octopress issues, I briefly considered
+<span style="white-space: nowrap"><code>rm -rf</code>&lsquo;ing</span> Octopress from my blog system and adopting Jekyll directly.
+(Which isn&rsquo;t as big a deal as it sounds, since Octopress is built on
+top of Jekyll and so in principle I would get to reuse much of my
+previous customizations.)</p>
+
+<p>But the reality is that I do not really want to spend that much time on this;
+having a presentation that matches every aspect of <a href="http://clayh53.github.io/tufte-jekyll/articles/15/tufte-style-jekyll-blog">tufte-jekyll</a> is not
+currently that important to me. (At least, not yet.)</p>
+
+<p>What I really wanted was to cherry-pick certain aspects that I find
+important.</p>
+
+<p>In particular, I <em>really</em> want sidenotes (and margin notes/figures),
+and an option for full width figures. I&rsquo;ll discuss each in turn.</p>
+
+<p>Luckily for me, the presentation of <a href="http://clayh53.github.io/tufte-jekyll/articles/15/tufte-style-jekyll-blog">tufte-jekyll</a> is itself
+somewhat dedicated to spelling out how each feature was added.  In
+other words, it seems <em>perfect</em> to use as the basis for such
+cherry-picking.</p>
+
+<p>Pretty much all of the things I wanted were implemented in
+<a href="http://clayh53.github.io/tufte-jekyll/articles/15/tufte-style-jekyll-blog">tufte-jekyll</a> via Jekyll Plugins. Let&rsquo;s go through them one by one,
+largely just to prove to myself that it is all working as I expect,</p>
+
+<p>(In actual practice, what this actually meant is that iteratively
+fixed my CSS and/or made my own variants of the plugins until this
+text rendered as a postable demonstration).</p>
+
+<p>(The presentation below makes claims about how each construct is
+written in the source markdown; however, each case is assuming that
+one has installed the appropriate Jekyll plugins and SCSS support
+files)</p>
+
+<h2>Side Notes</h2>
+
+<p>My previous blog posts<label for='previous-blog-posts' class='margin-toggle sidenote-number'></label><input type='checkbox' id='previous-blog-posts' class='margin-toggle'/><span class='sidenote'>Hey, a sidenote! One post that can/will benefit from these is my earlier <a href="blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0</a>. </span>
+sometimes hacked in ad-hoc footnotes. But footnotes on the web are
+super awkward because I am never quite sure how far down into the post
+to collect the footnotes together.  Furthermore, I dislike how my
+ad-hoc footnotes would disrupt the flow of the text if they were not
+placed at the bottom of the (potentially very long) post; but if they
+were all collected at the bottom, then navigating the page becomes
+unwieldy at best.</p>
+
+<p>Side notes do not suffer from either of these problems.</p>
+
+<p>Side note support (and margin content in general) <em>does</em> come at the
+cost of potentially introducing a large unused space on the right-hand
+side of the presentation.</p>
+
+<p>But the CSS magic here is smart enough to only try to grab the space
+if it can afford to do so; if you are viewing this on a narrow
+device,<label for='thin-browser' class='margin-toggle sidenote-number'></label><input type='checkbox' id='thin-browser' class='margin-toggle'/><span class='sidenote'>Or make your browser window sufficiently thin relative to its font size. </span>
+the superscript indicating the presence of an associated side note
+turns into a toggle switch for the associated content (now presented <em>inline</em>
+with the text when toggled on).</p>
+
+<p>One writes a sidenote with the following liquid tag syntax:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>main content{% sidenote 'unique-id' 'side content' %}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>which renders as:
+main content<label for='unique-id' class='margin-toggle sidenote-number'></label><input type='checkbox' id='unique-id' class='margin-toggle'/><span class='sidenote'>side content </span></p>
+
+<h2>Margin Notes</h2>
+
+<p>Sometimes even the superscripted number that a sidenote carries is
+disruptive, and unnecessary if:</p>
+
+<ol>
+<li><p>the content is lined up nicely, and</p></li>
+<li><p>the presentation width for the main column is sufficiently wide.</p></li>
+</ol>
+
+
+<p>In other words: Why not drop the superscript?
+<label for='inherited-from-foonotes' class='margin-toggle'> &#8853;</label><input type='checkbox' id='inherited-from-foonotes' class='margin-toggle'/><span class='marginnote'>This is a margin note <em>without</em> a superscript. The superscripts on sidenotes are a holdover from the world of footnotes. </span></p>
+
+<p>That&rsquo;s what marginnotes are for.</p>
+
+<p>But again, one wants to handle the case where the rendering area is
+too narrow to set aside a margin. If your make the window narrow, you
+will see that a margin note is replaced with an
+inline symbol<label for='checkplus' class='margin-toggle sidenote-number'></label><input type='checkbox' id='checkplus' class='margin-toggle'/><span class='sidenote'>Since there is no number associated with a margin note, the symbol is a plus sign with a circle around it; I think it is this: &ldquo;&#x2295;&rdquo; U+2295 (aka &ldquo;CIRCLED PLUS&rdquo;) </span>
+that will provide the reader with a way to toggle the presentation
+of the elided content on and off, the same way that the superscript
+acted as a toggle for a sidenote above.</p>
+
+<p>Anyway, the code for <code>marginnote</code> is entirely analogous to that for <code>sidenote</code>.
+One writes a margin note with the following liquid tag syntax:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>main content{% marginnote 'uniq-id' 'margin content' %}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>which renders as:
+main content<label for='uniq-id' class='margin-toggle'> &#8853;</label><input type='checkbox' id='uniq-id' class='margin-toggle'/><span class='marginnote'>margin content </span></p>
+
+<h2>Margin Figures</h2>
+
+<p>Another topic I have touched on (and plan to do more with soon) is
+drawing diagrams of graph structures. This usually involves SVG in
+some manner.
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     id="demo_svg_defs" height="0" viewBox="0 0 32 32">
+<defs>
+<pattern id="grid_cell" width=10 height=10 patternUnits="userSpaceOnUse">
+<path d="M 0,0 v10 h10" fill="none" stroke="#aaa" stroke-width=1/>
+</pattern>
+<pattern id="grid" width=100 height=100 patternUnits="userSpaceOnUse">
+<path d="M 0,0 v100 h100 v-100 z" stroke="#555" stroke-width=1 fill="url(#grid_cell)"/>
+</pattern>
+<g id="the_pic">
+<rect x=0 y=0 width="100%" height="100%" fill="url(#grid)"/>
+<circle cx=20 cy=20 r=10 stroke="green" fill="none"/>
+<path d="M 80,30 C 90,20 30,20 10,40" stroke="blue" fill="none"/>
+</g>
+</defs>
+</svg></p>
+
+<p>Here is a relatively simple bit of SVG:</p>
+
+<p><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     id="demo_svg_main" height="50" width="100%">
+<use xlink:href="#the_pic"/>
+</svg></p>
+
+<!-- If you're looking at this source code, then you can see that the
+     actual content definitions are above, in the SVG group (`g`)
+     element identified by `the_pic` -->
+
+
+<p>I want to be able to present such diagrams in the same manner that
+<code>tufte-css</code> and <code>tufte-jekyll</code> presents margin figures, full-width
+figures, and column width figures.</p>
+
+<p>However, <code>tufte-jekyll</code> assumes in its plugin for these features that
+whatever figure you want to present is held in a separate file.</p>
+
+<p><label for='svg-margin-figure' class='margin-toggle'>&#8853;</label><input type='checkbox' id='svg-margin-figure' class='margin-toggle'/><span class='marginnote'>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     id="demo_svg_margin" height="50" width="100%">
+<use xlink:href="#the_pic"/>
+</svg>
+Here is a margin figure; it shows a circle and a cubic bezier curve
+(along with helpful grid lines, which I need to figure out how to
+adjust the coordinates in the source SVG).
+</span></p>
+
+<p>I resolved this by hacking the <code>margin_figure.rb</code> plugin so that it
+extends from <code>Liquid::Block</code> instead of <code>Liquid::Tag</code>, and then
+hacking the implementation of the plugin until it started producing
+the output I expect. By the time I finished, I had something
+with a totally different feature-set and interface; so I renamed
+this version of the plugin to <code>marginblock</code>.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Actually, I think all of the side- and margin-content extensions
+discussed here have the same limitation that they only work with
+inline elements.
+</span></p>
+
+<p>Important Caveat: this hacked <code>marginblock</code> plugin can only handle
+inline elements.</p>
+
+<p><label for='demo-code-in-margin' class='margin-toggle'>&#8853;</label><input type='checkbox' id='demo-code-in-margin' class='margin-toggle'/><span class='marginnote'>
+<code>&lt;code&gt;styling&lt;/code&gt;</code> does work (via HTML or Markdown backticks), but
+fenced code blocks do not, because they generate <code>figure</code> and <code>table</code>
+elements.
+</span></p>
+
+<ol>
+<li><p>HTML code for certain elements (like
+ <nobr><code>figure</code>,</nobr> <nobr><code>p</code>,</nobr> <nobr><code>pre</code>,</nobr> or
+ <code>table</code> elements) will fragment the content, with some initial
+ portion in the margin, and the remainder injected into the main
+ text.</p></li>
+<li><p>Markdown syntax that generates block-level elements has the
+ same problem as HTML block-level elements.</p>
+
+<p> For example, content after an empty line will be converted into
+ a <code>p</code> element (and those will end up injected back into the main
+ text).</p></li>
+</ol>
+
+
+<p>In other words: any markdown syntax inside a <code>marginblock</code>, including just an empty line
+separating two blocks of text, will just confuse things.</p>
+
+<p>So, don&rsquo;t do that.</p>
+
+<p>To write a margin block, use the following syntax:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>{% marginblock %}
+</span><span class='line'>Margin block content, with no line breaks (see caveat above).
+</span><span class='line'>{% endmarginblock %}</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Full Width Figures</h2>
+
+<p>You might have noticed that in the SVG diagram <a
+href="#demo_svg_main">above</a>, the diagram only spans the width of
+the &ldquo;main text&rdquo;, while the code block spans the full extent of the
+page, flowing into the margin area.</p>
+
+<p>I have hacked the CSS so that all of the figures for code are given
+the full width of the page (otherwise, they always overflowed the
+available space, yielding unfortunate scroll bars).</p>
+
+<p>Still, it might well be that some SVG diagrams will likewise need the
+full width of the page.
+<code>tufte-jekyll</code> provides a plugin for this (called <code>fullwidth</code>), but
+much like with its <code>marginfigure</code> plugin,
+the <code>fullwidth</code> plugin assumes that
+the content to be rendered lives in a separate file. Analogously to
+how I dealt with that by making my own version of plugin,
+<code>margin_block</code>, I have here made my own <code>fullwidth_figure</code> plugin.</p>
+
+<p>Here is that circle and bezier curve again, this time spanning
+the full width of the page:</p>
+
+<p><figure class='fullwidth'>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     id="demo_svg_main" height="50" width="100%">
+<use xlink:href="#the_pic"/>
+</svg>
+</figure></p>
+
+<p>So, all you need to do is write:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>{% fullwidthfigure %}
+</span><span class='line'>The lines of fullwidth figure content will extend across the full
+</span><span class='line'>width of the page before line wrapping. (Some block elements will end
+</span><span class='line'>up being mishandled, so don't use elements like `p` or `ul`, et
+</span><span class='line'>cetera, or Markdown that generates them.)
+</span><span class='line'>As the name implies, this is nested within a `figure` element;
+</span><span class='line'>that means, for example, you can use `figcaption` to add a caption:
+</span><span class='line'>&lt;figcaption&gt;Caption for `fullwidthfigure` demo&lt;/figcaption&gt;
+</span><span class='line'>{% endfullwidthfigure %}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>which renders as:
+<figure class='fullwidth'>
+The lines of fullwidth figure content will extend across the full
+width of the page before line wrapping. (Some block elements will end
+up being mishandled, so don&rsquo;t use elements like <code>p</code> or <code>ul</code>, et
+cetera, or Markdown that generates them.)
+As the name implies, this is nested within a <code>figure</code> element;
+that means, for example, you can use <code>figcaption</code> to add a caption:
+<figcaption>Caption for <code>fullwidthfigure</code> demo</figcaption>
+</figure></p>
+
+<h2>Drawbacks, Rendering Bugs and/or Gotcha&rsquo;s</h2>
+
+<p>Originally I had a whole section here decrying the fact that I could
+not put <em>any</em> line breaks into the source for a <code>sidenote</code> or
+<code>marginnote</code>, since the Liquid tag parser requires the entirety of a
+tag be contained on one line.</p>
+
+<p>But then I hacked up <code>marginblock</code> (described above), and my problem
+just goes away
+<label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Well, it goes away for superscript-free margin notes, at least.
+If I ever feel the need to write a long side note, then I guess
+I&rsquo;ll make a <code>sideblock</code> plugin at that time.
+</span></p>
+
+<p>Besides, maybe discouraging me from writing
+long side notes<label for='dfw' class='margin-toggle sidenote-number'></label><input type='checkbox' id='dfw' class='margin-toggle'/><span class='sidenote'>I am pretty sure <a href="https://en.wikipedia.org/wiki/Infinite_Jest">Infinite Jest</a> would not work so well as a blog post. </span>
+is not such a bad thing.</p>
+
+<ul>
+<li><p>Oh, by the way, it looks like you cannot throw side notes just
+<em>anywhere</em><label for='bullet-test' class='margin-toggle sidenote-number'></label><input type='checkbox' id='bullet-test' class='margin-toggle'/><span class='sidenote'>Like, say, a bulleted list; further discussion in the <a href="#on-bulleted-lists">On Bulleted Lists</a> section. </span>
+and expect them to play nice with the other marked up text.</p>
+
+<p>For example, it may appear at a inconsistently inset margin&hellip; or worse&hellip;</p></li>
+<li><p>Markup in a surrounding context is handled <em>somewhat<label for='emph-test' class='margin-toggle sidenote-number'></label><input type='checkbox' id='emph-test' class='margin-toggle'/><span class='sidenote'>This is relatively fine, even though it was not written with emphasis. </span> poorly</em>,
+in that it may inherit the style of the surrounding markup it was embedded within</p></li>
+<li><p>And some contexts, like code markup,<label for='code-test' class='margin-toggle'> &#8853;</label><input type='checkbox' id='code-test' class='margin-toggle'/><span class='marginnote'>Yeah, that raw HTML you see there is due to some bad interaction between the Jekyll sidenote plugin code and the markdown pre-processor. </span>
+are handled <em>especially poorly</em>.
+<code>
+As in `not&lt;label for='code-test' class='margin-toggle sidenote-number'&gt;&lt;/label&gt;&lt;input type='checkbox' id='code-test' class='margin-toggle'/&gt;&lt;span class='sidenote'&gt;This is not fine &lt;/span&gt; good.
+</code></p></li>
+</ul>
+
+
+<h2><a id="on-bulleted-lists"></a>On Bulleted Lists</h2>
+
+<p>Speaking of bulleted lists: I implied up above that Tufte has a
+problem with the use of bulleted lists, and that this is why the
+standard <a href="https://edwardtufte.github.io/tufte-css/">tufte-css</a> does away with
+them.<label for='is-ul-really-gone' class='margin-toggle sidenote-number'></label><input type='checkbox' id='is-ul-really-gone' class='margin-toggle'/><span class='sidenote'>Or rather, it does away with the bullet sigils, not unordered lists themselves. </span></p>
+
+<p>If you are curious about Tufte&rsquo;s argument against the use of bulleted
+lists, I highly recommend you pick up his essay
+<a href="http://www.edwardtufte.com/tufte/books_pp">&ldquo;The Cognitive Style of PowerPoint&rdquo;</a>,<label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Your local library is more likely to carry &ldquo;Beautiful Evidence&rdquo;
+than the PowerPoint essay on its own (which one might deem a pamphlet).
+Alternatively, you can also
+<a href="http://www.edwardtufte.com/tufte/ebooks">purchase</a>
+the Powerpoint essay as a PDF-format e-book on Tufte&rsquo;s website.
+</span>
+(which you can acquire on its own, or can be found as a chapter of his book
+<a href="http://www.edwardtufte.com/tufte/books_be">&ldquo;Beautiful Evidence&rdquo;</a>).</p>
+
+<p>For me, when writing markdown, the visible bullets serve a purpose.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+According to some conventions, my argument here is a strawman,
+because I have already failed by putting more than six words on a
+single bullet (&ldquo;any more words per bullet, and you don&rsquo;t have a
+bullet.&rdquo;). I do not really have an argument against that,
+(except that Tufte himself seems to lambast such rules of thumb).
+</span></p>
+
+<ul>
+<li><p>In particular, I sometimes attach more than one paragraph of text
+to an item in an unordered list.</p></li>
+<li><p>But if I associate more than one paragraph of text with an item on
+such a list, then without the visible bullet, one cannot readily
+tell whether the new paragraph has started a new item, &hellip;</p>
+
+<p>&hellip; or if it is a continuation of the previous item.</p></li>
+<li><p>Then again, since the standard Octopress format does not indent
+unordered lists, the same problem arises unless one
+customizes<label for='scss-indented-list' class='margin-toggle sidenote-number'></label><input type='checkbox' id='scss-indented-list' class='margin-toggle'/><span class='sidenote'>See the <code>$indented-lists</code> variable in <code>_layout.scss</code> </span>
+its SCSS to turn it on. (I tried this, but it ends up being more
+trouble than its worth in terms of it breaking other things in the
+CSS implementing this main-and-margin presentation.)</p></li>
+<li><p>Have you noticed that the indentation of the margin notes
+that are attached to list-elements are a little screwy?</p>
+
+<ul>
+<li><p>This is because of how the CSS is implemented; the main content elements
+(like <code>p</code>, <code>ul</code>, et cetera) are all assigned <code>width: 60%</code>,
+so that the remaining 40% is available for the margin content,
+which is then assigned <code>margin-right: -40%</code> in the CSS.</p></li>
+<li><p>The problem, as far as I can tell, is that the <code>-40%</code> is computed
+relative to the width of the parent element.<label for='relative-margins-and-list-indents' class='margin-toggle sidenote-number'></label><input type='checkbox' id='relative-margins-and-list-indents' class='margin-toggle'/><span class='sidenote'>When list content gets indented, the width of a list element is less than that of paragraphs in the main text, and so its computed <code>margin-right: -40%</code> is a bit smaller than that for other margin content, causing a slight (but annoyingly noticeable) difference. </span></p></li>
+<li><p>I have spent some time trying to puzzle this out, but at this point
+I am willing to just say &ldquo;avoid attaching margin content to list
+elements.&rdquo;</p></li>
+</ul>
+</li>
+</ul>
+
+
+<p>I <em>am</em> trying to learn how to make my blog posts more stream of thought
+(for quick generation and publication), rather than carefully crafted
+pieces of art. The bulleted list approach certainly provides a
+quick-and-dirty way to do that.<label for='long-text' class='margin-toggle sidenote-number'></label><input type='checkbox' id='long-text' class='margin-toggle'/><span class='sidenote'>Speaking of quick-and-dirty, here is some really long text because I want to see what happens to the horizontal rule that divides the two parts of the main text below. At first different browsers handled the rendering in different ways; but now I have customized my SCSS so that <code>hr</code> has the same <code>width</code> constraint as a <code>p</code> element. </span></p>
+
+<h2>How&rsquo;d He Do Dat?</h2>
+
+<p>So how did I do all this?</p>
+
+<p>I started by copying the <a href="http://clayh53.github.io/tufte-jekyll/articles/15/tufte-style-jekyll-blog">tufte-jekyll</a> plugins and SCSS support
+files into my blog source tree. Since I use Octopress, I had to move
+things around a bit:</p>
+
+<ol>
+<li><p>The <code>tufte.scss</code> that you find in tufte-jekyll&rsquo;s <code>css/</code>
+needs to go somewhere; I put a copy of it into <code>sass/custom</code>.</p>
+
+<p>Then I made a copy of the copy and named it <code>_fsk_tufte.scss</code><label for='on-renaming' class='margin-toggle'> &#8853;</label><input type='checkbox' id='on-renaming' class='margin-toggle'/><span class='marginnote'>In truth, the renamed copy came later, but it is good practice and simplifies the current discussion to assume I did it at the outset. </span></p></li>
+<li><p>After putting the <code>.scss</code> files into place, I had to actually load the
+main one into the Jekyll&rsquo;s page generation system. That is accomplished
+via an <code>@import</code> in <code>sass/custom/_styles.scss</code>:</p>
+
+<pre><code>@import "fsk_tufte";
+</code></pre></li>
+<li><p>Running the <code>rake generate</code> task to generate the CSS and the pages showed that
+there were references to undefined variables like <code>$constrast-color</code>.
+I skimmed through <code>fsk_tufte.scss</code> and either removed such references
+or figured out where those variables were defined in the original
+tufte-jekyll source repository, and ported them over accordingly.
+For example, <code>$contrast-color</code> was defined in <code>_sass/_settings.scss</code>;
+I cut-and-pasted it into <code>sass/custom/_color.scss</code>.</p></li>
+<li><p>I initially copied all of the plugins from tufte-jekyll&rsquo;s
+<code>_plugins/</code> into my <code>plugins/</code>.</p></li>
+<li><p>Even after doing this, a lot of things were broken. I spent a <em>long</em>
+time with a web browser&rsquo;s &ldquo;Inspect Element&rdquo; tool, comparing how
+the tufte-jekyll post was being rendered to how my own draft blog
+post was rendered.</p>
+
+<p>Over the course of doing this, I found it necessary to revise my
+<code>_fsk_tufte.scss</code> in myriad ways.</p></li>
+</ol>
+
+
+<h3>Revisions to _fsk_tufte.scss</h3>
+
+<ol>
+<li><p>I removed any content that I hypothesized was not related to my
+margin-rendering related goals. For example, <code>tufte.scss</code>
+automatically increases the font size as the browser window
+width increases. I find this distracting as a programmer (and
+annoying as a reader), so I removed it.</p></li>
+<li><p>I changed the footnote font-size selection strategy.</p>
+
+<ul>
+<li><p>Tufte-jekyll&rsquo;s strategy is to use <code>1.0rem</code><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+&ldquo;rem&rdquo; stands for &ldquo;root em&rdquo; which in turn means &ldquo;unit equal to the
+height of a capital M in the root (i.e. <code>html</code>) element of the document&rdquo;
+</span>
+as the <code>font-size</code> for the margin text and then scaling up the font-size
+for the main content to be <code>1.4rem</code> (so that the main text ends up 1.4x
+the size of the margin text).</p></li>
+<li><p>I instead used <code>font-size: 0.8rem;</code> for margin text, and leave the
+font-size for the main text unchanged (so that in principle it will
+remain at <code>1rem</code>).</p></li>
+<li><p>My reasoning here is that the majority of the text should be
+occurring in the main content area, and we should be respecting
+the font settings chosen by the user in their browser for such
+text. If the user has selected a font size of 14, then that is
+what we should use for the main text; we should not be using 14
+for the margin notes and scale the main text up to 1.4*14 (=
+19.6).</p></li>
+</ul>
+</li>
+<li><p>After I noticed that my main-and-margin presentation style was
+begin applied even to things like the <em>sidebar</em> of the blog,
+I added guards to all of the relevant parts of <code>_fsk_tufte.scss</code>
+so that the main-and-margin styling <em>only</em> applies to elements
+that occur within an <code>article</code> element (since the main content
+blocks always fall under an article).</p>
+
+<p>Those were rules like this:</p>
+
+<pre><code>// If a `ul`/`ol` occurs *immediately* (&gt;) under an `article`
+article &gt; ul, article &gt; ol {
+    width: 60%
+}
+</code></pre>
+
+<p>I also added customization to try to avoid double-applications of
+the percentage-based width restrictions; for example, I added
+a rule like:</p>
+
+<pre><code>p, ul, ol { p, ul, ol: width: 100 ]
+</code></pre>
+
+<p>(In hindsight, perhaps this last rule would be redundant if I were
+to generalize the previous rule in a suitable fashion&hellip;)</p></li>
+</ol>
+
+
+<p>Anyway, those are the main customizations of the SCSS that I can think
+of off-hand. You can of course just go peek at its source code
+if you want to see what it currently looks like (and perhaps offer
+tips on how I might revise it).</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Felix S. Klock II</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-11-27T14:00:00+01:00" pubdate data-updated="true"></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/css/'>css</a>, <a class='category' href='/blog/categories/octopress/'>octopress</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://blog.pnkfx.org/blog/2015/11/27/cherrypicking-tuftes-of-hair/" data-via="pnkfelix" data-counturl="http://blog.pnkfx.org/blog/2015/11/27/cherrypicking-tuftes-of-hair/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/" title="Previous Post: GC and Rust Part 1: Specifying the Problem">&laquo; GC and Rust Part 1: Specifying the Problem</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/11/27/cherrypicking-tuftes-of-hair/">Cherry-picking from the shoulders of giants</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">GC and Rust Part 1: Specifying the Problem</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/">An insight regarding DST grammar for Rust</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/pnkfelix">@pnkfelix</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'pnkfelix',
+            count: 4,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>On Delicious</h1>
+  <div id="delicious"></div>
+  <script type="text/javascript" src="http://feeds.delicious.com/v2/json/pnkfelix?count=3&amp;sort=date&amp;callback=renderDeliciousLinks"></script>
+  <p><a href="http://delicious.com/pnkfelix">My Delicious Bookmarks &raquo;</a></p>
+</section>
+
+
+<section class="googleplus">
+  <h1>
+    <a href="https://plus.google.com/pnkfelix?rel=author">
+      <img src="http://www.google.com/images/icons/ui/gprofile_button-32.png" width="32" height="32">
+      Google+
+    </a>
+  </h1>
+</section>
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Felix S. Klock II -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'pnkfx-blog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://blog.pnkfx.org/blog/2015/11/27/cherrypicking-tuftes-of-hair/';
+        var disqus_url = 'http://blog.pnkfx.org/blog/2015/11/27/cherrypicking-tuftes-of-hair/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
