@@ -1,0 +1,460 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Fixing Octopress Table Rendering - The {pnk}f(eli)x Blog</title>
+  <meta name="author" content="Felix S. Klock II">
+
+  
+  <meta name="description" content="Learn how I hacked the SCSS for my blog to get tables to look right,
+without breaking everything else (I hope). Here is a sample table. key value1 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://blog.pnkfx.org/blog/2015/12/18/fixing-octopress-table-rendering/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="The {pnk}f(eli)x Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">The {pnk}f(eli)x Blog</a></h1>
+  
+    <h2>The informal ramblings of an ex-pat PL enthusiast</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:blog.pnkfx.org" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Fixing Octopress Table Rendering</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-12-18T22:00:00+01:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Learn how I hacked the SCSS for my blog to get tables to look right,
+without breaking everything else (I hope).</p>
+
+<!-- more -->
+
+
+<p>Here is a sample table.</p>
+
+<table>
+<thead>
+<tr>
+<th>key </th>
+<th> value1 </th>
+<th> value2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a   </td>
+<td> apple  </td>
+<td> aardvark</td>
+</tr>
+<tr>
+<td>b   </td>
+<td> banana </td>
+<td> bonobo</td>
+</tr>
+<tr>
+<td>c   </td>
+<td> clementine </td>
+<td> cat</td>
+</tr>
+</tbody>
+</table>
+
+
+<p>It is written in my blog source via this source text:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>key | value1 | value2
+</span><span class='line'>----|--------|----------
+</span><span class='line'>a   | apple  | aardvark
+</span><span class='line'>b   | banana | bonobo
+</span><span class='line'>c   | clementine | cat</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The default octopress presentation of such a table just smushes the
+text into a grid, but does not render the division of the header,
+rows, columns, nor cells in any way (no borders, no colors, et
+cetera).</p>
+
+<p>After hearing a colleague complain about how bad that default
+presentation looked compared to what Github does with such tables, I
+decided to try to figure out how to fix it.</p>
+
+<p>First, I opened up gist.github.com and put my table into a gist there
+(with a <code>.md</code>) extension, so I could see what github does to render
+such tables.</p>
+
+<p>By hitting &ldquo;Inpsect Element&rdquo; and looking at the
+cascading style sheet (CSS) settings for the <code>table</code>, <code>tr</code>, <code>th</code>, and
+<code>td</code> elements,<label for='settings' class='margin-toggle'> &#8853;</label><input type='checkbox' id='settings' class='margin-toggle'/><span class='marginnote'>Namely, the <code>border</code>, <code>padding</code>, <code>font-weight</code>, <code>background-color</code>, and <code>margin-bottom</code> settings. </span>
+I identified the things that needed to change.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+The one trick I <em>will</em> note, since its a pretty cute hack on the
+part of CSS, is the way it uses the <code>:nth-child</code> selector to
+differentiate the even rows from the odd rows when deciding on the
+background color.
+</span>
+You can see the specific changes, with comments, in the <code>.scss</code>
+file transcribed below; I will not describe the effect of each one
+here.</p>
+
+<p>My usual tactic when doing this sort of interactive exploration of CSS
+is to toggle each such setting on and off in the reference document
+(the rendered gist, in this case), to see the effect of the setting on
+the overall document, and then manually enter the setting into a
+similarly inspected element in the target document where I am trying
+to recreate the effect.</p>
+
+<p>To limit the effect of the styling to just the tables that appear in a
+blog post, I made sure that each CSS customization was prefixed by
+<code>.entry-content</code>; I had determined via inspection that each block
+entry is surrounded by a <code>&lt;div class="entry-content"&gt;</code>.</p>
+
+<p>So, I added the customizations to my <code>sass/custom/_styles.scss</code>,
+regenerated my site, and looked at the result. It was quite promising,
+except for one big problem: I had changed the formatting for <em>all</em>
+tables, including the ones that are used to render code snippets!</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I will admit that I do not actually know the semantics of an
+&ldquo;inherit&rdquo; setting. I assume it means something like &ldquo;inherit the
+value from your parent element, based on the context of where you
+appear in the document.&rdquo;
+</span>
+So I further revised the CSS so that, when you are in the context of a
+<code>class="code"</code> underneath a <code>class="entry-content"</code>, <em>then</em> you should
+just inherit the setting, rather than using the values specified here.</p>
+
+<p>Anyway, <em>that</em> seemed to work great!</p>
+
+<p>So here&rsquo;s my customized <code>_better_tables.scss</code> file (which is
+imported into the aformentioned <code>_styles.scss</code> file via
+<code>@import "better_tables";</code>)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+</pre></td><td class='code'><pre><code class='scss'><span class='line'><span class="c1">// make the text for the header row bold and centered.</span>
+</span><span class='line'><span class="c1">// (I have not been able to figure out where jekyll/octopress are overriding</span>
+</span><span class='line'><span class="c1">//  the text-align and setting it to `left`)</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nt">th</span> <span class="p">{</span> <span class="na">font-weight</span><span class="o">:</span> <span class="no">bold</span><span class="p">;</span> <span class="na">text-align</span><span class="o">:</span> <span class="no">center</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// typography for p/blockquote/ul/ol puts a 1.5em margin below those elements,</span>
+</span><span class='line'><span class="c1">// so do the same for our tables ...</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nt">table</span> <span class="p">{</span> <span class="na">margin-bottom</span><span class="o">:</span> <span class="mi">1</span><span class="mf">.5</span><span class="kt">em</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ... but undo that for tables for pygments-generated code</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nc">.code</span> <span class="nt">table</span> <span class="p">{</span> <span class="na">margin-bottom</span><span class="o">:</span> <span class="no">inherit</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// add a border around each cell and padding around its content ...</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nt">th</span><span class="o">,</span> <span class="nc">.entry-content</span> <span class="nt">td</span> <span class="p">{</span>
+</span><span class='line'>  <span class="na">border</span><span class="o">:</span> <span class="mi">1</span><span class="kt">px</span> <span class="no">solid</span> <span class="mh">#ddd</span><span class="p">;</span>
+</span><span class='line'>  <span class="na">padding</span><span class="o">:</span> <span class="mi">6</span><span class="kt">px</span> <span class="mi">13</span><span class="kt">px</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ... but undo that for tables for pygments-generated code</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nc">.code</span> <span class="nt">th</span><span class="o">,</span> <span class="nc">.entry-content</span> <span class="nc">.code</span> <span class="nt">td</span> <span class="p">{</span>
+</span><span class='line'>  <span class="na">border</span><span class="o">:</span> <span class="no">inherit</span><span class="p">;</span> <span class="na">padding</span><span class="o">:</span> <span class="no">inherit</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// zebra-stripe the rows (N.B. `nth-child(2n)` works too) ...</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nt">tr</span>                 <span class="p">{</span> <span class="na">background-color</span><span class="o">:</span> <span class="mh">#FFFFFF</span> <span class="p">}</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nt">tr</span><span class="nd">:nth-child</span><span class="o">(</span><span class="nt">even</span><span class="o">)</span> <span class="p">{</span> <span class="na">background-color</span><span class="o">:</span> <span class="mh">#F8F8F8</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ... but undo that for tables for pygments-generated code</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nc">.code</span> <span class="nt">tr</span>                 <span class="p">{</span> <span class="na">background-color</span><span class="o">:</span> <span class="no">inherit</span> <span class="p">}</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nc">.code</span> <span class="nt">tr</span><span class="nd">:nth-child</span><span class="o">(</span><span class="nt">even</span><span class="o">)</span> <span class="p">{</span> <span class="na">background-color</span><span class="o">:</span> <span class="no">inherit</span> <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Felix S. Klock II</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-12-18T22:00:00+01:00" pubdate data-updated="true"></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/css/'>css</a>, <a class='category' href='/blog/categories/github/'>github</a>, <a class='category' href='/blog/categories/octopress/'>octopress</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://blog.pnkfx.org/blog/2015/12/18/fixing-octopress-table-rendering/" data-via="pnkfelix" data-counturl="http://blog.pnkfx.org/blog/2015/12/18/fixing-octopress-table-rendering/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/11/27/cherrypicking-tuftes-of-hair/" title="Previous Post: Cherry-picking from the shoulders of giants">&laquo; Cherry-picking from the shoulders of giants</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/12/18/fixing-octopress-table-rendering/">Fixing Octopress Table Rendering</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/27/cherrypicking-tuftes-of-hair/">Cherry-picking from the shoulders of giants</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">GC and Rust Part 1: Specifying the Problem</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/pnkfelix">@pnkfelix</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'pnkfelix',
+            count: 4,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>On Delicious</h1>
+  <div id="delicious"></div>
+  <script type="text/javascript" src="http://feeds.delicious.com/v2/json/pnkfelix?count=3&amp;sort=date&amp;callback=renderDeliciousLinks"></script>
+  <p><a href="http://delicious.com/pnkfelix">My Delicious Bookmarks &raquo;</a></p>
+</section>
+
+
+<section class="googleplus">
+  <h1>
+    <a href="https://plus.google.com/pnkfelix?rel=author">
+      <img src="http://www.google.com/images/icons/ui/gprofile_button-32.png" width="32" height="32">
+      Google+
+    </a>
+  </h1>
+</section>
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Felix S. Klock II -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'pnkfx-blog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://blog.pnkfx.org/blog/2015/12/18/fixing-octopress-table-rendering/';
+        var disqus_url = 'http://blog.pnkfx.org/blog/2015/12/18/fixing-octopress-table-rendering/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

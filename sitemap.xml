@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+    <loc>http://blog.pnkfx.org/blog/2015/12/18/fixing-octopress-table-rendering/</loc>
+    <lastmod>2015-12-18T22:00:00+01:00</lastmod>
+  </url>
+  <url>
     <loc>http://blog.pnkfx.org/blog/2015/11/27/cherrypicking-tuftes-of-hair/</loc>
     <lastmod>2015-11-27T14:00:00+01:00</lastmod>
   </url>
@@ -115,9 +119,6 @@
   </url>
   <url>
     <loc>http://blog.pnkfx.org/blog/categories/css/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/posts/2/</loc>
   </url>
   <url>
     <loc>http://blog.pnkfx.org/linked/graphs.html</loc>

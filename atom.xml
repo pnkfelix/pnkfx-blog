@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-11-27T15:06:05+01:00</updated>
+  <updated>2015-12-18T22:13:37+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,6 +12,191 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Fixing Octopress Table Rendering]]></title>
+    <link href="http://blog.pnkfx.org/blog/2015/12/18/fixing-octopress-table-rendering/"/>
+    <updated>2015-12-18T22:00:00+01:00</updated>
+    <id>http://blog.pnkfx.org/blog/2015/12/18/fixing-octopress-table-rendering</id>
+    <content type="html"><![CDATA[<p>Learn how I hacked the SCSS for my blog to get tables to look right,
+without breaking everything else (I hope).</p>
+
+<!-- more -->
+
+
+<p>Here is a sample table.</p>
+
+<table>
+<thead>
+<tr>
+<th>key </th>
+<th> value1 </th>
+<th> value2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a   </td>
+<td> apple  </td>
+<td> aardvark</td>
+</tr>
+<tr>
+<td>b   </td>
+<td> banana </td>
+<td> bonobo</td>
+</tr>
+<tr>
+<td>c   </td>
+<td> clementine </td>
+<td> cat</td>
+</tr>
+</tbody>
+</table>
+
+
+<p>It is written in my blog source via this source text:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>key | value1 | value2
+</span><span class='line'>----|--------|----------
+</span><span class='line'>a   | apple  | aardvark
+</span><span class='line'>b   | banana | bonobo
+</span><span class='line'>c   | clementine | cat</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The default octopress presentation of such a table just smushes the
+text into a grid, but does not render the division of the header,
+rows, columns, nor cells in any way (no borders, no colors, et
+cetera).</p>
+
+<p>After hearing a colleague complain about how bad that default
+presentation looked compared to what Github does with such tables, I
+decided to try to figure out how to fix it.</p>
+
+<p>First, I opened up gist.github.com and put my table into a gist there
+(with a <code>.md</code>) extension, so I could see what github does to render
+such tables.</p>
+
+<p>By hitting &ldquo;Inpsect Element&rdquo; and looking at the
+cascading style sheet (CSS) settings for the <code>table</code>, <code>tr</code>, <code>th</code>, and
+<code>td</code> elements,<label for='settings' class='margin-toggle'> &#8853;</label><input type='checkbox' id='settings' class='margin-toggle'/><span class='marginnote'>Namely, the <code>border</code>, <code>padding</code>, <code>font-weight</code>, <code>background-color</code>, and <code>margin-bottom</code> settings. </span>
+I identified the things that needed to change.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+The one trick I <em>will</em> note, since its a pretty cute hack on the
+part of CSS, is the way it uses the <code>:nth-child</code> selector to
+differentiate the even rows from the odd rows when deciding on the
+background color.
+</span>
+You can see the specific changes, with comments, in the <code>.scss</code>
+file transcribed below; I will not describe the effect of each one
+here.</p>
+
+<p>My usual tactic when doing this sort of interactive exploration of CSS
+is to toggle each such setting on and off in the reference document
+(the rendered gist, in this case), to see the effect of the setting on
+the overall document, and then manually enter the setting into a
+similarly inspected element in the target document where I am trying
+to recreate the effect.</p>
+
+<p>To limit the effect of the styling to just the tables that appear in a
+blog post, I made sure that each CSS customization was prefixed by
+<code>.entry-content</code>; I had determined via inspection that each block
+entry is surrounded by a <code>&lt;div class="entry-content"&gt;</code>.</p>
+
+<p>So, I added the customizations to my <code>sass/custom/_styles.scss</code>,
+regenerated my site, and looked at the result. It was quite promising,
+except for one big problem: I had changed the formatting for <em>all</em>
+tables, including the ones that are used to render code snippets!</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I will admit that I do not actually know the semantics of an
+&ldquo;inherit&rdquo; setting. I assume it means something like &ldquo;inherit the
+value from your parent element, based on the context of where you
+appear in the document.&rdquo;
+</span>
+So I further revised the CSS so that, when you are in the context of a
+<code>class="code"</code> underneath a <code>class="entry-content"</code>, <em>then</em> you should
+just inherit the setting, rather than using the values specified here.</p>
+
+<p>Anyway, <em>that</em> seemed to work great!</p>
+
+<p>So here&rsquo;s my customized <code>_better_tables.scss</code> file (which is
+imported into the aformentioned <code>_styles.scss</code> file via
+<code>@import "better_tables";</code>)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+</pre></td><td class='code'><pre><code class='scss'><span class='line'><span class="c1">// make the text for the header row bold and centered.</span>
+</span><span class='line'><span class="c1">// (I have not been able to figure out where jekyll/octopress are overriding</span>
+</span><span class='line'><span class="c1">//  the text-align and setting it to `left`)</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nt">th</span> <span class="p">{</span> <span class="na">font-weight</span><span class="o">:</span> <span class="no">bold</span><span class="p">;</span> <span class="na">text-align</span><span class="o">:</span> <span class="no">center</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// typography for p/blockquote/ul/ol puts a 1.5em margin below those elements,</span>
+</span><span class='line'><span class="c1">// so do the same for our tables ...</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nt">table</span> <span class="p">{</span> <span class="na">margin-bottom</span><span class="o">:</span> <span class="mi">1</span><span class="mf">.5</span><span class="kt">em</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ... but undo that for tables for pygments-generated code</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nc">.code</span> <span class="nt">table</span> <span class="p">{</span> <span class="na">margin-bottom</span><span class="o">:</span> <span class="no">inherit</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// add a border around each cell and padding around its content ...</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nt">th</span><span class="o">,</span> <span class="nc">.entry-content</span> <span class="nt">td</span> <span class="p">{</span>
+</span><span class='line'>  <span class="na">border</span><span class="o">:</span> <span class="mi">1</span><span class="kt">px</span> <span class="no">solid</span> <span class="mh">#ddd</span><span class="p">;</span>
+</span><span class='line'>  <span class="na">padding</span><span class="o">:</span> <span class="mi">6</span><span class="kt">px</span> <span class="mi">13</span><span class="kt">px</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ... but undo that for tables for pygments-generated code</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nc">.code</span> <span class="nt">th</span><span class="o">,</span> <span class="nc">.entry-content</span> <span class="nc">.code</span> <span class="nt">td</span> <span class="p">{</span>
+</span><span class='line'>  <span class="na">border</span><span class="o">:</span> <span class="no">inherit</span><span class="p">;</span> <span class="na">padding</span><span class="o">:</span> <span class="no">inherit</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// zebra-stripe the rows (N.B. `nth-child(2n)` works too) ...</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nt">tr</span>                 <span class="p">{</span> <span class="na">background-color</span><span class="o">:</span> <span class="mh">#FFFFFF</span> <span class="p">}</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nt">tr</span><span class="nd">:nth-child</span><span class="o">(</span><span class="nt">even</span><span class="o">)</span> <span class="p">{</span> <span class="na">background-color</span><span class="o">:</span> <span class="mh">#F8F8F8</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// ... but undo that for tables for pygments-generated code</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nc">.code</span> <span class="nt">tr</span>                 <span class="p">{</span> <span class="na">background-color</span><span class="o">:</span> <span class="no">inherit</span> <span class="p">}</span>
+</span><span class='line'><span class="nc">.entry-content</span> <span class="nc">.code</span> <span class="nt">tr</span><span class="nd">:nth-child</span><span class="o">(</span><span class="nt">even</span><span class="o">)</span> <span class="p">{</span> <span class="na">background-color</span><span class="o">:</span> <span class="no">inherit</span> <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Cherry-picking from the shoulders of giants]]></title>
