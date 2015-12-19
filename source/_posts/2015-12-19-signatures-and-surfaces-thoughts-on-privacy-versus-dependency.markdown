@@ -345,7 +345,7 @@ mod a {
         #[derive(Default)]
         pub struct F {
             pub    x: i32,
-                   y: Priv,
+                   y: ::a::Priv,
         }
 
         // ... accesses to F.{x,y} ...
@@ -354,6 +354,7 @@ mod a {
 }
 
 mod k {
+  use a::b::F;
   // ... accesses to F and F.x ...
 }
 ```
