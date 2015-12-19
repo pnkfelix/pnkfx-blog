@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-12-18T22:13:37+01:00</updated>
+  <updated>2015-12-19T22:32:06+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,6 +12,541 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Surfaces and Signatures: Component Privacy versus Dependence]]></title>
+    <link href="http://blog.pnkfx.org/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/"/>
+    <updated>2015-12-19T22:30:00+01:00</updated>
+    <id>http://blog.pnkfx.org/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency</id>
+    <content type="html"><![CDATA[<p>I have had some thoughts on what <em>privacy</em> is used for in programming
+languages, and how it differs from the notion of <em>dependence</em> between
+modules (or at least compilation units) in a language like Rust.
+And I thought I should share.</p>
+
+<!-- more -->
+
+
+<p>I have been working on an
+RFC<label for='&lsquo;arr-eff-what&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;arr-eff-what&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;<a </span>
+meant to increase the expressiveness of Rust&rsquo;s privacy construct
+(the <code>pub</code> modifier), and in the process hopefully simplify the mental
+model for what privacy means there.</p>
+
+<p>However, I kept finding myself diving into regressions in my draft RFC
+document: idealized hypothetical semantics for privacy, and
+discussions of what motivates different aspects of that semantics.</p>
+
+<p>Eventually I realized that such text was going to really bog down the
+RFC itself (which is meant to describe a relatively simple language
+change);
+so I decided it was time for a blog
+post<label for='&lsquo;gc-posts&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;gc-posts&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Yes, </span>,
+if for no other reason than to provide a place for me to cut-and-paste
+all those digressions.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Bugs including:
+&ldquo;Trait re-exports fail due to privacy of containing module&rdquo; (<a href="https://github.com/rust-lang/rust/issues/18241">#18241</a>),
+&ldquo;Rules governing references to private types in public APIs not enforced in impls&rdquo; (<a href="https://github.com/rust-lang/rust/issues/28325">#28325</a>)
+&ldquo;Type alias can be used to bypass privacy check&rdquo; (<a href="https://github.com/rust-lang/rust/issues/28450">#28450</a>),
+&ldquo;Private trait&rsquo;s methods reachable through a public supertrait&rdquo; (<a href="https://github.com/rust-lang/rust/issues/28514">#28514</a>),
+&ldquo;Non-exported type in exported type signature does not error&rdquo; (<a href="https://github.com/rust-lang/rust/issues/29668">#29668</a>),
+</span>
+There are a number of bugs that have been filed against the privacy
+checking in Rust; some are simply implementation issues, but the
+comment threads in the issues make it clear that in some cases,
+different people have very different mental models about how privacy
+interacts with aliases (e.g. <code>type</code> declarations) and re-exports.</p>
+
+<p>The existing privacy rules in Rust try to enforce two things:</p>
+
+<ol>
+<li><p>When an item references a path, all of the names on that path need to
+be visible (in terms of privacy) in the referencing context, and,</p></li>
+<li><p>Private items should not be exposed in the surface of public API&rsquo;s.</p></li>
+</ol>
+
+
+<p>One might reasonably ask: What do I mean by &ldquo;visible&rdquo;, or &ldquo;surface&rdquo;?</p>
+
+<p>For Rust today, &ldquo;visible&rdquo; means &ldquo;either (1.) public, via <code>pub</code>, (2.)
+defined in the current module, or (3.) defined in a parent of the
+current module.&rdquo;</p>
+
+<p>But &ldquo;surface&rdquo; is a bit more subtle, and before we discuss it, I want
+to talk a bit about the purpose of &ldquo;visibility&rdquo; in the first place.</p>
+
+<a name="Digression:.a.dependence.need.not.be.visible"></a>
+<h2>Digression: a dependence need not be visible</h2>
+
+<p>In a hypothetical idealized programming language (<em>not</em> Rust), and
+under a particularly extreme reading of the term &ldquo;private&rdquo;, changes to
+definitions that are private to one module would have no effect on the
+validity of pre-existing uses from other modules. Another way of
+looking at this: changes to private definitions in one compilation
+unit would not require other compilation units to be recompiled, and
+will not cause programs that previously type-checked to stop
+type-checking.</p>
+
+<p>One form of this ideal is the following:</p>
+
+<script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"></script>
+
+
+<div id="extreme_private_calls"></div>
+
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent"; node [shape="rect"]; subgraph cluster_1 { fn_a [label="pub fn a()"]; label="unit1"; } subgraph cluster_2 { fn_b [label="pub fn b()"]; fn_c [label="fn c()"]; fn_b -> fn_c [label="calls"]; label="unit2"; } fn_a -> fn_b [label="calls"]; }';
+    var elem = document.getElementById("extreme_private_calls");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+
+<p>In this picture, one can see that the <code>fn c()</code> is a private component
+of &ldquo;unit2&rdquo;: it may just be an implementation detail of the body of
+<code>pub fn b()</code>, that the author of &ldquo;unit2&rdquo; can revise at will or
+eliminate entirely, without requiring any changes to &ldquo;unit1&rdquo;
+downstream.</p>
+
+<p>A problem arises when one sees other kinds of composition, at least in
+language like Rust, where values are directly embedded into their
+containers.  For example, instead of function calls, imagine type
+definitions:</p>
+
+<script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"></script>
+
+
+<div id="extreme_private_types"></div>
+
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent"; node [shape="rect"]; subgraph cluster_1 { struct_a [label="pub struct A { \\l    b: unit2::B \\l}\\l"]; label="unit1"; } subgraph cluster_2 { struct_b [label="pub struct B { \\l    c: C \\l}\\l"]; struct_c [label="struct C {\\l    x: i32,\\l    y: i32\\l}\\l"]; label="unit2"; } struct_a -> struct_b [label="uses"]; struct_b -> struct_c[label="uses", constraint=false] }';
+    var elem = document.getElementById("extreme_private_types");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+In many other languages (e.g. Java, ML, Scheme), such
+changes do not require recompiling the downstream crate, because
+the members of structural types are just <em>references</em> to other heap-allocated
+values, rather than being directly embedded in the allocated structure.
+</span>
+In this situation, even though the <code>struct C</code> is not publicly
+accessible outside of &ldquo;unit2&rdquo;, changes to <code>struct C</code> will still
+require the downstream &ldquo;unit1&rdquo; to be recompiled (because the contents
+of <code>struct A</code>, and thus its size in bytes, may have changed along with
+<code>struct C</code>).</p>
+
+<p>So, what does it <em>mean</em> that <code>C</code> is &ldquo;private&rdquo;, if there is still a
+dependence from the contents of &ldquo;unit1&rdquo; on the supposedly private
+definition of <code>struct C</code>?</p>
+
+<p>My answer to this is to distinguish between <em>visibility</em> versus <em>dependency</em>.</p>
+
+<p>In the above picture, <code>struct A</code> in &ldquo;unit1&rdquo; has a dependence on the
+definition of <code>struct C</code> in &ldquo;unit2&rdquo;. But <code>struct C</code> remains
+<em>invisible</em> to <code>struct A</code>, in the sense that one cannot actually write
+a direct reference to that type in the context of &ldquo;unit1.&rdquo;</p>
+
+<a name="What.is.visibility.for."></a>
+<h2>What is visibility for?</h2>
+
+<p>Some basic definitions: An item is just as it is declared in the Rust
+<a href="https://doc.rust-lang.org/reference.html#items">reference manual</a>: a component of a crate, located at a fixed path
+(potentially at the &ldquo;outermost&rdquo; anonymous module) within the module
+tree of the crate.</p>
+
+<p>Every item can be thought of as having some hidden implementation
+component(s) along with an exposed surface API.</p>
+
+<p>So, for example, in:
+<code>rust
+pub fn foo(x: Input) -&gt; Output { Body }
+</code>
+the surface of <code>fn foo</code> includes <code>Input</code> and <code>Output</code>, while the <code>Body</code> is
+hidden.</p>
+
+<p>What I would like is to establish the following
+invariant<label for='&lsquo;inv&rsquo;' class='margin-toggle'> &#8853;</label><input type='checkbox' id='&lsquo;inv&rsquo;' class='margin-toggle'/><span class='marginnote'>&lsquo;Yes, </span>
+for the language: if an item <code>I</code> is accessible in context <code>C</code>, then the
+surface for <code>I</code> does not expose anything that is inaccessible to <code>C</code>.</p>
+
+<a name="Intuition.behind.what..surface..means"></a>
+<h2>Intuition behind what &ldquo;surface&rdquo; means</h2>
+
+<p>I am taking care to distinguish between the phrase &ldquo;exposed surface
+API&rdquo; (more simply put, &ldquo;surface API&rdquo; or just &ldquo;surface&rdquo;), versus the
+more common unqualified phrase &ldquo;API&rdquo;, because some items have
+components that I argue are part of the item&rsquo;s programming interface,
+but are not part of the publicly exposed surface of the item (further
+discussed in a <a href="#Why.is.a..surface..not.the.same.as.a.signature.">later section</a>).</p>
+
+<p>The inutition behind the term &ldquo;surface&rdquo; is this:
+The exposed surface of an item is all of the
+components<label for='&lsquo;surface-components&rsquo;' class='margin-toggle'> &#8853;</label><input type='checkbox' id='&lsquo;surface-components&rsquo;' class='margin-toggle'/><span class='marginnote'>&lsquo;&ldquo;components&rdquo; </span>
+ that the client operation&rsquo;s context must be able to reference to in order to use this
+item legally.</p>
+
+<p>There are two halves to this, that are roughly analogous to the output
+and input types of a function: ensuring that local reasoning holds,
+and ensuring an interface is actually usable.</p>
+
+<a name="Restricting.output.surface.enables.local.reasoning"></a>
+<h3>Restricting output surface enables local reasoning</h3>
+
+<p>A function&rsquo;s return type is part of its exposed surface, because if
+a module has decided that a type <code>T</code> should be inaccessible in some
+outer context <code>C</code>, then we do not want a value of that type to flow
+into <code>C</code> while still having the type
+<code>T</code>.<label for='&lsquo;boxes&rsquo;' class='margin-toggle'> &#8853;</label><input type='checkbox' id='&lsquo;boxes&rsquo;' class='margin-toggle'/><span class='marginnote'>&lsquo;Of </span></p>
+
+<p>In other words, we wish to reject such code in order to enable
+module authors to employ <em>local reasoning</em> about all possible
+locations in the source code that the operations on instances of
+<code>T</code> could be invoked.</p>
+
+<p>This <em>is</em> a soundness criteria: People need to be able to employ
+this kind of reasoning.</p>
+
+<a name="Restricting.input.surface.catches.API.mistakes"></a>
+<h3>Restricting input surface catches API mistakes</h3>
+
+<p>A function&rsquo;s input types are part of its exposed surface, because
+without access to such types, the function is not callable.</p>
+
+<p>In other words, we wish to reject such code in order to catch bugs
+where a crate is <em>accidentally providing</em> a function without realizing
+that it cannot actually be used in the contexts that the author wants
+it available in.</p>
+
+<p>This is not a soundness criteria; it is just a language usability one.<label for='&lsquo;prioritizing-halves&rsquo;' class='margin-toggle'> &#8853;</label><input type='checkbox' id='&lsquo;prioritizing-halves&rsquo;' class='margin-toggle'/><span class='marginnote'>&lsquo;In </span></p>
+
+<a name="Why.is.a..surface..not.the.same.as.a.signature."></a>
+<h2>Why is a &ldquo;surface&rdquo; not the same as a signature?</h2>
+
+<p>Intuitively, one might ask: &ldquo;well, this is easy: the <em>signature</em> of
+<code>fn foo</code> is <code>fn (Input) -&gt; Output</code>; does that not suffice as the
+description of the <em>surface</em> of <code>fn foo</code>?&rdquo;</p>
+
+<p>I am distinguishing the above notion of &ldquo;surface&rdquo; from the idea of a
+&ldquo;signature&rdquo;, for the following reason: To my mind, the signature
+(e.g. of a type or a function) contains all of the meta-data needed to
+check (in the current crate or in other crates) whether a item is
+being used properly. Such a signature may include references to names
+that are not actually accessible in the current context. Compare this
+to the <em>surface</em>, which is the subset of the names of the signature
+that <em>must</em> be accessible in any context where the item is itself
+accessible.</p>
+
+<p>One example of where this kind of thinking can be applied is
+<code>where</code> clauses. A where-clause can reference things that are not
+accessible outside of the module of the function.  I would consider
+such a <code>where</code> clause to still be part of the function&rsquo;s signature
+(e.g., I would expect the compiler to reject my attempt to call the
+function if I violate the encoded constraint), but I do not
+necessarily consider the types or traits within that where clause part
+of the surface API, since there are hidden parts to the constraint
+that I do not have access to in my calling module.</p>
+
+<p>Here is a concrete example that runs in Rust 1.5:</p>
+
+<pre><code class="rust">mod a {
+    struct S(&amp;'static str);                 // private struct type S
+    pub trait Trait { fn compute(&amp;self) -&gt; i32; }
+
+    impl Trait for (i32, S) {
+        fn compute(&amp;self) -&gt; i32 { self.0 + ((self.1).0.len() as i32) }
+    }
+
+    pub fn foo&lt;X&gt;(x: X) -&gt; i32
+        where (X, S): Trait // where clause refers to private type S
+    {
+        (x,S("hi")).compute()
+    }
+}
+
+fn main() {
+    println!("{}", a::foo(3));
+}
+</code></pre>
+
+<p>There are other examples that we may want to support in the future.
+For example, Rust (version 1.5) considers bounding a type parameter
+directly via a private trait to be illegal, but we might reasonably
+revise the rules to say that while such a bound is part of the
+signature, it need not be part of the <em>surface</em>.</p>
+
+<p>(A very similar construction is allowed in Rust 1.5: A <code>pub</code> trait
+can have a private <em>parent</em> trait, which allows us to encode the
+latter construction anyway: the surface area of a function does not
+include the parent traits of bounds on its type parameters.)</p>
+
+<p>That&rsquo;s a lot of text to read. Here is the kind of code I am talking
+about:</p>
+
+<pre><code class="rust">mod a {
+    struct S(String);                      // private type
+    trait Trait { fn make_s(&amp;self) -&gt; S; } // private trait
+    pub trait SubT: Trait { }              // public trait to placate rustc
+
+    pub fn foo&lt;X:SubT&gt;(x: X) { // public fn that external code *can* use.
+        let s: S = x.make_s();
+        s.do_stuff();
+    }
+
+    // Impl trait for both () and i32, so clients can call `foo` on () or i32.
+    impl Trait for () { fn make_s(&amp;self) -&gt; S { S(format!("():()")) } }
+    impl Trait for i32 { fn make_s(&amp;self) -&gt; S { S(format!("{}:i32", self)) } }
+    impl SubT for () {}
+    impl SubT for i32 {}
+
+    impl S { fn do_stuff(&amp;self) { println!("stuff with {}", self.0); } }
+}
+
+fn main() {
+    a::foo(());
+    a::foo(3);
+}
+</code></pre>
+
+<p>In short: the term &ldquo;surface API&rdquo; here is <em>not</em> synonymous with the
+term &ldquo;signature&rdquo;.</p>
+
+<p>Assuming that you believe me that this new term, &ldquo;surface API&rdquo;, is
+actually warranted, you might now ask: &ldquo;How does one determine the
+surface API of an item?&rdquo; That is one of those questions that may sound
+trivial at first, but it is actually a bit subtle.</p>
+
+<p>Let us explore.</p>
+
+<a name="Some.items.can.change.their.surface.based.on.context"></a>
+<h3>Some items can change their surface based on context</h3>
+
+<p>For some items, such as <code>fn</code> definitions, the surface API is the same
+regardless of the context of where the item is used; for example, if a
+function is visible to you, then its surface API is simply its
+argument and return types, regardless of from where the function is
+referenced.</p>
+
+<p>However, the previous rule does not generally hold for most items; in
+general, the exposed surface of a given item is dependent on the
+context where that item is referenced.</p>
+
+<p>The main examples of this are:</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+All of these bullets are phrased as &ldquo;can be hidden&rdquo;, i.e.,
+the visibility may be restricted. However, in Rust today,
+one can write: <code>mod a{struct X{pub y: i32}}</code>
+I may want to generalize the statements here. (Then again, I
+am not clear whether there is any way to actually <em>use</em> the
+<code>y</code> field that has been exposed in this way.)
+</span></p>
+
+<ul>
+<li><p><code>struct</code> fields can be hidden in a <code>struct</code>,</p></li>
+<li><p>inherent methods can be hidden relative to the type they are attached to, and</p></li>
+<li><p>items can be hidden in a <code>mod</code>.</p></li>
+</ul>
+
+
+<p>In all cases where a surface component can be hidden in this
+context-dependent fashion, there is an associated <code>pub</code>-modifier
+present on the definition of that component.</p>
+
+<p>As an example of how the surface of a <code>struct</code> is context dependent,
+the following is legal:</p>
+
+<pre><code class="rust">mod a {
+    #[derive(Default)]
+    struct Priv(i32);
+
+    pub mod b {
+        #[derive(Default)]
+        pub struct F {
+            pub    x: i32,
+                   y: Priv,
+        }
+
+        // ... accesses to F.{x,y} ...
+    }
+    // ... accesses to F.x ...
+}
+
+mod k {
+  // ... accesses to F and F.x ...
+}
+</code></pre>
+
+<p>Within <code>mod b</code>, the surface API of <code>F</code> includes both the fields <code>x</code>
+and <code>y</code>, which means that the use of the type <code>Priv</code> is okay, since
+that is accessible from the context of <code>mod b</code>.</p>
+
+<p>Elsewhere, such as within <code>mod k</code>, the surface API of <code>F</code> is just the
+field <code>x</code>. But this is again okay, because the type of <code>x: i32</code> is
+visible everywhere.</p>
+
+<a name="Aliases.and.translucency"></a>
+<h3>Aliases and translucency</h3>
+
+<p>Some items, such as <code>type</code> aliases, <code>const</code> definitions, or rebinding
+imports a la <code>use &lt;path&gt; as &lt;ident&gt;</code>, can act to introduce named aliases
+to an item.</p>
+
+<p>In such cases, the alias itself has its own associated visibility:</p>
+
+<pre><code class="rust">mod a {
+    pub struct S(String); // public type
+    type Alias1 = S;      // private alias to the type
+}
+
+pub use a::S as Alias2;   // public alias to the type
+</code></pre>
+
+<p>The surface of simple aliases is also simple: the surface of an
+alias
+is just the paths referenced on its right-hand side.</p>
+
+<p>As a small additional wrinkle, type aliases can be type-parametric. In
+general, the exposed surface of a type alias are the bounds on its
+type parameters, plus the paths referenced on its left-hand side.</p>
+
+<p>So, for example, according to the rules today:</p>
+
+<pre><code class="rust">mod bad_aliases {
+    struct Private1(String); // private type
+    pub type PubAlias1 = Private1; // ERROR: private type exposed in pub surface
+
+    trait PrivateTrait { }
+    pub type PubAlias2&lt;X:PrivateTrait&gt; = i32; // ERROR: private trait exposed in pub surface
+}
+</code></pre>
+
+<p>The more interesting issue is how <em>other</em> surface APIs are influenced
+when they reference an alias.</p>
+
+<p>For example:</p>
+
+<pre><code class="rust">mod a {
+    pub struct S(String); // public type
+    type Alias1 = S;      // private alias to the type
+
+    pub fn twice(s: Alias1) -&gt; String { s.0 }
+    //              ~~~~~~
+    //                 |
+    // Should a `pub fn` be able to reference a private alias,
+    // if it points to a suitably public type (like `S` here)?
+}
+
+pub use a::S as Alias2;   // public alias to the type
+</code></pre>
+
+<p>Should it be legal for us to publicly export <code>fn twice</code> from <code>mod a</code>,
+even though it&rsquo;s signature references a private type alias?</p>
+
+<p>The language team recently <a href="https://github.com/rust-lang/rust/pull/29973#issuecomment-165723770">debated</a> this topic, because
+it was suggested that allowing this would <a href="https://github.com/rust-lang/rust/pull/29973#issuecomment-158686899">reduce breakage</a>
+from a pull request.</p>
+
+<p>The conclusion for now was to continue to disallow the reference to
+the private alias in the signature of a public function.</p>
+
+<p>However, there are similar cases that <em>are</em> allowed today (also
+discussed on that same PR), mainly involving references to <code>const</code> paths
+from types in such signatures.</p>
+
+<pre><code class="rust">mod a {
+    const LEN: usize = 4;
+    pub fn max(a: [i32; LEN]) -&gt; i32 { a.iter().map(|i|*i).max().unwrap() }
+    //                  ~~~
+    //                   |
+    // A reference to a private const in a public signature
+    // is legal in Rust today.
+}
+
+fn main() {
+    println!("{}", a::max([1,4,2,3]));
+}
+</code></pre>
+
+<p>I have not made up my mind as to which option would be better here.
+We may decide to leave things as they are, or loosen the rules for
+type aliases (so that they act more like <code>const</code> in the latter code),
+or we may tighten the rules for references to <code>const</code> (so that one
+would have to make <code>LEN</code> in the above code <code>pub</code>).</p>
+
+<p>Regardless of what path we take, I think it makes sense today for the
+language specification to at least identify a high-level abstraction
+here, rather than dealing with each alias-creating form like <code>type</code> or
+<code>const</code> or <code>use</code> individually in an ad-hoc manner.</p>
+
+<p>Namely, I want to pin down the idea of a <em>translucent name</em>. Such a
+name is not part of the API surface where it occurs; instead, an
+occurrence adds the surface of the alias statement itself to the API
+surface.</p>
+
+<p>So, as another artifical example, if we were to change the language so
+that <code>type</code> aliases were <em>translucent</em> when determining the exposed
+surface of an API, then we might have the following:</p>
+
+<pre><code class="rust">mod a { // (not legal Rust today)
+    pub struct S(String); // public type
+    pub trait Bound { type X; fn trait_method(&amp;self) -&gt; Self::X; }
+    impl Bound for String { type X = String; fn trait_method(&amp;self) -&gt; String { self.clone() } }
+    impl Bound for S { type X = String; fn trait_method(&amp;self) -&gt; String { self.0.clone() } }
+
+    type Alias&lt;T: Bound&gt; = (T, T::X, S); // private Alias, with surface = {Bound, S}
+
+    pub fn free_fun&lt;T: Bound&lt;X=String&gt;&gt;(a: Alias&lt;T&gt;) -&gt; String
+    //                 ~~~~~   ~~~~~~      ~~~~~        ~~~~~~
+    //  free_fun has     |       |           |            |
+    //     surface = { Bound, String, surface(Alias), String }
+    //             = { Bound, String,    Bound, S   , String }
+    //             = { Bound, S, String }
+    //
+    // which is compatible with `free_fn` being `pub`, because
+    // `Bound`, `S`, and `String` are all `pub`.
+    {
+        format!("{}{}", a.0.trait_method(), (a.1).0)
+    }
+}
+</code></pre>
+
+<p>Note 1: Even though <code>Alias</code> is type-parameteric over <code>T</code>, that
+parameter would not be considered part of its surface. Anyone using
+the alias would have to have access to whatever type they plugged in
+there, of course.</p>
+
+<p>Note 2: Type parameter bounds not enforced on type aliases in Rust yet.</p>
+
+<p>This computation and questions here would become a little more
+interesting if we had restricted visibility access modifiers on
+associated items in traits. However, we do not have to consider it:
+All associated items are implicitly <code>pub</code>, and so we do not need to
+worry about whether the <code>X</code> in a projection like <code>T::X</code> is visible.
+All that matters is whether the trait <code>Bound</code> itself is visible (which
+is already reflected in the surfaces where <code>Bound</code> is used).</p>
+
+<a name="Conclusion"></a>
+<h2>Conclusion</h2>
+
+<p>Okay, that was of a bit of a meandering tour through some
+of the issues I have been thinking about.</p>
+
+<p>The big ideas I want to stress are these:</p>
+
+<ul>
+<li><p>The &ldquo;surface&rdquo; of an item can be different from the &ldquo;signature&rdquo; of
+that item.</p></li>
+<li><p>Restricting the components in a surface of an item according to the
+visibility of that item (1.) enables local reasoning and (2.)
+catches API mistakes.</p></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[GC and Rust Part 1: Specifying the Problem]]></title>
@@ -38,6 +573,7 @@ So let us explore the problem space.</p>
 <!-- more -->
 
 
+<a name="L.....now.you.have..nyh..two.problems"></a>
 <h1>&hellip; <a href="http://regex.info/blog/2006-09-15/247">now you have</a> two problems</h1>
 
 <p>(The body of this post makes heavy use of client-side rendering,
@@ -53,6 +589,7 @@ the supporting Javascript loads.)</p>
 <script src="http://blog.pnkfx.org/javascripts/gc_rendering.js" charset="utf-8"></script>
 
 
+<a name="The.Problem.Space"></a>
 <h2>The Problem Space</h2>
 
 <p>Now that we have <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">reviewed</a> what GC is and how it works, let us
@@ -62,6 +599,7 @@ discuss what GC could mean to Rust.</p>
 &ldquo;GC&rdquo; could describe a feature for pure Rust programs, or &ldquo;GC&rdquo; could mean a
 3rd-party runtime interoperation feature. Let us discuss each in turn.</p>
 
+<a name="One.GC.shared.by.every.crate"></a>
 <h3>One GC shared by every crate</h3>
 
 <p>We could add a smart-pointer to <code>libstd</code>, e.g. a <code>Gc&lt;T&gt;</code> type, that
@@ -173,6 +711,7 @@ will be reclaimed.)</p>
 
 <p>This kind of feature could be useful in any Rust library.</p>
 
+<a name="Advantages.of.Gc.T..over.Rc.T."></a>
 <h4>Advantages of Gc<T> over Rc<T></h4>
 
 <p>The main hypothesized advantages over <code>Gc&lt;T&gt;</code> over <code>Rc&lt;T&gt;</code> are:</p>
@@ -196,6 +735,7 @@ discussed in the <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/"
 </ul>
 
 
+<a name="Drawbacks.of.one.GC.for.everyone"></a>
 <h4>Drawbacks of one GC for everyone</h4>
 
 <p>There are two immediate drawbacks with this kind of collector
@@ -215,6 +755,7 @@ a &ldquo;GC for everyone&rdquo; in <code>libstd</code>.  What about a more limit
 GC feature, where the audience is not &ldquo;every Rust crate&rdquo;, but instead
 just the crates linking to a managed runtime.</p>
 
+<a name="GC.as.Interoperation.Feature"></a>
 <h3>GC as Interoperation Feature</h3>
 
 <p>GC as an interoperation feature means that Rust would provide
@@ -274,6 +815,7 @@ different <a href="https://doc.rust-lang.org/nightly/book/custom-allocators.html
 simple<sup><a href="#footnote2">2</a></sup>, but the point is, there is a wide
 design space to be explored here.)</p>
 
+<a name="Interoperation.with.a..black.box..GC"></a>
 <h4>Interoperation with a &ldquo;black box&rdquo; GC</h4>
 
 <p>One way to look at the difference between &ldquo;GC for pure Rust programs&rdquo;
@@ -441,6 +983,7 @@ instantiate GC objects with its own types.<sup><a href="#footnote4">4</a></sup><
 since the level of indirection and handles array maintainence is not
 ideal.</p>
 
+<a name="Objectives.and.Requirements..oh.no..now.five.problems."></a>
 <h2>Objectives and Requirements (oh no, now five problems)</h2>
 
 <p>The two (or perhaps three) kinds of support described above are
@@ -470,6 +1013,7 @@ below.</p>
 </ol>
 
 
+<a name="L.span.id..safety..Safety.with.respect.to.GC..span."></a>
 <h3><span id="safety">Safety with respect to GC</span></h3>
 
 <p>If a Rust crate does not use <code>unsafe</code> constructs (<code>unsafe</code> blocks,
@@ -485,6 +1029,7 @@ races.</p>
 GC. I am going to assume for these initial posts that we will solve
 that problem eventually, but not attempt to address it at the outset.</p>
 
+<a name="L.span.id..modularity..Modularity.with.respect.to.GC..span."></a>
 <h3><span id="modularity">Modularity with respect to GC</span></h3>
 
 <p>A Rust program that uses GC should be able to link to a crate whose
@@ -528,6 +1073,7 @@ caveats and incorporate them into the above definition of
 &ldquo;modularity&rdquo;, without weakening it to the point of uselessness.
 (However, I will not attempt to tackle that here.)</p>
 
+<a name="L.span.id..zero-cost..Zero-Cost.GC..span."></a>
 <h3><span id="zero-cost">Zero-Cost GC</span></h3>
 
 <p>If you don&rsquo;t use the GC feature (in whatever form it takes), your code
@@ -558,6 +1104,7 @@ difficulty in writing a program or library.</p>
 
 <p>Strongly zero-cost implies weakly zero-cost, but not vice-versa.</p>
 
+<a name="L.span.id..compositionality..Compositional.GC..span."></a>
 <h3><span id="compositionality">Compositional GC</span></h3>
 
 <p>One can use a reference to a gc-allocated object (call it a <code>GcRef</code>)
@@ -695,6 +1242,7 @@ values of type <code>Gc&lt;T&gt;</code> for arbtrary <code>T</code>).</p>
 <em>defeat</em> compositionality.  That is why I point out this objective
 explicitly.</p>
 
+<a name="L.a.id..precision..Precision..Space-Efficiency...a."></a>
 <h3><a id="precision">Precision (Space-Efficiency)</a></h3>
 
 <p>A 100% precise GC is one that knows the type of every object and field
@@ -782,6 +1330,7 @@ values on the Rust heap, then you will encounter cyclic structure like
 this. (This was the design bug that led me to withdraw my &ldquo;Take II&rdquo;
 <a href="https://github.com/rust-lang/rfcs/pull/244">allocator RFC</a>.)</p>
 
+<a name="Conclusion"></a>
 <h2>Conclusion</h2>
 
 <p>This post was dedicated to identifying criteria that we would
@@ -789,6 +1338,7 @@ like GC-integration with Rust to satisfy.</p>
 
 <p>Next up: Why is it hard to satisfy the above criteria simultaneously?</p>
 
+<a name="Footnotes"></a>
 <h2>Footnotes</h2>
 
 <p><a name="footnote1">1.</a> In particular, smart-pointers in Rust
@@ -904,6 +1454,7 @@ not a primary goal.</p>
 </ul>
 
 
+<a name="L.a.id..background_dst..Background:.Dynamically.Sized.Types..DST...a."></a>
 <h2><a id="background_dst">Background: Dynamically Sized Types (DST)</a></h2>
 
 <p>The Rust team has been discussing incorporating &ldquo;dynamically-sized
@@ -987,6 +1538,7 @@ behind the latter suggestion is that we write <code>impl Trait for
 SelfType</code>, so it makes sense to put the generalization marker into the
 same position, i.e. filling the placeholder in: <code>Trait for _</code>.)</p>
 
+<a name="L.a.id..the_insight..The.Insight:..code.type..code..is.a.better.generalization.marker..a."></a>
 <h2><a id="the_insight">The Insight: <code>type</code> is a better generalization marker</a></h2>
 
 <p>One of the concerns that Niko has pointed out to me is that it is easy
@@ -1083,6 +1635,7 @@ fn foo&lt;const N:int&gt;(nums: &amp;[f64, ..N]) { ... }
 a <em>kind</em> marker, since it is changing the domain of the parameter from
 being that of a type to being some value within a type.)</p>
 
+<a name="L.a.id..the_examples..Examples.ported.from.DST..Take.5..a."></a>
 <h2><a id="the_examples">Examples ported from DST, Take 5</a></h2>
 
 <p>Here are the ported definitions of <code>Rc</code> and <code>RcData</code>.
@@ -1212,6 +1765,7 @@ red herrings along the way.</p>
 <!-- more -->
 
 
+<a name="L.a.id..background_fns..Background:.Closures..recurring.and.otherwise...a."></a>
 <h2><a id="background_fns">Background: Closures (recurring and otherwise)</a></h2>
 
 <p>In Rust circa version 0.6, closures have three categories according to
@@ -2036,6 +2590,22 @@ combinator:
 <span class='line-number'>788</span>
 <span class='line-number'>789</span>
 <span class='line-number'>790</span>
+<span class='line-number'>791</span>
+<span class='line-number'>792</span>
+<span class='line-number'>793</span>
+<span class='line-number'>794</span>
+<span class='line-number'>795</span>
+<span class='line-number'>796</span>
+<span class='line-number'>797</span>
+<span class='line-number'>798</span>
+<span class='line-number'>799</span>
+<span class='line-number'>800</span>
+<span class='line-number'>801</span>
+<span class='line-number'>802</span>
+<span class='line-number'>803</span>
+<span class='line-number'>804</span>
+<span class='line-number'>805</span>
+<span class='line-number'>806</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">struct</span> <span class="n">R</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="bp">self</span><span class="o">&gt;</span> <span class="p">{</span>
 </span><span class='line'>    <span class="c1">// This struct is needed to create the</span>
 </span><span class='line'>    <span class="c1">// otherwise infinite type of a fn that</span>
@@ -2158,6 +2728,7 @@ combinator:
 </span><span class='line'><span class="p">(</span><span class="n">Note</span> <span class="n">that</span> <span class="n">the</span> <span class="n">actual</span> <span class="n">types</span> <span class="n">assigned</span> <span class="n">to</span> <span class="n">expressions</span> <span class="n">would</span> <span class="kr">be</span> <span class="n">instances</span>
 </span><span class='line'><span class="n">of</span><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;</span><span class="n">S</span><span class="err">`</span> <span class="n">according</span> <span class="n">to</span> <span class="n">this</span> <span class="n">grammar</span><span class="p">.)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..the_problem..The.Problem:.DST.and.Closures..a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h2</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;the_problem&quot;</span><span class="o">&gt;</span><span class="n">The</span> <span class="n">Problem</span><span class="o">:</span> <span class="n">DST</span> <span class="n">and</span> <span class="n">Closures</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h2</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">So</span><span class="p">,</span> <span class="n">from</span> <span class="n">the</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Case</span> <span class="n">of</span> <span class="n">the</span> <span class="n">Recurring</span> <span class="n">Closure</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;,</span> <span class="n">we</span> <span class="n">saw</span> <span class="n">that</span>
@@ -2181,6 +2752,7 @@ combinator:
 </span><span class='line'><span class="o">&lt;/</span><span class="n">ul</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..is_fn_too_ugly..Is.fn..too.ugly...a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h3</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;is_fn_too_ugly&quot;</span><span class="o">&gt;</span><span class="n">Is</span> <span class="k">fn</span><span class="o">~</span> <span class="n">too</span> <span class="n">ugly</span><span class="o">?&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h3</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">Niko</span> <span class="n">at</span> <span class="n">first</span> <span class="n">favored</span> <span class="n">the</span> <span class="n">latter</span><span class="p">,</span> <span class="n">then</span> <span class="n">he</span> <span class="n">wrote</span> <span class="n">a</span> <span class="n">second</span> <span class="n">post</span><span class="p">,</span>
@@ -2205,6 +2777,7 @@ combinator:
 </span><span class='line'><span class="p">(</span><span class="n">I</span> <span class="n">personally</span> <span class="n">am</span> <span class="n">not</span> <span class="n">thrilled</span> <span class="n">about</span> <span class="n">losing</span> <span class="n">the</span> <span class="n">option</span> <span class="n">of</span> <span class="n">using</span>
 </span><span class='line'><span class="n">closures</span> <span class="n">to</span> <span class="n">express</span> <span class="n">combinator</span> <span class="n">libraries</span><span class="p">,</span> <span class="n">a</span> <span class="kn">use</span> <span class="n">case</span> <span class="k">for</span> <span class="o">&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">fn</span><span class="o">@&lt;/</span><span class="n">code</span><span class="o">&gt;</span><span class="p">.)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..leveraging_proc..Leveraging.a.proc.keyword.expression..a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h3</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;leveraging_proc&quot;</span><span class="o">&gt;</span><span class="n">Leveraging</span> <span class="n">a</span> <span class="k">proc</span> <span class="n">keyword</span><span class="o">/</span><span class="n">expression</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h3</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">Then</span> <span class="n">a</span> <span class="n">third</span> <span class="n">post</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/&quot;</span><span class="o">&gt;&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Procedures</span><span class="p">,</span> <span class="n">Continued</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="n">from</span>
@@ -2265,6 +2838,7 @@ combinator:
 </span><span class='line'><span class="n">expressing</span> <span class="n">them</span> <span class="n">via</span> <span class="n">a</span> <span class="o">&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">proc</span><span class="o">!&lt;/</span><span class="n">code</span><span class="o">&gt;</span> <span class="n">macro</span> <span class="p">(</span><span class="n">which</span> <span class="n">means</span> <span class="n">they</span> <span class="n">could</span> <span class="kr">be</span> <span class="n">left</span>
 </span><span class='line'><span class="n">out</span> <span class="n">of</span> <span class="n">the</span> <span class="n">core</span> <span class="n">language</span><span class="p">).</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..other_ways_to_proc..Other.ways.to.express.proc..a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h3</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;other_ways_to_proc&quot;</span><span class="o">&gt;</span><span class="n">Other</span> <span class="n">ways</span> <span class="n">to</span> <span class="n">express</span> <span class="k">proc</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h3</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">In</span> <span class="n">his</span> <span class="n">next</span> <span class="n">post</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/&quot;</span><span class="o">&gt;&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">Removing</span> <span class="n">Procs</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">Niko</span> <span class="n">elaborates</span> <span class="n">further</span>
@@ -2301,6 +2875,7 @@ combinator:
 </span><span class='line'><span class="n">macro</span> <span class="n">to</span> <span class="n">query</span> <span class="n">an</span> <span class="n">expression</span> <span class="k">for</span> <span class="n">its</span> <span class="n">free</span> <span class="n">variables</span><span class="p">,</span> <span class="n">then</span> <span class="n">that</span> <span class="n">might</span>
 </span><span class='line'><span class="n">help</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..digression_on_macros..A.Personal.Digression.on.Macros..a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h4</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;digression_on_macros&quot;</span><span class="o">&gt;</span><span class="n">A</span> <span class="n">Personal</span> <span class="n">Digression</span> <span class="n">on</span> <span class="n">Macros</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h4</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">Actually</span><span class="p">,</span> <span class="n">this</span> <span class="n">latter</span> <span class="n">idea</span> <span class="n">brings</span> <span class="n">up</span> <span class="n">a</span> <span class="n">problem</span> <span class="n">with</span> <span class="n">the</span> <span class="n">explicit</span> <span class="n">list</span>
@@ -2328,6 +2903,7 @@ combinator:
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">Okay</span><span class="p">,</span> <span class="n">end</span> <span class="n">of</span> <span class="n">digression</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..more_followup_on_procs_and_fns..More.followups.on.procs.and.fns..a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h3</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;more_followup_on_procs_and_fns&quot;</span><span class="o">&gt;</span><span class="n">More</span> <span class="n">followups</span> <span class="n">on</span> <span class="n">procs</span> <span class="n">and</span> <span class="n">fns</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h3</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">A</span> <span class="n">few</span> <span class="n">days</span> <span class="n">passed</span><span class="p">,</span> <span class="n">then</span> <span class="n">Niko</span> <span class="n">had</span> <span class="n">a</span> <span class="n">fourth</span> <span class="n">post</span><span class="p">,</span>
@@ -2366,6 +2942,7 @@ combinator:
 </span><span class='line'><span class="o">&lt;/</span><span class="n">ul</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..where_are_we..So.where.are.we...a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h2</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;where_are_we&quot;</span><span class="o">&gt;</span><span class="n">So</span> <span class="n">where</span> <span class="n">are</span> <span class="n">we</span><span class="o">?&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h2</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">The</span> <span class="n">above</span> <span class="n">summarizes</span> <span class="n">the</span> <span class="n">series</span> <span class="n">of</span> <span class="n">blog</span> <span class="n">posts</span> <span class="n">from</span> <span class="n">Niko</span><span class="p">.</span>  <span class="n">I</span> <span class="n">had</span> <span class="n">hoped</span>
@@ -2427,6 +3004,7 @@ combinator:
 </span><span class='line'><span class="o">&lt;!--</span> <span class="n">more</span> <span class="o">--&gt;</span>
 </span><span class='line'>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..background..Background..a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h2</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;background&quot;</span><span class="o">&gt;</span><span class="n">Background</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h2</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">Early</span> <span class="k">in</span> <span class="n">my</span> <span class="n">experimentation</span> <span class="n">with</span> <span class="n">Rust</span><span class="p">,</span> <span class="n">I</span> <span class="n">thought</span> <span class="n">a</span> <span class="n">reasonable</span> <span class="n">exercise</span>
@@ -2614,6 +3192,7 @@ combinator:
 </span><span class='line'>    <span class="p">}</span>
 </span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..encodingunpalatable..Encoding.via.parameters.is.unpalatable..a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h3</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;encodingunpalatable&quot;</span><span class="o">&gt;</span><span class="n">Encoding</span> <span class="n">via</span> <span class="n">parameters</span> <span class="n">is</span> <span class="n">unpalatable</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h3</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">The</span> <span class="n">Rust</span> <span class="n">and</span> <span class="n">Java</span> <span class="n">results</span> <span class="n">above</span> <span class="n">are</span> <span class="n">made</span> <span class="n">barely</span> <span class="n">readable</span> <span class="n">by</span> <span class="n">using</span>
@@ -2657,6 +3236,7 @@ combinator:
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">hr</span> <span class="o">/&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..rustspec..Rust-specific.issues..a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h2</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;rustspec&quot;</span><span class="o">&gt;</span><span class="n">Rust</span><span class="o">-</span><span class="n">specific</span> <span class="n">issues</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h2</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">I</span> <span class="n">encountered</span> <span class="n">this</span> <span class="n">problem</span> <span class="k">while</span> <span class="n">porting</span> <span class="n">EOP</span> <span class="n">code</span> <span class="n">to</span> <span class="n">Rust</span><span class="p">.</span>  <span class="n">After</span>
@@ -2680,6 +3260,7 @@ combinator:
 </span><span class='line'><span class="n">both</span> <span class="n">over</span> <span class="n">IRC</span> <span class="n">and</span> <span class="k">in</span> <span class="n">person</span><span class="p">,</span> <span class="n">on</span> <span class="n">the</span> <span class="n">problems</span> <span class="n">that</span> <span class="n">associated</span> <span class="n">types</span>
 </span><span class='line'><span class="n">present</span> <span class="k">for</span> <span class="n">Rust</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..nikoposts..Niko.s.blog.posts..a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h3</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;nikoposts&quot;</span><span class="o">&gt;</span><span class="n">Niko</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">s</span> <span class="n">blog</span> <span class="n">posts</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h3</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">You</span> <span class="n">can</span> <span class="n">see</span> <span class="n">Niko</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">s</span> <span class="n">thorough</span> <span class="n">overview</span> <span class="n">of</span> <span class="n">the</span> <span class="n">matter</span><span class="p">,</span>
@@ -2697,6 +3278,7 @@ combinator:
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">The</span> <span class="n">following</span> <span class="n">are</span> <span class="n">the</span> <span class="n">specific</span> <span class="n">points</span> <span class="n">that</span> <span class="n">Niko</span> <span class="n">makes</span> <span class="k">in</span> <span class="n">his</span> <span class="n">posts</span> <span class="p">(</span><span class="n">some</span> <span class="n">of</span>
 </span><span class='line'><span class="n">are</span> <span class="n">just</span> <span class="n">pointing</span> <span class="n">out</span> <span class="n">artifacts</span> <span class="n">of</span> <span class="n">current</span> <span class="n">Rust</span> <span class="n">language</span> <span class="n">syntax</span><span class="p">).</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;Current.Rust.syntax.focuses.on.deriving.associated.functions.from.traits&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h3</span><span class="o">&gt;</span><span class="n">Current</span> <span class="n">Rust</span> <span class="n">syntax</span> <span class="n">focuses</span> <span class="n">on</span> <span class="n">deriving</span> <span class="n">associated</span> <span class="n">functions</span> <span class="n">from</span> <span class="n">traits</span><span class="o">&lt;/</span><span class="n">h3</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">Rust</span> <span class="n">does</span> <span class="n">not</span> <span class="n">currently</span> <span class="n">offer</span> <span class="n">general</span> <span class="n">associated</span> <span class="n">items</span><span class="p">,</span> <span class="n">but</span> <span class="n">it</span> <span class="n">does</span>
@@ -2716,6 +3298,7 @@ combinator:
 </span><span class='line'><span class="n">the</span> <span class="k">type</span> <span class="o">&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">X</span><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;</span> <span class="n">implements</span> <span class="n">to</span> <span class="n">satisfy</span> <span class="n">the</span> <span class="n">obligation</span> <span class="n">established</span> <span class="n">by</span> <span class="n">the</span>
 </span><span class='line'><span class="k">trait</span> <span class="o">&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">T</span><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;</span><span class="p">).</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..nikoenctt1..Resolving.ambiguities.in.general.implies.you.need.both.the.trait.and.type..a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h4</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;nikoenctt1&quot;</span><span class="o">&gt;</span><span class="n">Resolving</span> <span class="n">ambiguities</span> <span class="k">in</span> <span class="n">general</span> <span class="n">implies</span> <span class="n">you</span> <span class="n">need</span> <span class="n">both</span> <span class="n">the</span> <span class="k">trait</span> <span class="n">and</span> <span class="k">type</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h4</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">The</span> <span class="n">choice</span> <span class="n">of</span> <span class="n">deriving</span> <span class="n">a</span> <span class="n">function</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">s</span> <span class="n">implementation</span> <span class="n">from</span> <span class="n">the</span> <span class="k">trait</span>
@@ -2739,6 +3322,7 @@ combinator:
 </span><span class='line'><span class="n">the</span> <span class="o">&lt;</span><span class="n">nobr</span><span class="o">&gt;&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="o">&lt;</span><span class="n">code</span><span class="o">&gt;::&lt;/</span><span class="n">code</span><span class="o">&gt;&amp;</span><span class="n">rdquo</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">nobr</span><span class="o">&gt;</span> <span class="n">path</span> <span class="n">operator</span><span class="p">,</span> <span class="n">both</span> <span class="n">when</span> <span class="n">learning</span> <span class="n">the</span> <span class="n">language</span>
 </span><span class='line'><span class="n">and</span> <span class="n">when</span> <span class="n">casually</span> <span class="n">skimming</span> <span class="n">Rust</span> <span class="n">code</span> <span class="k">in</span> <span class="n">general</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;Rust.type.expressions.do.not.naturally.fit.into.Rust.path.expressions&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h4</span><span class="o">&gt;</span><span class="n">Rust</span> <span class="k">type</span> <span class="n">expressions</span> <span class="k">do</span> <span class="n">not</span> <span class="n">naturally</span> <span class="n">fit</span> <span class="n">into</span> <span class="n">Rust</span> <span class="n">path</span> <span class="n">expressions</span><span class="o">&lt;/</span><span class="n">h4</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">Niko</span> <span class="n">also</span> <span class="n">points</span> <span class="n">out</span> <span class="n">that</span> <span class="n">when</span> <span class="n">one</span> <span class="n">wants</span> <span class="n">to</span> <span class="n">write</span> <span class="o">&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">X</span><span class="o">::</span><span class="n">f</span><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;</span> <span class="n">where</span> <span class="o">&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">X</span><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;</span> <span class="n">is</span>
@@ -2763,6 +3347,7 @@ combinator:
 </span><span class='line'><span class="n">a</span> <span class="n">slight</span> <span class="n">push</span> <span class="n">to</span> <span class="n">try</span> <span class="n">to</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">simplify</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">the</span> <span class="n">path</span> <span class="n">expression</span> <span class="n">syntax</span><span class="p">,</span> <span class="n">which</span>
 </span><span class='line'><span class="n">this</span> <span class="n">would</span> <span class="n">conflict</span> <span class="n">with</span><span class="p">).</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;Further.syntactic.exploration.of.encoding.trait.and.type&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h4</span><span class="o">&gt;</span><span class="n">Further</span> <span class="n">syntactic</span> <span class="n">exploration</span> <span class="n">of</span> <span class="n">encoding</span> <span class="k">trait</span> <span class="n">and</span> <span class="k">type</span><span class="o">&lt;/</span><span class="n">h4</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">In</span> <span class="n">his</span> <span class="n">second</span> <span class="n">blog</span> <span class="n">post</span><span class="p">,</span> <span class="n">Niko</span> <span class="n">provides</span> <span class="n">some</span> <span class="n">alternative</span> <span class="n">syntactic</span> <span class="n">forms</span>
@@ -2797,6 +3382,7 @@ combinator:
 </span><span class='line'><span class="n">synthetic</span> <span class="n">parameter</span> <span class="n">would</span> <span class="n">receive</span> <span class="n">special</span> <span class="n">attention</span> <span class="n">at</span> <span class="n">points</span> <span class="n">of</span> <span class="k">type</span>
 </span><span class='line'><span class="n">instantiation</span><span class="p">,</span> <span class="n">but</span> <span class="n">I</span> <span class="n">still</span> <span class="n">think</span> <span class="n">it</span> <span class="n">is</span> <span class="n">an</span> <span class="n">abuse</span> <span class="n">of</span> <span class="n">the</span> <span class="n">parameter</span> <span class="n">list</span><span class="p">.</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
 </span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">a</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;L.a.id..thinkbinding..Simpler.syntax:.What.about.binding...a.&quot;</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">h3</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class="s">&quot;thinkbinding&quot;</span><span class="o">&gt;</span><span class="n">Simpler</span> <span class="n">syntax</span><span class="o">:</span> <span class="n">What</span> <span class="n">about</span> <span class="n">binding</span><span class="o">?&lt;/</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">h3</span><span class="o">&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">So</span> <span class="n">I</span> <span class="n">set</span> <span class="n">about</span> <span class="n">trying</span> <span class="n">to</span> <span class="n">come</span> <span class="n">up</span> <span class="n">with</span> <span class="n">another</span> <span class="n">syntactic</span> <span class="n">form</span>
@@ -2841,6 +3427,7 @@ enums, and traits.</p>
 
 <hr />
 
+<a name="L.a.id..insight..An.Insight..a."></a>
 <h2><a id="insight">An Insight</a></h2>
 
 <p>Even though my attempt to solve this problem via a declaration form had
@@ -2910,6 +3497,7 @@ many use cases of interest.</p>
 
 <hr />
 
+<a name="L.a.id..proposal..The.proposed.syntax.for.associated.items.in.Rust..a."></a>
 <h2><a id="proposal">The proposed syntax for associated items in Rust</a></h2>
 
 <p>So, with that insight explained, here is my proposal for associated items:</p>
@@ -2994,6 +3582,7 @@ many use cases of interest.</p>
 
 <hr />
 
+<a name="L.a.id..futurework..What.the.proposal.does.not.cover..a."></a>
 <h2><a id="futurework">What the proposal does not cover</a></h2>
 
 <p>There are cases of interest that are not covered by the above proposal.</p>
@@ -3027,174 +3616,6 @@ accomplish for Rust 1.0.</p>
 
 <p>What else have I missed?  Let me know, leave a comment.  (Or look
 for me in the #rust irc channel.)</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Rusty Chain Puzzle 1.]]></title>
-    <link href="http://blog.pnkfx.org/blog/2013/03/26/rusty-chain-puzzle-1/"/>
-    <updated>2013-03-26T10:28:00+01:00</updated>
-    <id>http://blog.pnkfx.org/blog/2013/03/26/rusty-chain-puzzle-1</id>
-    <content type="html"><![CDATA[<p>I have been trying to get my feet wet programming in
-<a href="http://www.rust-lang.org/">Rust</a>.</p>
-
-<p>A month and a half ago, I thought &ldquo;Maybe I will hack up an Earley
-parser in a variety of languages, including Rust.&rdquo;  That sent me down
-a long path of learning about how Earley parsing works; I have not yet
-written up my results from that investigation, and I still have not
-written the Rust version of the code.</p>
-
-<p>Last weekend, I sat down and said, &ldquo;Let&rsquo;s try a simpler goal: A couple
-simple exercies, maybe taken from Knuth&rsquo;s
-<a href="http://www-cs-faculty.stanford.edu/~uno/taocp.html">TAOCP</a>&rdquo;
-This was indeed a much simpler goal, but it was more difficult than
-I had expected.</p>
-
-<!-- more -->
-
-
-<p>So, here is a Rust hacking puzzle that I struggled with.</p>
-
-<p>I am representing piles of playing cards via linked structures.
-Here are the data structure declarations:</p>
-
-<pre><code class="rust">enum card_suit { clubs, diamonds, hearts, spades }
-struct card { suit: card_suit,
-              rank: u8, // 1..13
-              next: Option&lt;~card&gt; }
-</code></pre>
-
-<p>Note that the <code>next</code> field is an (optional) <em>owned</em> pointer to the
-next card in the pile.  <code>Option&lt;~card&gt;</code> will be generally used to
-represent a potentially empty pile (or &ldquo;stack&rdquo;, &ldquo;deck&rdquo; or &ldquo;hand&rdquo;, as
-the context dictates), while <code>~card</code> is a non-empty pile (or, when its
-<code>next</code> is <code>None</code>, a single card, again as context dictates)</p>
-
-<h2>The goal</h2>
-
-<p>I want to write four functions: <code>place_top</code>, <code>place_bot</code>, <code>pop_top</code>,
-and <code>pop_bot</code>, which respectively:</p>
-
-<ul>
-<li><p><code>place_top(stack, c)</code> pushes a card <code>c</code> onto the top of the stack,
-represented by return the new top of the stack.</p></li>
-<li><p><code>place_bot(stack, c)</code> places a card beneath the stack.  For an empty
-stack, the placed card is returned as the top of the newly formed
-stack; otherwise, the old stack top is returned (since the stack is
-imperatively modified).</p></li>
-<li><p><code>pop_top(stack)</code> pops the top of the stack, returning a tuple of the
-popped card and the remaining, potentially empty stack.</p></li>
-<li><p><code>pop_bot(stack)</code> removes the bottom of the stack (i.e. &ldquo;deals from
-the bottom of the deck&rdquo;), returning a tuple of the removed card and
-the new, potentially empty stack.</p></li>
-</ul>
-
-
-<p>In code, here are the signatures for the desired functions,
-as well as one-line reminders of the behavior for each.</p>
-
-<pre><code class="rust">// [c1, ..., cN], cX -&gt; [cX, c1, ..., cN]
-fn place_top(pile: Option&lt;~card&gt;, newcard: ~card) -&gt; ~card;
-
-// [c1, ..., cN], cX -&gt; [c1, ..., cN, cX]
-fn place_bot(pile: Option&lt;~card&gt;, newcard: ~card) -&gt; ~card;
-
-// [c1, c2, ..., cN] -&gt; (c1, [c2, ..., cN])
-fn pop_top(pile: ~card) -&gt; (~card, Option&lt;~card&gt;);
-
-// [c1, ..., cN-1, cN] -&gt; (Some(cN), [c1, ..., cN-1])
-fn pop_bot(pile: ~card) -&gt; (~card, Option&lt;~card&gt;);
-</code></pre>
-
-<h2>(Some non-critical helper infrastructure follows, showing off Rust as language)</h2>
-
-<p>Here is some example code that puts together a hand and does
-a few manipulations using the above operations (as well as
-some printing routines to make looking at these cards nicer
-in the terminal output)</p>
-
-<pre><code class="rust">fn make_hand() -&gt; ~card {
-    let hand = ~card { suit: clubs, rank: 10, next: None };
-    let hand = ~card { suit: spades, rank: 3, next: Some(hand) };
-    let hand = ~card { suit: diamonds, rank: 2, next: Some(hand) };
-    hand
-}
-
-fn main() {
-    let hand : ~card = make_hand();
-    hand.report(~"initial hand: ");
-    let AceD = ~card{ suit: diamonds, rank: 1, next: None };
-    AceD.report(~"place top: ");
-    let hand = place_top(Some(hand), AceD);
-    hand.report(~"new hand: ");
-    let SixD = ~card{ suit: diamonds, rank: 6, next: None };
-    SixD.report(~"place bot: ");
-    let hand = place_bot(Some(hand), SixD);
-    hand.report(~"new hand: ");
-    let (top, rest) = pop_top(hand);
-    top.report(~"popped top: ");
-    let hand = rest.unwrap();
-    hand.report(~"new hand: ");
-    let (bot, rest) = pop_bot(hand);
-    bot.report(~"popped bot: ");
-    let hand = rest.unwrap();
-    hand.report(~"new hand: ");
-}
-
-// Below are "just" some notation niceties that should not effect
-// the semantics of the code + algorithms above.
-
-impl ToStr for card_suit {
-    fn to_str(&amp;self) -&gt; ~str {
-        match self { &amp;spades   =&gt; ~"\u2664", &amp;hearts   =&gt; ~"\u2665",
-                     &amp;diamonds =&gt; ~"\u2666", &amp;clubs    =&gt; ~"\u2667" } }
-}
-
-fn rank_to_str(r:u8) -&gt; ~str {
-    match r {
-        1     =&gt; ~"A",
-        2..10 =&gt; r.to_str(),
-        11    =&gt; ~"J",
-        12    =&gt; ~"Q",
-        13    =&gt; ~"K",
-        _     =&gt; fail!()
-    }
-}
-
-impl card {
-    fn rank_to_str(&amp;self) -&gt; ~str { rank_to_str(self.rank) }
-    fn report(&amp;self, prefix: ~str) { io::println(prefix + self.to_str()); }
-}
-
-impl ToStr for card {
-    fn to_str(&amp;self) -&gt; ~str {
-        let mut ret = self.rank_to_str() + self.suit.to_str();
-        match &amp;self.next {
-            &amp;None =&gt; (),
-            &amp;Some(ref n) =&gt; ret = ret + "," + n.to_str()
-        }
-        ret
-    }
-}
-</code></pre>
-
-<p>In my terminal, I get the following output from the above <code>main</code>
-function:</p>
-
-<p>initial hand: 2&diams;,3&spades;,10&clubs;<br/>
-place top: A&diams;<br/>
-new hand: A&diams;,2&diams;,3&spades;,10&clubs;<br/>
-place bot: 6&diams;<br/>
-new hand: A&diams;,2&diams;,3&spades;,10&clubs;,6&diams;<br/>
-popped top: A&diams;<br/>
-new hand: 2&diams;,3&spades;,10&clubs;,6&diams;<br/>
-popped bot: 6&diams;<br/>
-new hand: 2&diams;,3&spades;,10&clubs;</p>
-
-<p>(I will post my initial &ldquo;solution&rdquo; to the puzzle in a follow-up post;
- I wanted to share this first because I know my current solution
- is non-optimal and wanted to see what others had to offer for how
- to solve this first.)</p>
 ]]></content>
   </entry>
   

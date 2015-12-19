@@ -4,7 +4,7 @@
   <title><![CDATA[Category: gc | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/gc/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-12-18T22:13:37+01:00</updated>
+  <updated>2015-12-19T22:32:06+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -38,6 +38,7 @@ So let us explore the problem space.</p>
 <!-- more -->
 
 
+<a name="L.....now.you.have..nyh..two.problems"></a>
 <h1>&hellip; <a href="http://regex.info/blog/2006-09-15/247">now you have</a> two problems</h1>
 
 <p>(The body of this post makes heavy use of client-side rendering,
@@ -53,6 +54,7 @@ the supporting Javascript loads.)</p>
 <script src="http://blog.pnkfx.org/javascripts/gc_rendering.js" charset="utf-8"></script>
 
 
+<a name="The.Problem.Space"></a>
 <h2>The Problem Space</h2>
 
 <p>Now that we have <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">reviewed</a> what GC is and how it works, let us
@@ -62,6 +64,7 @@ discuss what GC could mean to Rust.</p>
 &ldquo;GC&rdquo; could describe a feature for pure Rust programs, or &ldquo;GC&rdquo; could mean a
 3rd-party runtime interoperation feature. Let us discuss each in turn.</p>
 
+<a name="One.GC.shared.by.every.crate"></a>
 <h3>One GC shared by every crate</h3>
 
 <p>We could add a smart-pointer to <code>libstd</code>, e.g. a <code>Gc&lt;T&gt;</code> type, that
@@ -173,6 +176,7 @@ will be reclaimed.)</p>
 
 <p>This kind of feature could be useful in any Rust library.</p>
 
+<a name="Advantages.of.Gc.T..over.Rc.T."></a>
 <h4>Advantages of Gc<T> over Rc<T></h4>
 
 <p>The main hypothesized advantages over <code>Gc&lt;T&gt;</code> over <code>Rc&lt;T&gt;</code> are:</p>
@@ -196,6 +200,7 @@ discussed in the <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/"
 </ul>
 
 
+<a name="Drawbacks.of.one.GC.for.everyone"></a>
 <h4>Drawbacks of one GC for everyone</h4>
 
 <p>There are two immediate drawbacks with this kind of collector
@@ -215,6 +220,7 @@ a &ldquo;GC for everyone&rdquo; in <code>libstd</code>.  What about a more limit
 GC feature, where the audience is not &ldquo;every Rust crate&rdquo;, but instead
 just the crates linking to a managed runtime.</p>
 
+<a name="GC.as.Interoperation.Feature"></a>
 <h3>GC as Interoperation Feature</h3>
 
 <p>GC as an interoperation feature means that Rust would provide
@@ -274,6 +280,7 @@ different <a href="https://doc.rust-lang.org/nightly/book/custom-allocators.html
 simple<sup><a href="#footnote2">2</a></sup>, but the point is, there is a wide
 design space to be explored here.)</p>
 
+<a name="Interoperation.with.a..black.box..GC"></a>
 <h4>Interoperation with a &ldquo;black box&rdquo; GC</h4>
 
 <p>One way to look at the difference between &ldquo;GC for pure Rust programs&rdquo;
@@ -441,6 +448,7 @@ instantiate GC objects with its own types.<sup><a href="#footnote4">4</a></sup><
 since the level of indirection and handles array maintainence is not
 ideal.</p>
 
+<a name="Objectives.and.Requirements..oh.no..now.five.problems."></a>
 <h2>Objectives and Requirements (oh no, now five problems)</h2>
 
 <p>The two (or perhaps three) kinds of support described above are
@@ -470,6 +478,7 @@ below.</p>
 </ol>
 
 
+<a name="L.span.id..safety..Safety.with.respect.to.GC..span."></a>
 <h3><span id="safety">Safety with respect to GC</span></h3>
 
 <p>If a Rust crate does not use <code>unsafe</code> constructs (<code>unsafe</code> blocks,
@@ -485,6 +494,7 @@ races.</p>
 GC. I am going to assume for these initial posts that we will solve
 that problem eventually, but not attempt to address it at the outset.</p>
 
+<a name="L.span.id..modularity..Modularity.with.respect.to.GC..span."></a>
 <h3><span id="modularity">Modularity with respect to GC</span></h3>
 
 <p>A Rust program that uses GC should be able to link to a crate whose
@@ -528,6 +538,7 @@ caveats and incorporate them into the above definition of
 &ldquo;modularity&rdquo;, without weakening it to the point of uselessness.
 (However, I will not attempt to tackle that here.)</p>
 
+<a name="L.span.id..zero-cost..Zero-Cost.GC..span."></a>
 <h3><span id="zero-cost">Zero-Cost GC</span></h3>
 
 <p>If you don&rsquo;t use the GC feature (in whatever form it takes), your code
@@ -558,6 +569,7 @@ difficulty in writing a program or library.</p>
 
 <p>Strongly zero-cost implies weakly zero-cost, but not vice-versa.</p>
 
+<a name="L.span.id..compositionality..Compositional.GC..span."></a>
 <h3><span id="compositionality">Compositional GC</span></h3>
 
 <p>One can use a reference to a gc-allocated object (call it a <code>GcRef</code>)
@@ -695,6 +707,7 @@ values of type <code>Gc&lt;T&gt;</code> for arbtrary <code>T</code>).</p>
 <em>defeat</em> compositionality.  That is why I point out this objective
 explicitly.</p>
 
+<a name="L.a.id..precision..Precision..Space-Efficiency...a."></a>
 <h3><a id="precision">Precision (Space-Efficiency)</a></h3>
 
 <p>A 100% precise GC is one that knows the type of every object and field
@@ -782,6 +795,7 @@ values on the Rust heap, then you will encounter cyclic structure like
 this. (This was the design bug that led me to withdraw my &ldquo;Take II&rdquo;
 <a href="https://github.com/rust-lang/rfcs/pull/244">allocator RFC</a>.)</p>
 
+<a name="Conclusion"></a>
 <h2>Conclusion</h2>
 
 <p>This post was dedicated to identifying criteria that we would
@@ -789,6 +803,7 @@ like GC-integration with Rust to satisfy.</p>
 
 <p>Next up: Why is it hard to satisfy the above criteria simultaneously?</p>
 
+<a name="Footnotes"></a>
 <h2>Footnotes</h2>
 
 <p><a name="footnote1">1.</a> In particular, smart-pointers in Rust
@@ -1021,6 +1036,7 @@ post_graph("target_anchor1", digraph(content, { rankdir:"LR" }));
 </script>
 
 
+<a name="What.is.Garbage.Collection"></a>
 <h2>What is Garbage Collection</h2>
 
 <p>A garbage collector is a component in the runtime for a programming
@@ -1083,6 +1099,7 @@ post_objects("target_anchor3", objects, { rankdir:"LR" });
 labelled &ldquo;D&rdquo;, &ldquo;E&rdquo;, and &ldquo;F&rdquo; are unreachable, and thus
 their storage can be reclaimed.</p>
 
+<a name="Footnotes.I"></a>
 <h4>Footnotes I</h4>
 
 <p><a name="footnote1">1.</a> Researchers have explored methods exist to
@@ -1090,6 +1107,7 @@ identify objects as dead even when reachable, such as using
 <a href="http://pop-art.inrialpes.fr/~fradet/PDFs/LISP94.pdf">&ldquo;parametricity&rdquo;</a>; but I am not aware of any
 such method being used outside of a research setting.</p>
 
+<a name="L.span.id..how-gc-works..How.Garbage.Collection.works..span."></a>
 <h2><span id="how-gc-works">How Garbage Collection works</span></h2>
 
 <p>A garbage collector is often presented as a
@@ -1445,6 +1463,7 @@ of <code>D</code>), even though the arc for the former is pointing at the left
 side of the first memory cell of <code>A</code>, and the arc for the latter is
 pointing at the right side of that memory cell.</p>
 
+<a name="Mark-Sweep.Collection"></a>
 <h3>Mark-Sweep Collection</h3>
 
 <p>A Mark-Sweep collector works by first doing a traversal of the
@@ -1455,6 +1474,7 @@ memory in reserve to track remaining work for the trace (e.g. a &ldquo;mark
 stack&rdquo; of objects we are in the midst of traversing, and/or a queue of
 objects scheduled for future traversal).</p>
 
+<a name="The..Mark..phase"></a>
 <h4>The &ldquo;Mark&rdquo; phase</h4>
 
 <p>Here is a sketch of the traversals that the garbage collector
@@ -1484,6 +1504,7 @@ must anticipate the mark-stack growing as large as the longest path
 through the reachable object graph. (The longest path in this case is
 three objects long.)</p>
 
+<a name="The..Sweep..phase"></a>
 <h4>The &ldquo;Sweep&rdquo; phase</h4>
 
 <p>A Mark-Sweep collector does not move objects, so it must resort to
@@ -1509,6 +1530,7 @@ in the second word of each free block.<sup><a href="#footnote4">4</a></sup>.)</p
 <p>With that, the GC is done; the mutator (i.e. main program) is now free
 to take blocks off of the free-list to satisfy memory requests.</p>
 
+<a name="Footnotes.II"></a>
 <h4>Footnotes II</h4>
 
 <p><a name="footnote2">2.</a> Coroutines are much like subroutines,
@@ -1542,6 +1564,7 @@ free-list into the second word of each four-word block is one way of
 satisfying the aforementioned requirement that the GC-managed memory
 be parseable.</p>
 
+<a name="L.span.id..conservative-gc..Conservative.Collection..span."></a>
 <h3><span id="conservative-gc">Conservative Collection</span></h3>
 
 <p>A conservative collector is a particular kind of Mark-Sweep collector
@@ -1577,6 +1600,7 @@ post_graph("target_anchor_conservative_gc", graph_in_memory);
 meant to be interpreted as a memory address, <code>D</code> (and <code>E</code> and <code>F</code>) are
 all conservatively classified as live objects.</p>
 
+<a name="Copying.Collection"></a>
 <h3>Copying Collection</h3>
 
 <p>A Copying collector moves objects from one location to another as part
@@ -1587,6 +1611,7 @@ objects as it goes.</p>
 but I will not draw the edges for the dead objects anymore,
 as they add significant clutter to the picture.</p>
 
+<a name="The.Reserved..To-space."></a>
 <h4>The Reserved &ldquo;To-space&rdquo;</h4>
 
 <p>First, we need to have some reserved memory to target as we copy
@@ -1605,6 +1630,7 @@ post_graph("target_anchor7", graph_in_memory);
 </script>
 
 
+<a name="Copying.from.the.Roots"></a>
 <h4>Copying from the Roots</h4>
 
 <p>First we walk over the roots (in our simplified model, the registers),
@@ -1647,6 +1673,7 @@ post_graph("target_anchor8b", graph_in_memory);
 </script>
 
 
+<a name="Scan.the..To-space."></a>
 <h4>Scan the &ldquo;To-space&rdquo;</h4>
 
 <p>Now that we have finished scanning the roots, we start the fixup
@@ -1693,6 +1720,7 @@ post_graph("target_anchor10", graph_in_memory);
 </script>
 
 
+<a name="Reclaim.the..From-space."></a>
 <h4>Reclaim the &ldquo;From-space&rdquo;</h4>
 
 <p>Eventually the fixup scan will finish processing all of the &ldquo;to-space&rdquo;
@@ -1715,6 +1743,7 @@ post_graph("target_anchor11", graph_in_memory);
 
 <p>Woo, done!</p>
 
+<a name="A.Spectrum.of.Collectors"></a>
 <h3>A Spectrum of Collectors</h3>
 
 <p>The mark-sweep and copying collection methods illustrated above
@@ -1742,6 +1771,7 @@ objects reachable solely via precisely-scanned words <em>can</em> be moved,
 and memory blocks made up solely of such objects can be reclaimed via
 a copying-collection strategy.</p>
 
+<a name="L.span.id..pinning-support..Pinning.Support..span."></a>
 <h3><span id="pinning-support">Pinning Support</span></h3>
 
 <p>In our discussion to follow, rather than attempt to characterize a
@@ -1764,6 +1794,7 @@ support pinning, then it is the <em>collector</em> that dictates which
 objects are managed via copying; the mutator cannot rely on the
 collector allowing arbitrary objects to be pinned.</p>
 
+<a name="Simplifying.our.diagrams"></a>
 <h3>Simplifying our diagrams</h3>
 
 <p>While I am sure it was fun to decode the above renderings of memory
@@ -1866,6 +1897,7 @@ post_objects("target_anchor_simplified_copying", objects, {rankdir:"LR"});
 <a href="#memory_post_copy_a_and_b">memory diagram</a> was, apart from some
 annoying edge-crossings due to the graphviz layout engine.)</p>
 
+<a name="Conclusion"></a>
 <h2>Conclusion</h2>
 
 <p>Well, I don&rsquo;t know if you learned anything about GC from this post.

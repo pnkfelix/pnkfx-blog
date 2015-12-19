@@ -119,6 +119,7 @@ straight to the <a href="#proposal">proposal</a> itself.</p>
 <!-- more -->
 
 
+<a name="L.a.id..background..Background..a."></a>
 <h2><a id="background">Background</a></h2>
 
 <p>Early in my experimentation with Rust, I thought a reasonable exercise
@@ -384,6 +385,7 @@ to the generic method.</p>
 </span></code></pre></td></tr></table></div></figure>
 
 
+<a name="L.a.id..encodingunpalatable..Encoding.via.parameters.is.unpalatable..a."></a>
 <h3><a id="encodingunpalatable">Encoding via parameters is unpalatable</a></h3>
 
 <p>The Rust and Java results above are made barely readable by using
@@ -427,6 +429,7 @@ inevitably arise during the compile-edit cycle.)</p>
 
 <hr />
 
+<a name="L.a.id..rustspec..Rust-specific.issues..a."></a>
 <h2><a id="rustspec">Rust-specific issues</a></h2>
 
 <p>I encountered this problem while porting EOP code to Rust.  After
@@ -450,6 +453,7 @@ Synonyms.  After this, I had several discussions with Niko Matsakis,
 both over IRC and in person, on the problems that associated types
 present for Rust.</p>
 
+<a name="L.a.id..nikoposts..Niko.s.blog.posts..a."></a>
 <h3><a id="nikoposts">Niko&rsquo;s blog posts</a></h3>
 
 <p>You can see Niko&rsquo;s thorough overview of the matter,
@@ -467,6 +471,7 @@ it carries.</p>
 <p>The following are the specific points that Niko makes in his posts (some of
 are just pointing out artifacts of current Rust language syntax).</p>
 
+<a name="Current.Rust.syntax.focuses.on.deriving.associated.functions.from.traits"></a>
 <h3>Current Rust syntax focuses on deriving associated functions from traits</h3>
 
 <p>Rust does not currently offer general associated items, but it does
@@ -486,6 +491,7 @@ of <code>f</code> must be <code>X</code> (and thus the <code>f</code> in questio
 the type <code>X</code> implements to satisfy the obligation established by the
 trait <code>T</code>).</p>
 
+<a name="L.a.id..nikoenctt1..Resolving.ambiguities.in.general.implies.you.need.both.the.trait.and.type..a."></a>
 <h4><a id="nikoenctt1">Resolving ambiguities in general implies you need both the trait and type</a></h4>
 
 <p>The choice of deriving a function&rsquo;s implementation from the trait
@@ -509,6 +515,7 @@ would be confusing for a reader to comprehend the distinct roles of
 the <nobr>&ldquo;<code>::</code>&rdquo;</nobr> path operator, both when learning the language
 and when casually skimming Rust code in general.</p>
 
+<a name="Rust.type.expressions.do.not.naturally.fit.into.Rust.path.expressions"></a>
 <h4>Rust type expressions do not naturally fit into Rust path expressions</h4>
 
 <p>Niko also points out that when one wants to write <code>X::f</code> where <code>X</code> is
@@ -533,6 +540,7 @@ which would complicate the parser in the Rust compiler (there has been
 a slight push to try to <em>simplify</em> the path expression syntax, which
 this would conflict with).</p>
 
+<a name="Further.syntactic.exploration.of.encoding.trait.and.type"></a>
 <h4>Further syntactic exploration of encoding trait and type</h4>
 
 <p>In his second blog post, Niko provides some alternative syntactic forms
@@ -567,6 +575,7 @@ generic type parameterization.</p>
 synthetic parameter would receive special attention at points of type
 instantiation, but I still think it is an abuse of the parameter list.</p>
 
+<a name="L.a.id..thinkbinding..Simpler.syntax:.What.about.binding...a."></a>
 <h3><a id="thinkbinding">Simpler syntax: What about binding?</a></h3>
 
 <p>So I set about trying to come up with another syntactic form
@@ -616,6 +625,7 @@ enums, and traits.</p>
 
 <hr />
 
+<a name="L.a.id..insight..An.Insight..a."></a>
 <h2><a id="insight">An Insight</a></h2>
 
 <p>Even though my attempt to solve this problem via a declaration form had
@@ -689,6 +699,7 @@ many use cases of interest.</p>
 
 <hr />
 
+<a name="L.a.id..proposal..The.proposed.syntax.for.associated.items.in.Rust..a."></a>
 <h2><a id="proposal">The proposed syntax for associated items in Rust</a></h2>
 
 <p>So, with that insight explained, here is my proposal for associated items:</p>
@@ -773,6 +784,7 @@ many use cases of interest.</p>
 
 <hr />
 
+<a name="L.a.id..futurework..What.the.proposal.does.not.cover..a."></a>
 <h2><a id="futurework">What the proposal does not cover</a></h2>
 
 <p>There are cases of interest that are not covered by the above proposal.</p>
@@ -875,6 +887,10 @@ for me in the #rust irc channel.)</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Surfaces and Signatures: Component Privacy versus Dependence</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/12/18/fixing-octopress-table-rendering/">Fixing Octopress Table Rendering</a>
       </li>
     
@@ -888,10 +904,6 @@ for me in the #rust irc channel.)</p>
     
       <li class="post">
         <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
   </ul>

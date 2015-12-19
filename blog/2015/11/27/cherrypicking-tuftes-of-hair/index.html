@@ -169,6 +169,7 @@ written in the source markdown; however, each case is assuming that
 one has installed the appropriate Jekyll plugins and SCSS support
 files)</p>
 
+<a name="Side.Notes"></a>
 <h2>Side Notes</h2>
 
 <p>My previous blog posts<label for='previous-blog-posts' class='margin-toggle sidenote-number'></label><input type='checkbox' id='previous-blog-posts' class='margin-toggle'/><span class='sidenote'>Hey, a sidenote! One post that can/will benefit from these is my earlier <a href="blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0</a>. </span>
@@ -202,6 +203,7 @@ with the text when toggled on).</p>
 <p>which renders as:
 main content<label for='unique-id' class='margin-toggle sidenote-number'></label><input type='checkbox' id='unique-id' class='margin-toggle'/><span class='sidenote'>side content </span></p>
 
+<a name="Margin.Notes"></a>
 <h2>Margin Notes</h2>
 
 <p>Sometimes even the superscripted number that a sidenote carries is
@@ -236,6 +238,7 @@ One writes a margin note with the following liquid tag syntax:</p>
 <p>which renders as:
 main content<label for='uniq-id' class='margin-toggle'> &#8853;</label><input type='checkbox' id='uniq-id' class='margin-toggle'/><span class='marginnote'>margin content </span></p>
 
+<a name="Margin.Figures"></a>
 <h2>Margin Figures</h2>
 
 <p>Another topic I have touched on (and plan to do more with soon) is
@@ -339,6 +342,7 @@ separating two blocks of text, will just confuse things.</p>
 </span><span class='line'>{% endmarginblock %}</span></code></pre></td></tr></table></div></figure>
 
 
+<a name="Full.Width.Figures"></a>
 <h2>Full Width Figures</h2>
 
 <p>You might have noticed that in the SVG diagram <a
@@ -402,6 +406,7 @@ that means, for example, you can use <code>figcaption</code> to add a caption:
 <figcaption>Caption for <code>fullwidthfigure</code> demo</figcaption>
 </figure></p>
 
+<a name="Drawbacks..Rendering.Bugs.and.or.Gotcha.s"></a>
 <h2>Drawbacks, Rendering Bugs and/or Gotcha&rsquo;s</h2>
 
 <p>Originally I had a whole section here decrying the fact that I could
@@ -437,6 +442,7 @@ As in `not&lt;label for='code-test' class='margin-toggle sidenote-number'&gt;&lt
 </ul>
 
 
+<a name="L.a.id..on-bulleted-lists....a.On.Bulleted.Lists"></a>
 <h2><a id="on-bulleted-lists"></a>On Bulleted Lists</h2>
 
 <p>Speaking of bulleted lists: I implied up above that Tufte has a
@@ -517,6 +523,7 @@ did not apply to the dotted line being rendered above the section header.</p>
 <p>So, now (post publication) I have put back in an <code>hr</code>-element at roughly the point
 I expect it in the text.</p>
 
+<a name="How.d.He.Do.Dat."></a>
 <h2>How&rsquo;d He Do Dat?</h2>
 
 <p>So how did I do all this?</p>
@@ -555,6 +562,7 @@ post was rendered.</p>
 </ol>
 
 
+<a name="Revisions.to._fsk_tufte.scss"></a>
 <h3>Revisions to _fsk_tufte.scss</h3>
 
 <ol>
@@ -698,6 +706,10 @@ tips on how I might revise it).</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Surfaces and Signatures: Component Privacy versus Dependence</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/12/18/fixing-octopress-table-rendering/">Fixing Octopress Table Rendering</a>
       </li>
     
@@ -711,10 +723,6 @@ tips on how I might revise it).</p>
     
       <li class="post">
         <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
   </ul>

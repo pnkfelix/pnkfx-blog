@@ -4,7 +4,7 @@
   <title><![CDATA[Category: css | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/css/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-12-18T22:13:37+01:00</updated>
+  <updated>2015-12-19T22:32:06+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -242,6 +242,7 @@ written in the source markdown; however, each case is assuming that
 one has installed the appropriate Jekyll plugins and SCSS support
 files)</p>
 
+<a name="Side.Notes"></a>
 <h2>Side Notes</h2>
 
 <p>My previous blog posts<label for='&lsquo;previous-blog-posts&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;previous-blog-posts&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Hey, </span>
@@ -275,6 +276,7 @@ main content{% sidenote 'unique-id' 'side content' %}
 which renders as:
 main content<label for='&lsquo;unique-id&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;unique-id&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;side </span></p>
 
+<a name="Margin.Notes"></a>
 <h2>Margin Notes</h2>
 
 <p>Sometimes even the superscripted number that a sidenote carries is
@@ -309,6 +311,7 @@ main content{% marginnote 'uniq-id' 'margin content' %}
 which renders as:
 main content<label for='&lsquo;uniq-id&rsquo;' class='margin-toggle'> &#8853;</label><input type='checkbox' id='&lsquo;uniq-id&rsquo;' class='margin-toggle'/><span class='marginnote'>&lsquo;margin </span></p>
 
+<a name="Margin.Figures"></a>
 <h2>Margin Figures</h2>
 
 <p>Another topic I have touched on (and plan to do more with soon) is
@@ -411,6 +414,7 @@ Margin block content, with no line breaks (see caveat above).
 </code>
 </p>
 
+<a name="Full.Width.Figures"></a>
 <h2>Full Width Figures</h2>
 
 <p>You might have noticed that in the SVG diagram <a
@@ -466,6 +470,7 @@ that means, for example, you can use <code>figcaption</code> to add a caption:
 <figcaption>Caption for <code>fullwidthfigure</code> demo</figcaption>
 </figure></p>
 
+<a name="Drawbacks..Rendering.Bugs.and.or.Gotcha.s"></a>
 <h2>Drawbacks, Rendering Bugs and/or Gotcha&rsquo;s</h2>
 
 <p>Originally I had a whole section here decrying the fact that I could
@@ -501,6 +506,7 @@ As in `not<label for='code-test' class='margin-toggle sidenote-number'></label><
 </ul>
 
 
+<a name="L.a.id..on-bulleted-lists....a.On.Bulleted.Lists"></a>
 <h2><a id="on-bulleted-lists"></a>On Bulleted Lists</h2>
 
 <p>Speaking of bulleted lists: I implied up above that Tufte has a
@@ -581,6 +587,7 @@ did not apply to the dotted line being rendered above the section header.</p>
 <p>So, now (post publication) I have put back in an <code>hr</code>-element at roughly the point
 I expect it in the text.</p>
 
+<a name="How.d.He.Do.Dat."></a>
 <h2>How&rsquo;d He Do Dat?</h2>
 
 <p>So how did I do all this?</p>
@@ -619,6 +626,7 @@ post was rendered.</p>
 </ol>
 
 
+<a name="Revisions.to._fsk_tufte.scss"></a>
 <h3>Revisions to _fsk_tufte.scss</h3>
 
 <ol>

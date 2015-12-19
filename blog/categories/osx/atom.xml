@@ -4,7 +4,7 @@
   <title><![CDATA[Category: osx | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/osx/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-12-18T22:13:37+01:00</updated>
+  <updated>2015-12-19T22:32:06+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -226,8 +226,10 @@ and this is when I finally saw that I had to do:
 <span class='line-number'>22</span>
 <span class='line-number'>23</span>
 <span class='line-number'>24</span>
+<span class='line-number'>25</span>
 </pre></td><td class='code'><pre><code class='text'><span class='line'>% bundle exec rake generate&lt;/p&gt;
 </span><span class='line'>
+</span><span class='line'>&lt;a name=&quot;Generating.Site.with.Jekyll&quot;&gt;&lt;/a&gt;
 </span><span class='line'>&lt;h2&gt;Generating Site with Jekyll&lt;/h2&gt;
 </span><span class='line'>
 </span><span class='line'>&lt;p&gt;unchanged sass/screen.scss
@@ -262,8 +264,10 @@ And from that I found the full command I needed
 <span class='line-number'>6</span>
 <span class='line-number'>7</span>
 <span class='line-number'>8</span>
+<span class='line-number'>9</span>
 </pre></td><td class='code'><pre><code class='text'><span class='line'>% LANG=en_US.utf-8 bundle exec rake generate&lt;/p&gt;
 </span><span class='line'>
+</span><span class='line'>&lt;a name=&quot;Generating.Site.with.Jekyll&quot;&gt;&lt;/a&gt;
 </span><span class='line'>&lt;h2&gt;Generating Site with Jekyll&lt;/h2&gt;
 </span><span class='line'>
 </span><span class='line'>&lt;p&gt;unchanged sass/screen.scss

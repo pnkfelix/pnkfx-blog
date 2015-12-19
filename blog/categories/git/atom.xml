@@ -4,7 +4,7 @@
   <title><![CDATA[Category: git | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/git/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-12-18T22:13:37+01:00</updated>
+  <updated>2015-12-19T22:32:06+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -112,7 +112,8 @@ the github repo</a>).</p>
     <link href="http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world/"/>
     <updated>2013-01-08T00:55:00+01:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world</id>
-    <content type="html"><![CDATA[<h2>It&rsquo;s Clobbering Time</h2>
+    <content type="html"><![CDATA[<a name="It.s.Clobbering.Time"></a>
+<h2>It&rsquo;s Clobbering Time</h2>
 
 <p>Remember that thing I said back <a href="/blog/2012/12/31/hello-world">at the end of 2012</a>?
 That thing?
@@ -177,6 +178,7 @@ blog.pnkfx.org branch) to the target repo in the gh-pages/ branch.
 Which will bust things terribly, especially if that causes the CNAME
 file to get deleted from the gh-pages/ branch of the target repo.</p></blockquote>
 
+<a name="A.note.on.self-reference"></a>
 <h2>A note on self-reference</h2>
 
 <p>Also, a quick half shout-out, or maybe corrective note, to

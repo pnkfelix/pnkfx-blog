@@ -4,7 +4,7 @@
   <title><![CDATA[Category: finalizers | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/finalizers/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-12-18T22:13:37+01:00</updated>
+  <updated>2015-12-19T22:32:06+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -42,6 +42,7 @@ it seems to align with the spirit of giving the programmer access to the set of
 knobs they need for explicit sequencing and resource management (or rope
 to hang themselves with).</p>
 
+<a name="Explicit.Cleanup"></a>
 <h2>Explicit Cleanup</h2>
 
 <p>In the <a href="http://www.cs.indiana.edu/~dyb/pubs/guardians-pldi93.pdf">guardian</a> and <a href="http://www.oracle.com/technetwork/articles/javase/finalization-137655.html">reference-queue</a> family of systems (see
@@ -66,6 +67,7 @@ for that method.  Thus one must take care to distinguish which of Boehm&rsquo;s 
 apply to all explicit finalization systems, and which apply solely to systems
 such as Java with <code>runFinalization</code> that provide a mix of explicit and implicit finalization.</p>
 
+<a name="Passing.the.Buck"></a>
 <h2>Passing the Buck</h2>
 
 <p>One important characteristic (some might say &ldquo;drawback&rdquo;) of explicit
@@ -131,6 +133,7 @@ One could coin the term
 <a href="http://en.wikipedia.org/wiki/Decomposing_Composers">&ldquo;composing decomposers&rdquo;</a>
 for such things.)</p>
 
+<a name="Wait..what.was.that.about..normal..languages."></a>
 <h2>Wait, what was that about &ldquo;normal&rdquo; languages?</h2>
 
 <p>I wrote the end of the previous section intending for it to apply to Rust.
@@ -179,6 +182,7 @@ future.
 --->
 
 
+<a name="Conclusion"></a>
 <h2>Conclusion</h2>
 
 <p>I am not saying this is easy, and I am not saying that the systems I am
@@ -203,6 +207,7 @@ finalizers, or adopt another approach?</p>
 <p>My goal is to make sure we remember to consider those other approaches when we
 hit that crossroads.</p>
 
+<a name="References"></a>
 <h2>References</h2>
 
 <ol>
@@ -227,6 +232,7 @@ hit that crossroads.</p>
 </ol>
 
 
+<a name="Appendix.A..What.are.Guardians."></a>
 <h2>Appendix A. What are Guardians?</h2>
 
 <p>I here outline a concrete example of how this works in the case of Guardians
@@ -288,6 +294,7 @@ file descriptors.</p></li>
 </ol>
 
 
+<a name="Appendix.B..Another.peeve.about.guardians"></a>
 <h2>Appendix B. Another peeve about guardians</h2>
 
 <p>One idiosyncrasy about a lot of the guardian-like systems is that they enqueue

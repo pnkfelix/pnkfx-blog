@@ -117,6 +117,7 @@ source text into the markdown content; a separate rendering tool would
 require some sort of pre-process step, and I am loathe to try to
 incoporate that into the <code>Rakefile</code> that Octopress uses.</p>
 
+<a name="viz.js"></a>
 <h2>viz.js</h2>
 
 <p>The first item we will cover, since it amongst the simplest to adopt,
@@ -128,6 +129,7 @@ rendering graphs; it is coupled with <a href="http://www.graphviz.org/content/do
 language for describing graph structures by defining the nodes, edges,
 and various attributes attached to them, like labels.)</p>
 
+<a name="Hooking.up.the.JS.source"></a>
 <h3>Hooking up the JS source</h3>
 
 <p>Since this is using (heavy duty) javascript, you are not likely to
@@ -157,6 +159,7 @@ like this one, before the <code>script</code> invocation.</p>
 <script src="/javascripts/viz.js" charset="utf-8"></script>
 
 
+<a name="Injecting.generated.SVG.into.the.document"></a>
 <h3>Injecting generated SVG into the document</h3>
 
 <p>Once the script is loaded, you can start using inline Javascript to
@@ -217,6 +220,7 @@ Graphviz or <code>viz.js</code>):</p>
 context of the markdown source for a blog post), let us dive into how
 to combine that with Graphviz, via <code>viz.js</code>.</p>
 
+<a name="L.code.dot_source..code..holds.DOT.source"></a>
 <h3><code>dot_source</code> holds DOT source</h3>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -274,6 +278,7 @@ in the original <code>dot_source</code> text.)</p>
 the user can inject their own graph descriptions, and you want <code>viz.js</code>
 to do the heavy lifting of deciding how to lay out the nodes.</p>
 
+<a name="Controlling.node.layout"></a>
 <h3>Controlling node layout</h3>
 
 <p>But what if we want more control over the layout of the picture
@@ -499,6 +504,7 @@ quite a bit more complex than our <a href="#target_anchor2">original code</a>;
 hopefully I will not feel the need to specify node placement too
 often.</p>
 
+<a name="Edge.attributes"></a>
 <h3>Edge attributes</h3>
 
 <p>Above we saw examples of node attributes, which can be used to adjust the
@@ -718,6 +724,10 @@ useful technique for encouraging particular layouts.)</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Surfaces and Signatures: Component Privacy versus Dependence</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/12/18/fixing-octopress-table-rendering/">Fixing Octopress Table Rendering</a>
       </li>
     
@@ -731,10 +741,6 @@ useful technique for encouraging particular layouts.)</p>
     
       <li class="post">
         <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
   </ul>

@@ -104,6 +104,7 @@ type as our generalization marker, not unsized. Background: Dynamically Sized Ty
 </ul>
 
 
+<a name="L.a.id..background_dst..Background:.Dynamically.Sized.Types..DST...a."></a>
 <h2><a id="background_dst">Background: Dynamically Sized Types (DST)</a></h2>
 
 <p>The Rust team has been discussing incorporating &ldquo;dynamically-sized
@@ -189,6 +190,7 @@ behind the latter suggestion is that we write <code>impl Trait for
 SelfType</code>, so it makes sense to put the generalization marker into the
 same position, i.e. filling the placeholder in: <code>Trait for _</code>.)</p>
 
+<a name="L.a.id..the_insight..The.Insight:..code.type..code..is.a.better.generalization.marker..a."></a>
 <h2><a id="the_insight">The Insight: <code>type</code> is a better generalization marker</a></h2>
 
 <p>One of the concerns that Niko has pointed out to me is that it is easy
@@ -297,6 +299,7 @@ keyword in the spot where I have written the generalization marker
 a <em>kind</em> marker, since it is changing the domain of the parameter from
 being that of a type to being some value within a type.)</p>
 
+<a name="L.a.id..the_examples..Examples.ported.from.DST..Take.5..a."></a>
 <h2><a id="the_examples">Examples ported from DST, Take 5</a></h2>
 
 <p>Here are the ported definitions of <code>Rc</code> and <code>RcData</code>.
@@ -444,6 +447,10 @@ being that of a type to being some value within a type.)</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Surfaces and Signatures: Component Privacy versus Dependence</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/12/18/fixing-octopress-table-rendering/">Fixing Octopress Table Rendering</a>
       </li>
     
@@ -457,10 +464,6 @@ being that of a type to being some value within a type.)</p>
     
       <li class="post">
         <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
   </ul>

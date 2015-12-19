@@ -222,6 +222,7 @@ post_graph("target_anchor1", digraph(content, { rankdir:"LR" }));
 </script>
 
 
+<a name="What.is.Garbage.Collection"></a>
 <h2>What is Garbage Collection</h2>
 
 <p>A garbage collector is a component in the runtime for a programming
@@ -284,6 +285,7 @@ post_objects("target_anchor3", objects, { rankdir:"LR" });
 labelled &ldquo;D&rdquo;, &ldquo;E&rdquo;, and &ldquo;F&rdquo; are unreachable, and thus
 their storage can be reclaimed.</p>
 
+<a name="Footnotes.I"></a>
 <h4>Footnotes I</h4>
 
 <p><a name="footnote1">1.</a> Researchers have explored methods exist to
@@ -291,6 +293,7 @@ identify objects as dead even when reachable, such as using
 <a href="http://pop-art.inrialpes.fr/~fradet/PDFs/LISP94.pdf">&ldquo;parametricity&rdquo;</a>; but I am not aware of any
 such method being used outside of a research setting.</p>
 
+<a name="L.span.id..how-gc-works..How.Garbage.Collection.works..span."></a>
 <h2><span id="how-gc-works">How Garbage Collection works</span></h2>
 
 <p>A garbage collector is often presented as a
@@ -646,6 +649,7 @@ of <code>D</code>), even though the arc for the former is pointing at the left
 side of the first memory cell of <code>A</code>, and the arc for the latter is
 pointing at the right side of that memory cell.</p>
 
+<a name="Mark-Sweep.Collection"></a>
 <h3>Mark-Sweep Collection</h3>
 
 <p>A Mark-Sweep collector works by first doing a traversal of the
@@ -656,6 +660,7 @@ memory in reserve to track remaining work for the trace (e.g. a &ldquo;mark
 stack&rdquo; of objects we are in the midst of traversing, and/or a queue of
 objects scheduled for future traversal).</p>
 
+<a name="The..Mark..phase"></a>
 <h4>The &ldquo;Mark&rdquo; phase</h4>
 
 <p>Here is a sketch of the traversals that the garbage collector
@@ -685,6 +690,7 @@ must anticipate the mark-stack growing as large as the longest path
 through the reachable object graph. (The longest path in this case is
 three objects long.)</p>
 
+<a name="The..Sweep..phase"></a>
 <h4>The &ldquo;Sweep&rdquo; phase</h4>
 
 <p>A Mark-Sweep collector does not move objects, so it must resort to
@@ -710,6 +716,7 @@ in the second word of each free block.<sup><a href="#footnote4">4</a></sup>.)</p
 <p>With that, the GC is done; the mutator (i.e. main program) is now free
 to take blocks off of the free-list to satisfy memory requests.</p>
 
+<a name="Footnotes.II"></a>
 <h4>Footnotes II</h4>
 
 <p><a name="footnote2">2.</a> Coroutines are much like subroutines,
@@ -743,6 +750,7 @@ free-list into the second word of each four-word block is one way of
 satisfying the aforementioned requirement that the GC-managed memory
 be parseable.</p>
 
+<a name="L.span.id..conservative-gc..Conservative.Collection..span."></a>
 <h3><span id="conservative-gc">Conservative Collection</span></h3>
 
 <p>A conservative collector is a particular kind of Mark-Sweep collector
@@ -778,6 +786,7 @@ post_graph("target_anchor_conservative_gc", graph_in_memory);
 meant to be interpreted as a memory address, <code>D</code> (and <code>E</code> and <code>F</code>) are
 all conservatively classified as live objects.</p>
 
+<a name="Copying.Collection"></a>
 <h3>Copying Collection</h3>
 
 <p>A Copying collector moves objects from one location to another as part
@@ -788,6 +797,7 @@ objects as it goes.</p>
 but I will not draw the edges for the dead objects anymore,
 as they add significant clutter to the picture.</p>
 
+<a name="The.Reserved..To-space."></a>
 <h4>The Reserved &ldquo;To-space&rdquo;</h4>
 
 <p>First, we need to have some reserved memory to target as we copy
@@ -806,6 +816,7 @@ post_graph("target_anchor7", graph_in_memory);
 </script>
 
 
+<a name="Copying.from.the.Roots"></a>
 <h4>Copying from the Roots</h4>
 
 <p>First we walk over the roots (in our simplified model, the registers),
@@ -848,6 +859,7 @@ post_graph("target_anchor8b", graph_in_memory);
 </script>
 
 
+<a name="Scan.the..To-space."></a>
 <h4>Scan the &ldquo;To-space&rdquo;</h4>
 
 <p>Now that we have finished scanning the roots, we start the fixup
@@ -894,6 +906,7 @@ post_graph("target_anchor10", graph_in_memory);
 </script>
 
 
+<a name="Reclaim.the..From-space."></a>
 <h4>Reclaim the &ldquo;From-space&rdquo;</h4>
 
 <p>Eventually the fixup scan will finish processing all of the &ldquo;to-space&rdquo;
@@ -916,6 +929,7 @@ post_graph("target_anchor11", graph_in_memory);
 
 <p>Woo, done!</p>
 
+<a name="A.Spectrum.of.Collectors"></a>
 <h3>A Spectrum of Collectors</h3>
 
 <p>The mark-sweep and copying collection methods illustrated above
@@ -943,6 +957,7 @@ objects reachable solely via precisely-scanned words <em>can</em> be moved,
 and memory blocks made up solely of such objects can be reclaimed via
 a copying-collection strategy.</p>
 
+<a name="L.span.id..pinning-support..Pinning.Support..span."></a>
 <h3><span id="pinning-support">Pinning Support</span></h3>
 
 <p>In our discussion to follow, rather than attempt to characterize a
@@ -965,6 +980,7 @@ support pinning, then it is the <em>collector</em> that dictates which
 objects are managed via copying; the mutator cannot rely on the
 collector allowing arbitrary objects to be pinned.</p>
 
+<a name="Simplifying.our.diagrams"></a>
 <h3>Simplifying our diagrams</h3>
 
 <p>While I am sure it was fun to decode the above renderings of memory
@@ -1067,6 +1083,7 @@ post_objects("target_anchor_simplified_copying", objects, {rankdir:"LR"});
 <a href="#memory_post_copy_a_and_b">memory diagram</a> was, apart from some
 annoying edge-crossings due to the graphviz layout engine.)</p>
 
+<a name="Conclusion"></a>
 <h2>Conclusion</h2>
 
 <p>Well, I don&rsquo;t know if you learned anything about GC from this post.
@@ -1145,6 +1162,10 @@ the host of problems that crop up.</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Surfaces and Signatures: Component Privacy versus Dependence</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/12/18/fixing-octopress-table-rendering/">Fixing Octopress Table Rendering</a>
       </li>
     
@@ -1158,10 +1179,6 @@ the host of problems that crop up.</p>
     
       <li class="post">
         <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
   </ul>

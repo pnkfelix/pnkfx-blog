@@ -1,0 +1,940 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Surfaces and Signatures: Component Privacy versus Dependence - The {pnk}f(eli)x Blog</title>
+  <meta name="author" content="Felix S. Klock II">
+
+  
+  <meta name="description" content="I have had some thoughts on what privacy is used for in programming
+languages, and how it differs from the notion of dependence between
+modules (or &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://blog.pnkfx.org/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="The {pnk}f(eli)x Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">The {pnk}f(eli)x Blog</a></h1>
+  
+    <h2>The informal ramblings of an ex-pat PL enthusiast</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:blog.pnkfx.org" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Surfaces and Signatures: Component Privacy Versus Dependence</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-12-19T22:30:00+01:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I have had some thoughts on what <em>privacy</em> is used for in programming
+languages, and how it differs from the notion of <em>dependence</em> between
+modules (or at least compilation units) in a language like Rust.
+And I thought I should share.</p>
+
+<!-- more -->
+
+
+<p>I have been working on an
+RFC<label for='arr-eff-what' class='margin-toggle sidenote-number'></label><input type='checkbox' id='arr-eff-what' class='margin-toggle'/><span class='sidenote'><a href="https://github.com/rust-lang/rfcs/">Request For Comment</a>: A document used to propose significant changes to the Rust language or standard library. </span>
+meant to increase the expressiveness of Rust&rsquo;s privacy construct
+(the <code>pub</code> modifier), and in the process hopefully simplify the mental
+model for what privacy means there.</p>
+
+<p>However, I kept finding myself diving into regressions in my draft RFC
+document: idealized hypothetical semantics for privacy, and
+discussions of what motivates different aspects of that semantics.</p>
+
+<p>Eventually I realized that such text was going to really bog down the
+RFC itself (which is meant to describe a relatively simple language
+change);
+so I decided it was time for a blog
+post<label for='gc-posts' class='margin-toggle sidenote-number'></label><input type='checkbox' id='gc-posts' class='margin-toggle'/><span class='sidenote'>Yes, I know that I also am overdue for the next chapter in my <a href="http://blog.pnkfx.org/blog/categories/gc/">GC blog post series</a>; it is coming. </span>,
+if for no other reason than to provide a place for me to cut-and-paste
+all those digressions.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Bugs including:
+&ldquo;Trait re-exports fail due to privacy of containing module&rdquo; (<a href="https://github.com/rust-lang/rust/issues/18241">#18241</a>),
+&ldquo;Rules governing references to private types in public APIs not enforced in impls&rdquo; (<a href="https://github.com/rust-lang/rust/issues/28325">#28325</a>)
+&ldquo;Type alias can be used to bypass privacy check&rdquo; (<a href="https://github.com/rust-lang/rust/issues/28450">#28450</a>),
+&ldquo;Private trait&rsquo;s methods reachable through a public supertrait&rdquo; (<a href="https://github.com/rust-lang/rust/issues/28514">#28514</a>),
+&ldquo;Non-exported type in exported type signature does not error&rdquo; (<a href="https://github.com/rust-lang/rust/issues/29668">#29668</a>),
+</span>
+There are a number of bugs that have been filed against the privacy
+checking in Rust; some are simply implementation issues, but the
+comment threads in the issues make it clear that in some cases,
+different people have very different mental models about how privacy
+interacts with aliases (e.g. <code>type</code> declarations) and re-exports.</p>
+
+<p>The existing privacy rules in Rust try to enforce two things:</p>
+
+<ol>
+<li><p>When an item references a path, all of the names on that path need to
+be visible (in terms of privacy) in the referencing context, and,</p></li>
+<li><p>Private items should not be exposed in the surface of public API&rsquo;s.</p></li>
+</ol>
+
+
+<p>One might reasonably ask: What do I mean by &ldquo;visible&rdquo;, or &ldquo;surface&rdquo;?</p>
+
+<p>For Rust today, &ldquo;visible&rdquo; means &ldquo;either (1.) public, via <code>pub</code>, (2.)
+defined in the current module, or (3.) defined in a parent of the
+current module.&rdquo;</p>
+
+<p>But &ldquo;surface&rdquo; is a bit more subtle, and before we discuss it, I want
+to talk a bit about the purpose of &ldquo;visibility&rdquo; in the first place.</p>
+
+<a name="Digression:.a.dependence.need.not.be.visible"></a>
+<h2>Digression: a dependence need not be visible</h2>
+
+<p>In a hypothetical idealized programming language (<em>not</em> Rust), and
+under a particularly extreme reading of the term &ldquo;private&rdquo;, changes to
+definitions that are private to one module would have no effect on the
+validity of pre-existing uses from other modules. Another way of
+looking at this: changes to private definitions in one compilation
+unit would not require other compilation units to be recompiled, and
+will not cause programs that previously type-checked to stop
+type-checking.</p>
+
+<p>One form of this ideal is the following:</p>
+
+<script src="/javascripts/viz.js" charset="utf-8"></script>
+
+
+<div id="extreme_private_calls"></div>
+
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent"; node [shape="rect"]; subgraph cluster_1 { fn_a [label="pub fn a()"]; label="unit1"; } subgraph cluster_2 { fn_b [label="pub fn b()"]; fn_c [label="fn c()"]; fn_b -> fn_c [label="calls"]; label="unit2"; } fn_a -> fn_b [label="calls"]; }';
+    var elem = document.getElementById("extreme_private_calls");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+
+<p>In this picture, one can see that the <code>fn c()</code> is a private component
+of &ldquo;unit2&rdquo;: it may just be an implementation detail of the body of
+<code>pub fn b()</code>, that the author of &ldquo;unit2&rdquo; can revise at will or
+eliminate entirely, without requiring any changes to &ldquo;unit1&rdquo;
+downstream.</p>
+
+<p>A problem arises when one sees other kinds of composition, at least in
+language like Rust, where values are directly embedded into their
+containers.  For example, instead of function calls, imagine type
+definitions:</p>
+
+<script src="/javascripts/viz.js" charset="utf-8"></script>
+
+
+<div id="extreme_private_types"></div>
+
+
+<script>
+    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent"; node [shape="rect"]; subgraph cluster_1 { struct_a [label="pub struct A { \\l    b: unit2::B \\l}\\l"]; label="unit1"; } subgraph cluster_2 { struct_b [label="pub struct B { \\l    c: C \\l}\\l"]; struct_c [label="struct C {\\l    x: i32,\\l    y: i32\\l}\\l"]; label="unit2"; } struct_a -> struct_b [label="uses"]; struct_b -> struct_c[label="uses", constraint=false] }';
+    var elem = document.getElementById("extreme_private_types");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+In many other languages (e.g. Java, ML, Scheme), such
+changes do not require recompiling the downstream crate, because
+the members of structural types are just <em>references</em> to other heap-allocated
+values, rather than being directly embedded in the allocated structure.
+</span>
+In this situation, even though the <code>struct C</code> is not publicly
+accessible outside of &ldquo;unit2&rdquo;, changes to <code>struct C</code> will still
+require the downstream &ldquo;unit1&rdquo; to be recompiled (because the contents
+of <code>struct A</code>, and thus its size in bytes, may have changed along with
+<code>struct C</code>).</p>
+
+<p>So, what does it <em>mean</em> that <code>C</code> is &ldquo;private&rdquo;, if there is still a
+dependence from the contents of &ldquo;unit1&rdquo; on the supposedly private
+definition of <code>struct C</code>?</p>
+
+<p>My answer to this is to distinguish between <em>visibility</em> versus <em>dependency</em>.</p>
+
+<p>In the above picture, <code>struct A</code> in &ldquo;unit1&rdquo; has a dependence on the
+definition of <code>struct C</code> in &ldquo;unit2&rdquo;. But <code>struct C</code> remains
+<em>invisible</em> to <code>struct A</code>, in the sense that one cannot actually write
+a direct reference to that type in the context of &ldquo;unit1.&rdquo;</p>
+
+<a name="What.is.visibility.for."></a>
+<h2>What is visibility for?</h2>
+
+<p>Some basic definitions: An item is just as it is declared in the Rust
+<a href="https://doc.rust-lang.org/reference.html#items">reference manual</a>: a component of a crate, located at a fixed path
+(potentially at the &ldquo;outermost&rdquo; anonymous module) within the module
+tree of the crate.</p>
+
+<p>Every item can be thought of as having some hidden implementation
+component(s) along with an exposed surface API.</p>
+
+<p>So, for example, in:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">pub</span> <span class="k">fn</span> <span class="n">foo</span><span class="p">(</span><span class="n">x</span><span class="o">:</span> <span class="n">Input</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Output</span> <span class="p">{</span> <span class="n">Body</span> <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>the surface of <code>fn foo</code> includes <code>Input</code> and <code>Output</code>, while the <code>Body</code> is
+hidden.</p>
+
+<p>What I would like is to establish the following
+invariant<label for='inv' class='margin-toggle'> &#8853;</label><input type='checkbox' id='inv' class='margin-toggle'/><span class='marginnote'>Yes, this is basically a rephrasing of the second of the previously-stated pair of goals of the existing privacy rules. </span>
+for the language: if an item <code>I</code> is accessible in context <code>C</code>, then the
+surface for <code>I</code> does not expose anything that is inaccessible to <code>C</code>.</p>
+
+<a name="Intuition.behind.what..surface..means"></a>
+<h2>Intuition behind what &ldquo;surface&rdquo; means</h2>
+
+<p>I am taking care to distinguish between the phrase &ldquo;exposed surface
+API&rdquo; (more simply put, &ldquo;surface API&rdquo; or just &ldquo;surface&rdquo;), versus the
+more common unqualified phrase &ldquo;API&rdquo;, because some items have
+components that I argue are part of the item&rsquo;s programming interface,
+but are not part of the publicly exposed surface of the item (further
+discussed in a <a href="#Why.is.a..surface..not.the.same.as.a.signature.">later section</a>).</p>
+
+<p>The inutition behind the term &ldquo;surface&rdquo; is this:
+The exposed surface of an item is all of the
+components<label for='surface-components' class='margin-toggle'> &#8853;</label><input type='checkbox' id='surface-components' class='margin-toggle'/><span class='marginnote'>&ldquo;components&rdquo; means: types, methods, paths &hellip; perhaps its easiest to just say &ldquo;names.&rdquo; </span>
+ that the client operation&rsquo;s context must be able to reference to in order to use this
+item legally.</p>
+
+<p>There are two halves to this, that are roughly analogous to the output
+and input types of a function: ensuring that local reasoning holds,
+and ensuring an interface is actually usable.</p>
+
+<a name="Restricting.output.surface.enables.local.reasoning"></a>
+<h3>Restricting output surface enables local reasoning</h3>
+
+<p>A function&rsquo;s return type is part of its exposed surface, because if
+a module has decided that a type <code>T</code> should be inaccessible in some
+outer context <code>C</code>, then we do not want a value of that type to flow
+into <code>C</code> while still having the type
+<code>T</code>.<label for='boxes' class='margin-toggle'> &#8853;</label><input type='checkbox' id='boxes' class='margin-toggle'/><span class='marginnote'>Of course if the type of the value is hidden, e.g. a <code>Box&lt;PrivateType&gt;</code> behind a <code>Box&lt;PublicTrait&gt;</code>, then that is fine as always. </span></p>
+
+<p>In other words, we wish to reject such code in order to enable
+module authors to employ <em>local reasoning</em> about all possible
+locations in the source code that the operations on instances of
+<code>T</code> could be invoked.</p>
+
+<p>This <em>is</em> a soundness criteria: People need to be able to employ
+this kind of reasoning.</p>
+
+<a name="Restricting.input.surface.catches.API.mistakes"></a>
+<h3>Restricting input surface catches API mistakes</h3>
+
+<p>A function&rsquo;s input types are part of its exposed surface, because
+without access to such types, the function is not callable.</p>
+
+<p>In other words, we wish to reject such code in order to catch bugs
+where a crate is <em>accidentally providing</em> a function without realizing
+that it cannot actually be used in the contexts that the author wants
+it available in.</p>
+
+<p>This is not a soundness criteria; it is just a language usability one.<label for='prioritizing-halves' class='margin-toggle'> &#8853;</label><input type='checkbox' id='prioritizing-halves' class='margin-toggle'/><span class='marginnote'>In the long run, I suspect that the local reasoning enabled by restricting the output surface is going to be more important than the benefits of restricting the input surface. I am not aware of any case where we actually need to <emph>choose</emph> between the two; I am more speaking of where we should direct our attention. </span></p>
+
+<a name="Why.is.a..surface..not.the.same.as.a.signature."></a>
+<h2>Why is a &ldquo;surface&rdquo; not the same as a signature?</h2>
+
+<p>Intuitively, one might ask: &ldquo;well, this is easy: the <em>signature</em> of
+<code>fn foo</code> is <code>fn (Input) -&gt; Output</code>; does that not suffice as the
+description of the <em>surface</em> of <code>fn foo</code>?&rdquo;</p>
+
+<p>I am distinguishing the above notion of &ldquo;surface&rdquo; from the idea of a
+&ldquo;signature&rdquo;, for the following reason: To my mind, the signature
+(e.g. of a type or a function) contains all of the meta-data needed to
+check (in the current crate or in other crates) whether a item is
+being used properly. Such a signature may include references to names
+that are not actually accessible in the current context. Compare this
+to the <em>surface</em>, which is the subset of the names of the signature
+that <em>must</em> be accessible in any context where the item is itself
+accessible.</p>
+
+<p>One example of where this kind of thinking can be applied is
+<code>where</code> clauses. A where-clause can reference things that are not
+accessible outside of the module of the function.  I would consider
+such a <code>where</code> clause to still be part of the function&rsquo;s signature
+(e.g., I would expect the compiler to reject my attempt to call the
+function if I violate the encoded constraint), but I do not
+necessarily consider the types or traits within that where clause part
+of the surface API, since there are hidden parts to the constraint
+that I do not have access to in my calling module.</p>
+
+<p>Here is a concrete example that runs in Rust 1.5:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="kn">mod</span> <span class="n">a</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">S</span><span class="p">(</span><span class="o">&amp;</span><span class="n">&#39;static</span> <span class="kt">str</span><span class="p">);</span>                 <span class="c1">// private struct type S</span>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">trait</span> <span class="n">Trait</span> <span class="p">{</span> <span class="k">fn</span> <span class="n">compute</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">i32</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">impl</span> <span class="n">Trait</span> <span class="k">for</span> <span class="p">(</span><span class="kt">i32</span><span class="p">,</span> <span class="n">S</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">fn</span> <span class="n">compute</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">i32</span> <span class="p">{</span> <span class="bp">self</span><span class="p">.</span><span class="mi">0</span> <span class="o">+</span> <span class="p">((</span><span class="bp">self</span><span class="p">.</span><span class="mi">1</span><span class="p">).</span><span class="mf">0.</span><span class="n">len</span><span class="p">()</span> <span class="k">as</span> <span class="kt">i32</span><span class="p">)</span> <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">fn</span> <span class="n">foo</span><span class="o">&lt;</span><span class="n">X</span><span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="o">:</span> <span class="n">X</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">i32</span>
+</span><span class='line'>        <span class="n">where</span> <span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">S</span><span class="p">)</span><span class="o">:</span> <span class="n">Trait</span> <span class="c1">// where clause refers to private type S</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">S</span><span class="p">(</span><span class="s">&quot;hi&quot;</span><span class="p">)).</span><span class="n">compute</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nb">println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;{}&quot;</span><span class="p">,</span> <span class="n">a</span><span class="o">::</span><span class="n">foo</span><span class="p">(</span><span class="mi">3</span><span class="p">));</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There are other examples that we may want to support in the future.
+For example, Rust (version 1.5) considers bounding a type parameter
+directly via a private trait to be illegal, but we might reasonably
+revise the rules to say that while such a bound is part of the
+signature, it need not be part of the <em>surface</em>.</p>
+
+<p>(A very similar construction is allowed in Rust 1.5: A <code>pub</code> trait
+can have a private <em>parent</em> trait, which allows us to encode the
+latter construction anyway: the surface area of a function does not
+include the parent traits of bounds on its type parameters.)</p>
+
+<p>That&rsquo;s a lot of text to read. Here is the kind of code I am talking
+about:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="kn">mod</span> <span class="n">a</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">S</span><span class="p">(</span><span class="n">String</span><span class="p">);</span>                      <span class="c1">// private type</span>
+</span><span class='line'>    <span class="k">trait</span> <span class="n">Trait</span> <span class="p">{</span> <span class="k">fn</span> <span class="n">make_s</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span><span class="p">;</span> <span class="p">}</span> <span class="c1">// private trait</span>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">trait</span> <span class="n">SubT</span><span class="o">:</span> <span class="n">Trait</span> <span class="p">{</span> <span class="p">}</span>              <span class="c1">// public trait to placate rustc</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">fn</span> <span class="n">foo</span><span class="o">&lt;</span><span class="n">X</span><span class="o">:</span><span class="n">SubT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">x</span><span class="o">:</span> <span class="n">X</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// public fn that external code *can* use.</span>
+</span><span class='line'>        <span class="kd">let</span> <span class="n">s</span><span class="o">:</span> <span class="n">S</span> <span class="o">=</span> <span class="n">x</span><span class="p">.</span><span class="n">make_s</span><span class="p">();</span>
+</span><span class='line'>        <span class="n">s</span><span class="p">.</span><span class="n">do_stuff</span><span class="p">();</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Impl trait for both () and i32, so clients can call `foo` on () or i32.</span>
+</span><span class='line'>    <span class="k">impl</span> <span class="n">Trait</span> <span class="k">for</span> <span class="p">()</span> <span class="p">{</span> <span class="k">fn</span> <span class="n">make_s</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span> <span class="p">{</span> <span class="n">S</span><span class="p">(</span><span class="n">format</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;():()&quot;</span><span class="p">))</span> <span class="p">}</span> <span class="p">}</span>
+</span><span class='line'>    <span class="k">impl</span> <span class="n">Trait</span> <span class="k">for</span> <span class="kt">i32</span> <span class="p">{</span> <span class="k">fn</span> <span class="n">make_s</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">S</span> <span class="p">{</span> <span class="n">S</span><span class="p">(</span><span class="n">format</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;{}:i32&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">))</span> <span class="p">}</span> <span class="p">}</span>
+</span><span class='line'>    <span class="k">impl</span> <span class="n">SubT</span> <span class="k">for</span> <span class="p">()</span> <span class="p">{}</span>
+</span><span class='line'>    <span class="k">impl</span> <span class="n">SubT</span> <span class="k">for</span> <span class="kt">i32</span> <span class="p">{}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">impl</span> <span class="n">S</span> <span class="p">{</span> <span class="k">fn</span> <span class="n">do_stuff</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="p">{</span> <span class="nb">println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;stuff with {}&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">.</span><span class="mi">0</span><span class="p">);</span> <span class="p">}</span> <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">a</span><span class="o">::</span><span class="n">foo</span><span class="p">(());</span>
+</span><span class='line'>    <span class="n">a</span><span class="o">::</span><span class="n">foo</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In short: the term &ldquo;surface API&rdquo; here is <em>not</em> synonymous with the
+term &ldquo;signature&rdquo;.</p>
+
+<p>Assuming that you believe me that this new term, &ldquo;surface API&rdquo;, is
+actually warranted, you might now ask: &ldquo;How does one determine the
+surface API of an item?&rdquo; That is one of those questions that may sound
+trivial at first, but it is actually a bit subtle.</p>
+
+<p>Let us explore.</p>
+
+<a name="Some.items.can.change.their.surface.based.on.context"></a>
+<h3>Some items can change their surface based on context</h3>
+
+<p>For some items, such as <code>fn</code> definitions, the surface API is the same
+regardless of the context of where the item is used; for example, if a
+function is visible to you, then its surface API is simply its
+argument and return types, regardless of from where the function is
+referenced.</p>
+
+<p>However, the previous rule does not generally hold for most items; in
+general, the exposed surface of a given item is dependent on the
+context where that item is referenced.</p>
+
+<p>The main examples of this are:</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+All of these bullets are phrased as &ldquo;can be hidden&rdquo;, i.e.,
+the visibility may be restricted. However, in Rust today,
+one can write: <code>mod a{struct X{pub y: i32}}</code>
+I may want to generalize the statements here. (Then again, I
+am not clear whether there is any way to actually <em>use</em> the
+<code>y</code> field that has been exposed in this way.)
+</span></p>
+
+<ul>
+<li><p><code>struct</code> fields can be hidden in a <code>struct</code>,</p></li>
+<li><p>inherent methods can be hidden relative to the type they are attached to, and</p></li>
+<li><p>items can be hidden in a <code>mod</code>.</p></li>
+</ul>
+
+
+<p>In all cases where a surface component can be hidden in this
+context-dependent fashion, there is an associated <code>pub</code>-modifier
+present on the definition of that component.</p>
+
+<p>As an example of how the surface of a <code>struct</code> is context dependent,
+the following is legal:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="kn">mod</span> <span class="n">a</span> <span class="p">{</span>
+</span><span class='line'>    <span class="cp">#[derive(Default)]</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">Priv</span><span class="p">(</span><span class="kt">i32</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">pub</span> <span class="kn">mod</span> <span class="n">b</span> <span class="p">{</span>
+</span><span class='line'>        <span class="cp">#[derive(Default)]</span>
+</span><span class='line'>        <span class="k">pub</span> <span class="k">struct</span> <span class="n">F</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">pub</span>    <span class="n">x</span><span class="o">:</span> <span class="kt">i32</span><span class="p">,</span>
+</span><span class='line'>                   <span class="n">y</span><span class="o">:</span> <span class="n">Priv</span><span class="p">,</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// ... accesses to F.{x,y} ...</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="c1">// ... accesses to F.x ...</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">mod</span> <span class="n">k</span> <span class="p">{</span>
+</span><span class='line'>  <span class="c1">// ... accesses to F and F.x ...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Within <code>mod b</code>, the surface API of <code>F</code> includes both the fields <code>x</code>
+and <code>y</code>, which means that the use of the type <code>Priv</code> is okay, since
+that is accessible from the context of <code>mod b</code>.</p>
+
+<p>Elsewhere, such as within <code>mod k</code>, the surface API of <code>F</code> is just the
+field <code>x</code>. But this is again okay, because the type of <code>x: i32</code> is
+visible everywhere.</p>
+
+<a name="Aliases.and.translucency"></a>
+<h3>Aliases and translucency</h3>
+
+<p>Some items, such as <code>type</code> aliases, <code>const</code> definitions, or rebinding
+imports a la <code>use &lt;path&gt; as &lt;ident&gt;</code>, can act to introduce named aliases
+to an item.</p>
+
+<p>In such cases, the alias itself has its own associated visibility:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="kn">mod</span> <span class="n">a</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">struct</span> <span class="n">S</span><span class="p">(</span><span class="n">String</span><span class="p">);</span> <span class="c1">// public type</span>
+</span><span class='line'>    <span class="k">type</span> <span class="n">Alias1</span> <span class="o">=</span> <span class="n">S</span><span class="p">;</span>      <span class="c1">// private alias to the type</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">pub</span> <span class="kn">use</span> <span class="n">a</span><span class="o">::</span><span class="n">S</span> <span class="k">as</span> <span class="n">Alias2</span><span class="p">;</span>   <span class="c1">// public alias to the type</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The surface of simple aliases is also simple: the surface of an
+alias
+is just the paths referenced on its right-hand side.</p>
+
+<p>As a small additional wrinkle, type aliases can be type-parametric. In
+general, the exposed surface of a type alias are the bounds on its
+type parameters, plus the paths referenced on its left-hand side.</p>
+
+<p>So, for example, according to the rules today:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="kn">mod</span> <span class="n">bad_aliases</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">Private1</span><span class="p">(</span><span class="n">String</span><span class="p">);</span> <span class="c1">// private type</span>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">type</span> <span class="n">PubAlias1</span> <span class="o">=</span> <span class="n">Private1</span><span class="p">;</span> <span class="c1">// ERROR: private type exposed in pub surface</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">trait</span> <span class="n">PrivateTrait</span> <span class="p">{</span> <span class="p">}</span>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">type</span> <span class="n">PubAlias2</span><span class="o">&lt;</span><span class="n">X</span><span class="o">:</span><span class="n">PrivateTrait</span><span class="o">&gt;</span> <span class="o">=</span> <span class="kt">i32</span><span class="p">;</span> <span class="c1">// ERROR: private trait exposed in pub surface</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The more interesting issue is how <em>other</em> surface APIs are influenced
+when they reference an alias.</p>
+
+<p>For example:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="kn">mod</span> <span class="n">a</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">struct</span> <span class="n">S</span><span class="p">(</span><span class="n">String</span><span class="p">);</span> <span class="c1">// public type</span>
+</span><span class='line'>    <span class="k">type</span> <span class="n">Alias1</span> <span class="o">=</span> <span class="n">S</span><span class="p">;</span>      <span class="c1">// private alias to the type</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">fn</span> <span class="n">twice</span><span class="p">(</span><span class="n">s</span><span class="o">:</span> <span class="n">Alias1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">String</span> <span class="p">{</span> <span class="n">s</span><span class="p">.</span><span class="mi">0</span> <span class="p">}</span>
+</span><span class='line'>    <span class="c1">//              ~~~~~~</span>
+</span><span class='line'>    <span class="c1">//                 |</span>
+</span><span class='line'>    <span class="c1">// Should a `pub fn` be able to reference a private alias,</span>
+</span><span class='line'>    <span class="c1">// if it points to a suitably public type (like `S` here)?</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">pub</span> <span class="kn">use</span> <span class="n">a</span><span class="o">::</span><span class="n">S</span> <span class="k">as</span> <span class="n">Alias2</span><span class="p">;</span>   <span class="c1">// public alias to the type</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Should it be legal for us to publicly export <code>fn twice</code> from <code>mod a</code>,
+even though it&rsquo;s signature references a private type alias?</p>
+
+<p>The language team recently <a href="https://github.com/rust-lang/rust/pull/29973#issuecomment-165723770">debated</a> this topic, because
+it was suggested that allowing this would <a href="https://github.com/rust-lang/rust/pull/29973#issuecomment-158686899">reduce breakage</a>
+from a pull request.</p>
+
+<p>The conclusion for now was to continue to disallow the reference to
+the private alias in the signature of a public function.</p>
+
+<p>However, there are similar cases that <em>are</em> allowed today (also
+discussed on that same PR), mainly involving references to <code>const</code> paths
+from types in such signatures.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="kn">mod</span> <span class="n">a</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kr">const</span> <span class="n">LEN</span><span class="o">:</span> <span class="n">usize</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">fn</span> <span class="n">max</span><span class="p">(</span><span class="n">a</span><span class="o">:</span> <span class="p">[</span><span class="kt">i32</span><span class="p">;</span> <span class="n">LEN</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kt">i32</span> <span class="p">{</span> <span class="n">a</span><span class="p">.</span><span class="n">iter</span><span class="p">().</span><span class="n">map</span><span class="p">(</span><span class="o">|</span><span class="n">i</span><span class="o">|*</span><span class="n">i</span><span class="p">).</span><span class="n">max</span><span class="p">().</span><span class="n">unwrap</span><span class="p">()</span> <span class="p">}</span>
+</span><span class='line'>    <span class="c1">//                  ~~~</span>
+</span><span class='line'>    <span class="c1">//                   |</span>
+</span><span class='line'>    <span class="c1">// A reference to a private const in a public signature</span>
+</span><span class='line'>    <span class="c1">// is legal in Rust today.</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nb">println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;{}&quot;</span><span class="p">,</span> <span class="n">a</span><span class="o">::</span><span class="n">max</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]));</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I have not made up my mind as to which option would be better here.
+We may decide to leave things as they are, or loosen the rules for
+type aliases (so that they act more like <code>const</code> in the latter code),
+or we may tighten the rules for references to <code>const</code> (so that one
+would have to make <code>LEN</code> in the above code <code>pub</code>).</p>
+
+<p>Regardless of what path we take, I think it makes sense today for the
+language specification to at least identify a high-level abstraction
+here, rather than dealing with each alias-creating form like <code>type</code> or
+<code>const</code> or <code>use</code> individually in an ad-hoc manner.</p>
+
+<p>Namely, I want to pin down the idea of a <em>translucent name</em>. Such a
+name is not part of the API surface where it occurs; instead, an
+occurrence adds the surface of the alias statement itself to the API
+surface.</p>
+
+<p>So, as another artifical example, if we were to change the language so
+that <code>type</code> aliases were <em>translucent</em> when determining the exposed
+surface of an API, then we might have the following:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="kn">mod</span> <span class="n">a</span> <span class="p">{</span> <span class="c1">// (not legal Rust today)</span>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">struct</span> <span class="n">S</span><span class="p">(</span><span class="n">String</span><span class="p">);</span> <span class="c1">// public type</span>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">trait</span> <span class="n">Bound</span> <span class="p">{</span> <span class="k">type</span> <span class="n">X</span><span class="p">;</span> <span class="k">fn</span> <span class="n">trait_method</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="o">::</span><span class="n">X</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'>    <span class="k">impl</span> <span class="n">Bound</span> <span class="k">for</span> <span class="n">String</span> <span class="p">{</span> <span class="k">type</span> <span class="n">X</span> <span class="o">=</span> <span class="n">String</span><span class="p">;</span> <span class="k">fn</span> <span class="n">trait_method</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">String</span> <span class="p">{</span> <span class="bp">self</span><span class="p">.</span><span class="n">clone</span><span class="p">()</span> <span class="p">}</span> <span class="p">}</span>
+</span><span class='line'>    <span class="k">impl</span> <span class="n">Bound</span> <span class="k">for</span> <span class="n">S</span> <span class="p">{</span> <span class="k">type</span> <span class="n">X</span> <span class="o">=</span> <span class="n">String</span><span class="p">;</span> <span class="k">fn</span> <span class="n">trait_method</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">String</span> <span class="p">{</span> <span class="bp">self</span><span class="p">.</span><span class="mf">0.</span><span class="n">clone</span><span class="p">()</span> <span class="p">}</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">type</span> <span class="n">Alias</span><span class="o">&lt;</span><span class="n">T</span><span class="o">:</span> <span class="n">Bound</span><span class="o">&gt;</span> <span class="o">=</span> <span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">T</span><span class="o">::</span><span class="n">X</span><span class="p">,</span> <span class="n">S</span><span class="p">);</span> <span class="c1">// private Alias, with surface = {Bound, S}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">fn</span> <span class="n">free_fun</span><span class="o">&lt;</span><span class="n">T</span><span class="o">:</span> <span class="n">Bound</span><span class="o">&lt;</span><span class="n">X</span><span class="o">=</span><span class="n">String</span><span class="o">&gt;&gt;</span><span class="p">(</span><span class="n">a</span><span class="o">:</span> <span class="n">Alias</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">String</span>
+</span><span class='line'>    <span class="c1">//                 ~~~~~   ~~~~~~      ~~~~~        ~~~~~~</span>
+</span><span class='line'>    <span class="c1">//  free_fun has     |       |           |            |</span>
+</span><span class='line'>    <span class="c1">//     surface = { Bound, String, surface(Alias), String }</span>
+</span><span class='line'>    <span class="c1">//             = { Bound, String,    Bound, S   , String }</span>
+</span><span class='line'>    <span class="c1">//             = { Bound, S, String }</span>
+</span><span class='line'>    <span class="c1">//</span>
+</span><span class='line'>    <span class="c1">// which is compatible with `free_fn` being `pub`, because</span>
+</span><span class='line'>    <span class="c1">// `Bound`, `S`, and `String` are all `pub`.</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">format</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;{}{}&quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">.</span><span class="mf">0.</span><span class="n">trait_method</span><span class="p">(),</span> <span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="mi">1</span><span class="p">).</span><span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Note 1: Even though <code>Alias</code> is type-parameteric over <code>T</code>, that
+parameter would not be considered part of its surface. Anyone using
+the alias would have to have access to whatever type they plugged in
+there, of course.</p>
+
+<p>Note 2: Type parameter bounds not enforced on type aliases in Rust yet.</p>
+
+<p>This computation and questions here would become a little more
+interesting if we had restricted visibility access modifiers on
+associated items in traits. However, we do not have to consider it:
+All associated items are implicitly <code>pub</code>, and so we do not need to
+worry about whether the <code>X</code> in a projection like <code>T::X</code> is visible.
+All that matters is whether the trait <code>Bound</code> itself is visible (which
+is already reflected in the surfaces where <code>Bound</code> is used).</p>
+
+<a name="Conclusion"></a>
+<h2>Conclusion</h2>
+
+<p>Okay, that was of a bit of a meandering tour through some
+of the issues I have been thinking about.</p>
+
+<p>The big ideas I want to stress are these:</p>
+
+<ul>
+<li><p>The &ldquo;surface&rdquo; of an item can be different from the &ldquo;signature&rdquo; of
+that item.</p></li>
+<li><p>Restricting the components in a surface of an item according to the
+visibility of that item (1.) enables local reasoning and (2.)
+catches API mistakes.</p></li>
+</ul>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Felix S. Klock II</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-12-19T22:30:00+01:00" pubdate data-updated="true"></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/proglang/'>proglang</a>, <a class='category' href='/blog/categories/rust/'>rust</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://blog.pnkfx.org/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/" data-via="pnkfelix" data-counturl="http://blog.pnkfx.org/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/12/18/fixing-octopress-table-rendering/" title="Previous Post: Fixing Octopress Table Rendering">&laquo; Fixing Octopress Table Rendering</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Surfaces and Signatures: Component Privacy versus Dependence</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/12/18/fixing-octopress-table-rendering/">Fixing Octopress Table Rendering</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/27/cherrypicking-tuftes-of-hair/">Cherry-picking from the shoulders of giants</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">GC and Rust Part 1: Specifying the Problem</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/pnkfelix">@pnkfelix</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'pnkfelix',
+            count: 4,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>On Delicious</h1>
+  <div id="delicious"></div>
+  <script type="text/javascript" src="http://feeds.delicious.com/v2/json/pnkfelix?count=3&amp;sort=date&amp;callback=renderDeliciousLinks"></script>
+  <p><a href="http://delicious.com/pnkfelix">My Delicious Bookmarks &raquo;</a></p>
+</section>
+
+
+<section class="googleplus">
+  <h1>
+    <a href="https://plus.google.com/pnkfelix?rel=author">
+      <img src="http://www.google.com/images/icons/ui/gprofile_button-32.png" width="32" height="32">
+      Google+
+    </a>
+  </h1>
+</section>
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Felix S. Klock II -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'pnkfx-blog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://blog.pnkfx.org/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/';
+        var disqus_url = 'http://blog.pnkfx.org/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

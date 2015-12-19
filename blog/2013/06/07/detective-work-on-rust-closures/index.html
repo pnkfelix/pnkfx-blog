@@ -136,6 +136,7 @@ red herrings along the way.</p>
 <!-- more -->
 
 
+<a name="L.a.id..background_fns..Background:.Closures..recurring.and.otherwise...a."></a>
 <h2><a id="background_fns">Background: Closures (recurring and otherwise)</a></h2>
 
 <p>In Rust circa version 0.6, closures have three categories according to
@@ -239,6 +240,7 @@ with other proposals, as we shall see.
 (Note that Rust does have a way of expressing a non-aliasable pointer
 to <code>T</code> for any <code>T</code>: <code>&amp;mut T</code>.)</p>
 
+<a name="L.a.id..background_dst..Background:.DST..a."></a>
 <h2><a id="background_dst">Background: DST</a></h2>
 
 <p>The heart of the Dynamically Sized Types proposal is the discrepancy
@@ -333,6 +335,7 @@ Rust&rsquo;s type hierarchy could be presented uniformly like so:</p>
 <p>(Note that the actual types assigned to expressions would be instances
 of <code>S</code> according to this grammar.)</p>
 
+<a name="L.a.id..the_problem..The.Problem:.DST.and.Closures..a."></a>
 <h2><a id="the_problem">The Problem: DST and Closures</a></h2>
 
 <p>So, from the &ldquo;Case of the Recurring Closure&rdquo;, we saw that
@@ -356,6 +359,7 @@ rid of <code>&amp;fn</code> and replacing it with <code>fn&amp;</code>.</li>
 </ul>
 
 
+<a name="L.a.id..is_fn_too_ugly..Is.fn..too.ugly...a."></a>
 <h3><a id="is_fn_too_ugly">Is fn~ too ugly?</a></h3>
 
 <p>Niko at first favored the latter, then he wrote a second post,
@@ -380,6 +384,7 @@ have to use an trait instead (i.e. an object or a record).
 (I personally am not thrilled about losing the option of using
 closures to express combinator libraries, a use case for <code>fn@</code>.)</p>
 
+<a name="L.a.id..leveraging_proc..Leveraging.a.proc.keyword.expression..a."></a>
 <h3><a id="leveraging_proc">Leveraging a proc keyword/expression</a></h3>
 
 <p>Then a third post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&ldquo;Procedures, Continued&rdquo;</a> from
@@ -454,6 +459,7 @@ traits are objects carrying virtual method dispatch tables), and then
 expressing them via a <code>proc!</code> macro (which means they could be left
 out of the core language).</p>
 
+<a name="L.a.id..other_ways_to_proc..Other.ways.to.express.proc..a."></a>
 <h3><a id="other_ways_to_proc">Other ways to express proc</a></h3>
 
 <p>In his next post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">&ldquo;Removing Procs&rdquo;</a>, Niko elaborates further
@@ -490,6 +496,7 @@ would go away.</p>
 macro to query an expression for its free variables, then that might
 help.</p>
 
+<a name="L.a.id..digression_on_macros..A.Personal.Digression.on.Macros..a."></a>
 <h4><a id="digression_on_macros">A Personal Digression on Macros</a></h4>
 
 <p>Actually, this latter idea brings up a problem with the explicit list
@@ -517,6 +524,7 @@ copying closures as a primitive linguistic construct.</p></li>
 
 <p>Okay, end of digression.</p>
 
+<a name="L.a.id..more_followup_on_procs_and_fns..More.followups.on.procs.and.fns..a."></a>
 <h3><a id="more_followup_on_procs_and_fns">More followups on procs and fns</a></h3>
 
 <p>A few days passed, then Niko had a fourth post,
@@ -555,6 +563,7 @@ on whether the type parameter has an implicit <code>Sized</code> bound.
 </ul>
 
 
+<a name="L.a.id..where_are_we..So.where.are.we...a."></a>
 <h2><a id="where_are_we">So where are we?</a></h2>
 
 <p>The above summarizes the series of blog posts from Niko.  I had hoped
@@ -650,6 +659,10 @@ variables injected by macro invocations is addressed.</li>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Surfaces and Signatures: Component Privacy versus Dependence</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/12/18/fixing-octopress-table-rendering/">Fixing Octopress Table Rendering</a>
       </li>
     
@@ -663,10 +676,6 @@ variables injected by macro invocations is addressed.</li>
     
       <li class="post">
         <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, part 1: Visualizing Graphs via viz.js</a>
       </li>
     
   </ul>
