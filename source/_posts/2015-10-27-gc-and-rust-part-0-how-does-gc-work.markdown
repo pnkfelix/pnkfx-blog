@@ -136,7 +136,8 @@ memory that cannot possibly be used in the future by the program
 Discussions of garbage collection often equate the notion of "dead
 object" with "unreachable object": If no chain of references exists
 that could lead the program to an object, then that object cannot be
-reached (and therefore cannot be used in the future).<sup>[1](#footnote1)</sup>
+reached{% marginnote 'collecting-more-garbage' 'Researchers have explored methods to identify objects as dead even when reachable, such as using <a href="http://pop-art.inrialpes.fr/~fradet/PDFs/LISP94.pdf">"parametricity"</a>; but I am not aware of any such method being used outside of a research setting.' %}
+ (and therefore cannot be used in the future).
 
 When one says "garbage collector", one usually means a "*tracing*
 garbage collector": a collector that works by identifying the
@@ -180,20 +181,23 @@ A garbage collector would determine that the objects
 labelled "D", "E", and "F" are unreachable, and thus
 their storage can be reclaimed.
 
-#### Footnotes I
-
-<a name="footnote1">1.</a> Researchers have explored methods exist to
-identify objects as dead even when reachable, such as using
-["parametricity"][collecting-more-garbage]; but I am not aware of any
-such method being used outside of a research setting.
-
-[collecting-more-garbage]: http://pop-art.inrialpes.fr/~fradet/PDFs/LISP94.pdf
-
 ## <span id="how-gc-works">How Garbage Collection works</span>
 [how-gc-works]: #how-gc-works
 
-A garbage collector is often presented as a
-*coroutine*<sup>[2](#footnote2)</sup> that is linked in with the main
+A garbage collector is often presented as a *coroutine*
+{% marginblock %}
+Coroutines are much like subroutines,
+except that instead of having a parent-child relationship (where the
+child subroutine "returns" to the parent caller), a call from
+coroutine A to coroutine B: saves the current context of where A
+currently is, transfers control to B, and the next time B calls A,
+resumes the context that was saved at the outset.
+<br></br>
+In other words, once the linkage has been established between A and B,
+then A's calls to B look like *returns* from the viewpoint of B, (and
+B's calls to A look like returns from the viewpoint of A).
+{% endmarginblock %}
+ that is linked in with the main
 program. The main program itself is often referred to as a "mutator",
 since it is the entity that *mutates* the object graph.  (The
 collector does not modify the abstract object graph, but rather the
@@ -217,7 +221,9 @@ represented somehow in memory.
 
 For example, here is one potential representation for the above object
 graph, where ` - ` denotes some value that the GC knows is not a
-memory reference. (Assume for this example that every GC allocated
+memory reference.
+
+(Assume for this example that every GC allocated
 object is made from four consecutive words in memory.)
 
 <script>
@@ -528,6 +534,26 @@ var graph_in_memory = make_graph_in_memory({from_space:true,original:true});
 post_graph("target_anchor4", graph_in_memory);
 </script>
 
+{% marginblock %}
+Regarding the "(header)" words in the diagram:
+Garbage collectors often require that the
+GC-managed memory be formatted in a way such that the collector can
+"parse" it when doing a scan over its address space.
+<br></br>
+As part of this "parsing", the GC needs to be able to derive the size
+of each object it looks at.
+<br></br>
+The address-space could be
+partitioned into size classes.
+Or if objects in a
+block are to be variable-sized, the size could be recorded in object
+headers (which are often needed anyway to store things like mark bits or other data).
+<br></br>
+Clever representation techniques exist that avoid using
+header words for small objects (like pairs) without requiring size-class
+partitioning; but I digress.
+{% endmarginblock %}
+
 In these pictures, there is no difference between an arrow pointing to
 the left- verus right-side of a memory cell; so the occurrence of the
 pointer to A (`0x10010`) in `r0` is no different than the occurrence
@@ -574,11 +600,19 @@ three objects long.)
 
 #### The "Sweep" phase
 
+{% marginblock %}
+As previously mentioned, the GC much be able to "parse" the memory when
+scanning the address space.
+<br></br>
+In the case of the Mark-Sweep collector, in addition to having to be able
+to derive the size of each object, we also need the mark bit for each object
+to be located at predictable location.
+{% endmarginblock %}
 A Mark-Sweep collector does not move objects, so it must resort to
 metadata such as a free-list to track reclaimed memory.  So, after the
 marking is finished, the GC then *sweeps* over the memory: it walks
-over the GC-managed address space<sup>[3](#footnote3)</sup> and
-builds up a free-list of blocks that were not marked during the traversal.
+over the GC-managed address space
+and builds up a free-list of blocks that were not marked during the traversal.
 
 <p id="target_anchor6"></p>
 <script>
@@ -589,43 +623,10 @@ post_graph("target_anchor6", graph_in_memory);
 (The arcs that make up the free-list above are dashed, to distinguish
 them from the "real" references that make up the object graph. In the
 above scheme, the pointer to the next element in the free list is held
-in the second word of each free block.<sup>[4](#footnote4)</sup>.)
+in the second word of each free block.{% marginnote 'free-list-next' 'Putting the `next`-pointers for the free-list into the second word of each four-word block is one way of satisfying the aforementioned requirement that the GC-managed memory be parseable.' %})
 
 With that, the GC is done; the mutator (i.e. main program) is now free
 to take blocks off of the free-list to satisfy memory requests.
-
-#### Footnotes II
-
-<a name="footnote2">2.</a> Coroutines are much like subroutines,
-except that instead of having a parent-child relationship (where the
-child subroutine "returns" to the parent caller), a call from
-coroutine A to coroutine B: saves the current context of where A
-currently is, transfers control to B, and the next time B calls A,
-resumes the context that was saved at the outset.
-
-In other words, once the linkage has been established between A and B,
-then A's calls to B look like *returns* from the viewpoint of B, (and
-B's calls to A look like returns from the viewpoint of A).
-
-<a name="footnote3">3.</a> Note that collectors often require that the
-GC-managed memory be formatted in a way such that the collector can
-"parse" it when doing a scan over its address space.
-
-For example, in the Mark-Sweep collector, the mark bit for each object
-needs to be located at predictable location.
-
-Similarly, the GC needs to be able to derive the size of each object
-it looks at, as part of this "parsing". (The address-space could be
-partitioned into size classes, as we did above; or if objects in a
-block are to be variable-sized, the size could be recorded in object
-headers. There are clever representation techniques that avoid using
-header words for small objects like pairs without requiring size-class
-partitioning; but I digress.)
-
-<a name="footnote4">4.</a> Putting the `next`-pointers for the
-free-list into the second word of each four-word block is one way of
-satisfying the aforementioned requirement that the GC-managed memory
-be parseable.
 
 ### <span id="conservative-gc">Conservative Collection</span>
 [conservative-gc]: #conservative-gc
