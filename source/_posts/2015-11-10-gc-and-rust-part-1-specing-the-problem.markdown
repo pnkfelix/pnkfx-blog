@@ -288,15 +288,6 @@ In this context, interoperation still requires defining a standard
 interface that the third-party collector implementation has to conform
 with.
 
-In a simple world (e.g., a conservative collector designed to
-interoperate with C/C++, such as [boehm-demers-weiser][BDW] (BDW)), this
-standard interface could be nothing more than just "swap in a
-different [#[allocator] crate][custom_alloc] that your GC provides."
-
-[BDW]: http://www.hboehm.info/gc/
-
-[custom_alloc]: https://doc.rust-lang.org/nightly/book/custom-allocators.html
-
 {% marginblock %}
 In truth, even for a conservative collector like [BDW][],
 one must do more than just "swap in a new `#[allocator]`" to actually
@@ -306,6 +297,15 @@ stack associated with each new thread.
 <br></br>
 I only realized this only [recently](https://github.com/swgillespie/boehm_gc_allocator/issues/2).
 {% endmarginblock %}
+In a simple world (e.g., a conservative collector designed to
+interoperate with C/C++, such as [boehm-demers-weiser][BDW] (BDW)), this
+standard interface could be nothing more than just "swap in a
+different [#[allocator] crate][custom_alloc] that your GC provides."
+
+[BDW]: http://www.hboehm.info/gc/
+
+[custom_alloc]: https://doc.rust-lang.org/nightly/book/custom-allocators.html
+
 (The actual interface is unlikely to be so
 simple, but the point is, there is a wide
 design space to be explored here.)
