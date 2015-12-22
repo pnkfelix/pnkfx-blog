@@ -172,6 +172,10 @@ article {
   p, hr, footer, div.table-wrapper, h2, h3, h4, h5, h6 { width: 65%; }
 }
 
+article {
+  p.fullwidth, hr.fullwidth, footer.fullwidth, div.fullwidth { width: 100%; }
+}
+
 .sidenote, .marginnote { float: right;
                          clear: right;
                          margin-right: -40%;

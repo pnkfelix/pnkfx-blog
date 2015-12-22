@@ -121,7 +121,7 @@ var gc_struct = simple_gc_structure();
 var rf = gc_struct[0];
 var d = gc_struct[1];
 var content = render_objects([rf]);
-post_graph("target_anchor1", digraph(content, { rankdir:"LR" }));
+post_graph("target_anchor1", digraph(content, { rankdir:"LR" }), { no_dims: true });
 </script>
 
 ## What is Garbage Collection
@@ -152,7 +152,7 @@ along with a register file labelled "RF".
 
 <p id="target_anchor2"></p>
 <script>
-post_objects("target_anchor2", simple_gc_structure(), { rankdir:"LR" });
+post_objects("target_anchor2", simple_gc_structure(), { rankdir:"LR", no_dims: true });
 </script>
 
 In the simple model above, the roots *are* the processor
@@ -174,7 +174,7 @@ function highlight(object) {
 
 var objects = simple_gc_structure();
 for_each_reachable([objects[0]], { on_node: highlight, on_edge: highlight });
-post_objects("target_anchor3", objects, { rankdir:"LR" });
+post_objects("target_anchor3", objects, { rankdir:"LR", no_dims: true });
 </script>
 
 A garbage collector would determine that the objects
@@ -223,6 +223,8 @@ For example, here is one potential representation for the above object
 graph, where ` - ` denotes some value that the GC knows is not a
 memory reference.
 
+<p id="target_anchor4" class=fullwidth></p>
+
 (Assume for this example that every GC allocated
 object is made from four consecutive words in memory.)
 
@@ -247,7 +249,6 @@ function make_memory_label(count, name_callback, val_callback) {
     var label = "{ { " + addresses + " } | { " + contents + " } }";
     return label;
 }
-
 function make_memory_addr_val(state) {
 var marks = state.marked;
 var swept = state.swept;
@@ -259,7 +260,6 @@ var a_scanned = state.a_scanned;
 var b_scanned = state.b_scanned;
 var c_scanned = state.c_scanned;
 var g_scanned = state.g_scanned;
-
 var addr1=[
           "<nd> 0x10000 "+(swept?"":"(D) ")+"\\l",
           "0x10004 "+(swept?" (next)":"")+"\\l",
@@ -314,82 +314,66 @@ var addr3 = [
           "0x20038 \\l",
           "<lastg> 0x2003c \\l",
 ];
-
 var val1 = [
            (swept ? "<vd> (free) " : "<vd> (header)"), // (D)
            (swept ? "<f0> 0x10020" : "<dpa> 0x10010"),
            (swept ? " - "          : "<dpe> 0x10020"),
            " - ",
-
            (marks ? "<va> (marked)" : a_copied ? "<va> (fwd)" : "<va> (header)"), // (A)
            (a_copied ? "<afwd> 0x20000" : " - "),
            " - ",
            " - ",
-
            (swept ? "<ve> (free) " : "<ve> (header)"), // (E)
            (swept ? "<f1> 0x10050" : "<epf> 0x10060"),
            " - ",
            " - ",
-
             // (B)
            (marks ? "<vb> (marked)" : b_copied ? "<vb> (fwd)" : "<vb> (header)"),
            (b_copied ? "<bfwd> 0x20010" : "<bpc> 0x10040"),
            " - ",
            " - ",
           ];
-
 var val2 = [
            (marks ? "<vc> (marked)" : c_copied ? "<vc> (fwd)" : "<vc> (header)"), // (C)
            (c_copied ? "<cfwd> 0x20020" : "<cpg> 0x10070"),
            " - ",
            " - ",
-
            (swept ? "<vy> (free) " : "<vy> (header)"), // unused
            (swept ? "<f2> 0x10060" : " - "),
            " - ",
            " - ",
-
            (swept ? "<vf> (free) " : "<vf> (header)"), // (F)
            (swept ? "<f3> null " : " - "),
            (swept ? " - "          : "<fpe> 0x10020"),
            " - ",
-
            (g_copied ? "<vg> (fwd)" : marks ? "<vg> (marked)" : "<vg> (header) "), // (G)
            (g_copied ? "<gfwd> 0x20030" : " - "),
            " - ",
            " - ",
           ];
-
 var val3 = [
            ((a_scanned || a_copied) ? "<va> (header)" : " - "), // (A')
            " - ",
            " - ",
            " - ",
-
            // (B')
            (b_scanned ? "<vb> (header) " : b_copied ? "<vb> (header)" : " - "),
            (b_scanned ? "<bpc2> 0x20020 " : b_copied ? "<bpc> 0x10040" : " - "),
            " - ",
            " - ",
-
            // (C')
            (c_scanned ? "<vc> (header) " : c_copied ? "<vc> (header)" : " - "),
            (c_scanned ? "<cpg2> 0x20030 " : c_copied ? "<cpg> 0x10070" : " - "),
            " - ",
            " - ",
-
             // (G')
            (g_scanned ? "<vg> (header) " : g_copied ? "<vg> (header)" : " - "),
            " - ",
            " - ",
            " - ",
           ];
-
     return [addr1, val1, addr2, val2, addr3, val3];
 }
-</script>
-
-<script>
 function make_graph_in_memory(options) {
     var original = options.original;
     var marking  = options.marking;
@@ -398,7 +382,6 @@ function make_graph_in_memory(options) {
     var free_list = options.free_list;
     var conservative_r2 = options.conservative_r2;
     var avail = options.avail;
-
     var rf = make_regfile("RF");
     var addrval = make_memory_addr_val(options);
     var addr1 = addrval[0];
@@ -407,7 +390,6 @@ function make_graph_in_memory(options) {
     var val2 = addrval[3];
     var addr3 = addrval[4];
     var val3 = addrval[5];
-
     var a_copied = options.a_copied;
     var b_copied = options.b_copied;
     var c_copied = options.c_copied;
@@ -416,11 +398,9 @@ function make_graph_in_memory(options) {
     var b_scanned = options.b_scanned;
     var c_scanned = options.c_scanned;
     var g_scanned = options.g_scanned;
-
     var highlight_bpc2 = options.highlight_bpc2;
     var highlight_rc2 = options.highlight_rc2;
     var highlight_cfwd = options.highlight_cfwd;
-
     rf.label = "<id>RF | { { <r0>r0 | <r1>r1 | <r2>r2 | <r3>r3 } |" +
         " { <r0v>"+(a_copied?"0x20000":"0x10010")+
         " | <r1v>"+(b_copied?"0x20010":"0x10030")+
@@ -428,7 +408,6 @@ function make_graph_in_memory(options) {
         " | <r3v>"+(c_copied?"0x20020":"0x10040")+
         " } }";
     rf.pos = "0,500!";
-
     var from_space = options.from_space;
     var two_space = options.two_space;
     var two_space_content = !two_space ? "" : [
@@ -449,7 +428,6 @@ function make_graph_in_memory(options) {
         (avail ? 'avail[pos="-90,375!"]; ' : ''),
         ((avail && avail.trim() != "") ? 'avail -> ' + avail + ';': ''),
     ].join('\n');
-
     var from_space_content = [
         'mem1 [shape="record",',
         !from_space ? 'style="invis",' : "",
@@ -526,12 +504,8 @@ function make_graph_in_memory(options) {
 
     return graph_in_memory;
 }
-</script>
-
-<p id="target_anchor4"></p>
-<script>
 var graph_in_memory = make_graph_in_memory({from_space:true,original:true});
-post_graph("target_anchor4", graph_in_memory);
+post_graph("target_anchor4", graph_in_memory, {no_dims:true});
 </script>
 
 {% marginblock %}
@@ -577,10 +551,10 @@ objects scheduled for future traversal).
 Here is a sketch of the traversals that the garbage collector
 makes in order to mark each reachable object.
 
-<p id="target_anchor5"></p>
+<p id="target_anchor5" class="fullwidth"></p>
 <script>
 var graph_in_memory = make_graph_in_memory({from_space:true,marking:true, marked:true});
-post_graph("target_anchor5", graph_in_memory);
+post_graph("target_anchor5", graph_in_memory, {no_dims: true});
 </script>
 
 As reflected in the diagram above, each object that the GC reaches has
@@ -614,10 +588,10 @@ marking is finished, the GC then *sweeps* over the memory: it walks
 over the GC-managed address space
 and builds up a free-list of blocks that were not marked during the traversal.
 
-<p id="target_anchor6"></p>
+<p id="target_anchor6" class="fullwidth"></p>
 <script>
 var graph_in_memory = make_graph_in_memory({from_space:true,marked:true, swept: true, free_list: true});
-post_graph("target_anchor6", graph_in_memory);
+post_graph("target_anchor6", graph_in_memory, {no_dims:true});
 </script>
 
 (The arcs that make up the free-list above are dashed, to distinguish
@@ -651,10 +625,10 @@ So for example, if we had the same picture as above, but the register
 conservative collector is not told "`r2` holds a non-reference at this
 point in the execution", then this diagram would result:
 
-<p id="target_anchor_conservative_gc"></p>
+<p id="target_anchor_conservative_gc" class="fullwidth"></p>
 <script>
 var graph_in_memory = make_graph_in_memory({from_space:true,original:true,conservative_r2:true});
-post_graph("target_anchor_conservative_gc", graph_in_memory);
+post_graph("target_anchor_conservative_gc", graph_in_memory, {no_dims:true});
 </script>
 
 That is, even though in the program itself, the value `0x10000` is not
@@ -680,10 +654,10 @@ local variable in the GC that indicates the starting address that we
 can use to copy objects into; so it starts off at the first address,
 `0x20000`.
 
-<p id="target_anchor7"></p>
+<p id="target_anchor7" class="fullwidth"></p>
 <script>
 var graph_in_memory = make_graph_in_memory({from_space:true,original:true, two_space:true, avail: "mem3:na"});
-post_graph("target_anchor7", graph_in_memory);
+post_graph("target_anchor7", graph_in_memory, {no_dims:true});
 </script>
 
 #### Copying from the Roots
@@ -694,11 +668,11 @@ we scan just the first two registers, copying the objects `A` and `B`
 into new locations, respectively labelled `A'` and `B'`, and updating
 `avail` accordingly.
 
-<a id="memory_post_copy_a_and_b"><p id="target_anchor8a"></p></a>
+<a id="memory_post_copy_a_and_b"><p id="target_anchor8a" class="fullwidth"></p></a>
 <script>
 var graph_in_memory = make_graph_in_memory({from_space:true,original:true, two_space:true,
     a_copied:true, b_copied:true, avail: "mem3:nc"});
-post_graph("target_anchor8a", graph_in_memory);
+post_graph("target_anchor8a", graph_in_memory, {no_dims:true});
 </script>
 
 Note that as we copy objects from the source memory
@@ -715,12 +689,12 @@ may have pointers to the old objects in the source memory (such as the
 We still need to scan the rest of the registers, which copies `C` as
 shown below.
 
-<p id="target_anchor8b"></p>
+<p id="target_anchor8b" class="fullwidth"></p>
 <script>
 var graph_in_memory = make_graph_in_memory({from_space:true,original:true, two_space:true,
     highlight_rc2: true, highlight_cfwd: true,
     a_copied:true, b_copied:true, c_copied:true, avail: "mem3:ng"});
-post_graph("target_anchor8b", graph_in_memory);
+post_graph("target_anchor8b", graph_in_memory, {no_dims:true});
 </script>
 
 #### Scan the "To-space"
@@ -737,14 +711,14 @@ points to the new copy in the "to-space". We see this when the fixup
 scan is scanning over `B'` and sees the `B' -> C` reference, which it
 then rewrites to a `B' -> C'` reference, highlighted below.
 
-<p id="target_anchor9"></p>
+<p id="target_anchor9" class="fullwidth"></p>
 <script>
 var graph_in_memory = make_graph_in_memory({from_space:true,original:true, two_space:true,
     highlight_bpc2:true,
     a_copied:true, b_copied:true, c_copied:true,
     a_scanned:true, b_scanned:true, avail: "mem3:ng"
     });
-post_graph("target_anchor9", graph_in_memory);
+post_graph("target_anchor9", graph_in_memory, {no_dims:true});
 </script>
 
 The fixup scan is not yet complete; the next object it encounters,
@@ -754,13 +728,13 @@ in the same manner that we did when we were scanning the roots. (This
 adds the forwarded object to the set of objects enqueued for fixup
 scanning.)
 
-<p id="target_anchor10"></p>
+<p id="target_anchor10" class="fullwidth"></p>
 <script>
 var graph_in_memory = make_graph_in_memory({from_space:true,original:true, two_space:true,
     a_copied:true, b_copied:true, c_copied:true, g_copied:true,
     a_scanned:true, b_scanned:true, c_scanned:true, avail: "mem3:lastg:s",
     });
-post_graph("target_anchor10", graph_in_memory);
+post_graph("target_anchor10", graph_in_memory, {no_dims:true});
 </script>
 
 #### Reclaim the "From-space"
@@ -771,13 +745,13 @@ enqueued). At this point, there will be no more reachable objects in
 any part of the from-space, and thus those memory blocks can be
 reclaimed in their entirety.
 
-<p id="target_anchor11"></p>
+<p id="target_anchor11" class="fullwidth"></p>
 <script>
 var graph_in_memory = make_graph_in_memory({two_space:true,
     a_copied:true, b_copied:true, c_copied:true, g_copied:true,
     a_scanned:true, b_scanned:true, c_scanned:true, g_scanned:true, avail: "mem3:lastg:s"
     });
-post_graph("target_anchor11", graph_in_memory);
+post_graph("target_anchor11", graph_in_memory, {no_dims:true});
 </script>
 
 Woo, done!
@@ -864,7 +838,7 @@ gc_heap.is_subgraph = true;
 gc_heap.style = "invis";
 gc_heap.id = "cluster_gc_heap";
 var content = render_objects([rf, a_and_b, gc_heap, d]);
-post_graph("target_anchor12", digraph(content, {rankdir:"LR"}));
+post_graph("target_anchor12", digraph(content, {rankdir:"LR"}), {no_dims:true});
 </script>
 
 To show a copying collector's intermediate state in a high-level
@@ -922,7 +896,7 @@ gc_heaps.is_subgraph = true;
 // gc_heaps.id = "cluster_all_gc_heaps";
 // gc_heaps.rankdir = "TD";
 var objects = [rf, gc_heaps];
-post_objects("target_anchor_simplified_copying", objects, {rankdir:"LR"});
+post_objects("target_anchor_simplified_copying", objects, {rankdir:"LR",no_dims:true});
 </script>
 
 (This rendering is arguably just as clear (or unclear) as our earlier
