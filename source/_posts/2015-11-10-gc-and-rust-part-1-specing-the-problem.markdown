@@ -38,7 +38,7 @@ the supporting Javascript loads.)
 <script src="http://blog.pnkfx.org/javascripts/gc_rendering.js" charset="utf-8"></script>
 
 ## The Problem Space
-[problem-space]: #the-problem-space
+[problem-space]: #The.Problem.Space
 
 Now that we have [reviewed][part0] what GC is and how it works, let us
 discuss what GC could mean to Rust.
