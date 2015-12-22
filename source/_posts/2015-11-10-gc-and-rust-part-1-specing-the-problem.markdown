@@ -520,16 +520,13 @@ But there are two (related) problems:
      a `Handle` in the functions exposed to the functions outside
      of GC Heap.
 
-It could be that there is a solution to the problem lurking here; but
-as stated in the text, interoperation with a fully "black box" GC is
-not a primary goal.
-
 Also, the hidden object addresses may complicate client code trying to
 instantiate GC objects with its own types.
 
+It could be that there is a solution to the problem lurking here.
 In any case, interoperation with a blackbox GC is not a primary goal,
-since the level of indirection and handles array maintainence is not
-ideal.
+since the level of indirection and (perhaps more crucially)
+the maintenance of the handles array are not ideal.
 
 ## Objectives and Requirements (oh no, now five problems)
 
