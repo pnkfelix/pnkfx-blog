@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-12-19T22:32:06+01:00</updated>
+  <updated>2015-12-22T13:02:38+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -367,7 +367,7 @@ the following is legal:</p>
         #[derive(Default)]
         pub struct F {
             pub    x: i32,
-                   y: Priv,
+                   y: ::a::Priv,
         }
 
         // ... accesses to F.{x,y} ...
@@ -376,6 +376,7 @@ the following is legal:</p>
 }
 
 mod k {
+  use a::b::F;
   // ... accesses to F and F.x ...
 }
 </code></pre>

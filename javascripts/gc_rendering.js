@@ -44,18 +44,38 @@ function make_regfile(rf_id) {
 // Warning: I have not yet managed to get `options` to work.
 function post_graph(target, g, options) {
     var elem = document.getElementById(target)
+    var no_dims = options && options.no_dims;
     // elem.innerHTML += "<code>" + g + "</code>"
-    if (options) {
-        elem.innerHTML += Viz(g, options);
-    } else {
-        elem.innerHTML += Viz(g, "svg");
+    var rendered = Viz(g, "svg");
+    if (no_dims) {
+        // ugh what a hack
+        // console.log("pre-replace " + rendered);
+        rendered = rendered.replace(/width="[^"]*"/, '');
+        // console.log("mid-replace " + rendered);
+        rendered = rendered.replace(/height="[^"]*"/, '');
+        // console.log("postreplace " + rendered);
     }
+    elem.innerHTML += rendered;
 }
 
 function post_objects(target, objects, options) {
     var with_code = options && options.with_code;
+    var no_dims = options && options.no_dims;
     var g = digraph(render_objects(objects), options);
     var elem = document.getElementById(target);
     if (with_code) { elem.innerHTML += "<pre>" + g + "</pre>"; }
-    elem.innerHTML += Viz(g, "svg")
+    var rendered = Viz(g, "svg");
+    if (!no_dims) {
+        // elem.innerHTML += ("<pre>No no_dims given</pre>");
+        elem.innerHTML += rendered;
+    } else {
+        // ugh what a hack
+        // console.log("pre-replace " + rendered);
+        rendered = rendered.replace(/width="[^"]*"/, '');
+        // console.log("mid-replace " + rendered);
+        rendered = rendered.replace(/height="[^"]*"/, '');
+        // console.log("postreplace " + rendered);
+        // elem.innerHTML += ("<pre>Trying to no_dims"</pre>");
+        elem.innerHTML += rendered;
+    }
 }

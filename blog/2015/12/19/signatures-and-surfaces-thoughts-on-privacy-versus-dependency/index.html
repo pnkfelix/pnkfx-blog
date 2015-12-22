@@ -498,6 +498,7 @@ the following is legal:</p>
 <span class='line-number'>17</span>
 <span class='line-number'>18</span>
 <span class='line-number'>19</span>
+<span class='line-number'>20</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="kn">mod</span> <span class="n">a</span> <span class="p">{</span>
 </span><span class='line'>    <span class="cp">#[derive(Default)]</span>
 </span><span class='line'>    <span class="k">struct</span> <span class="n">Priv</span><span class="p">(</span><span class="kt">i32</span><span class="p">);</span>
@@ -506,7 +507,7 @@ the following is legal:</p>
 </span><span class='line'>        <span class="cp">#[derive(Default)]</span>
 </span><span class='line'>        <span class="k">pub</span> <span class="k">struct</span> <span class="n">F</span> <span class="p">{</span>
 </span><span class='line'>            <span class="k">pub</span>    <span class="n">x</span><span class="o">:</span> <span class="kt">i32</span><span class="p">,</span>
-</span><span class='line'>                   <span class="n">y</span><span class="o">:</span> <span class="n">Priv</span><span class="p">,</span>
+</span><span class='line'>                   <span class="n">y</span><span class="o">:</span> <span class="o">::</span><span class="n">a</span><span class="o">::</span><span class="n">Priv</span><span class="p">,</span>
 </span><span class='line'>        <span class="p">}</span>
 </span><span class='line'>
 </span><span class='line'>        <span class="c1">// ... accesses to F.{x,y} ...</span>
@@ -515,6 +516,7 @@ the following is legal:</p>
 </span><span class='line'><span class="p">}</span>
 </span><span class='line'>
 </span><span class='line'><span class="kn">mod</span> <span class="n">k</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kn">use</span> <span class="n">a</span><span class="o">::</span><span class="n">b</span><span class="o">::</span><span class="n">F</span><span class="p">;</span>
 </span><span class='line'>  <span class="c1">// ... accesses to F and F.x ...</span>
 </span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
