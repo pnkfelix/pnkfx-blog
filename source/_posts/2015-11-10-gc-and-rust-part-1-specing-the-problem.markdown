@@ -110,7 +110,7 @@ in `Gc<_>`.)
 
 This results in a stack and heap modelled by this picture.
 
-<p id="target_anchor_gc_demo_1"></p>
+<p id="target_anchor_gc_demo_1" class="fullwidth"></p>
 <script>
 var stack = { id: "cluster_stack", label: "Stack", is_subgraph: true };
 var gc_heap = { id: "cluster_gc_heap", label: "GC Heap", is_subgraph: true, style: "rounded" };
@@ -152,7 +152,7 @@ gc_heap[6] = g;
 gc_heap[7] = h;
 
 var objects = [stack, gc_heap];
-post_objects("target_anchor_gc_demo_1", objects, { rankdir:"LR", nodesep:0.2 });
+post_objects("target_anchor_gc_demo_1", objects, { rankdir:"LR", nodesep:0.2, no_dims:true });
 </script>
 
 The GC would be allowed to collect the objects labelled "E", "G", and
@@ -197,8 +197,35 @@ provide a garbage collector (that all clients of `Gc<T>` would have to
 link in), or at least standardize a fixed API that third-party
 collector implementations would have to satisfy to support `Gc<T>`.
 
+{% marginblock %}
+In particular, smart-pointers in Rust
+require at *least* support for the [`Deref` trait][Deref trait], so
+that dereferencing expressions like `gc_ref.field` and
+`gc_ref.method()` are compiled into code that resolves the `gc_ref` to
+a`&T` reference (and then the subsequent field or method lookup is
+performed with respect to that `&T` reference).
+<br></br>
+As a reminder, the signature of the `deref` method, before lifetime
+elision, is `fn deref<'a>(&'a self) -> &'a Self::Target` (and the
+associated `Target` type for `Gc<T>` would be `T`).  Thus, the
+compiler will ensure that the reference `&'a T` we extract from the
+`gc_ref` outlive the `gc_ref` itself; this means that the `gc_ref`
+will be one (of potentially many) root keeping the object from being
+reclaimed for the entirety of the lifetime `'a`, and thus supporting
+the `Deref` trait design on a `Gc<T>` could work seamlessly on an
+entirely non-moving GC.
+<br></br>
+However, moving objects complicate `Deref` support; now one needs to
+ensure not only that the object remains alive, but also that the
+reference `&'a T` consistently points to the same object that the
+original `Gc<T>` pointed to, and that references to substructure
+within the object (e.g. a `&Left` within a `Gc<(Left, Right)>` that
+has been deref'ed to `&(Left, Right)`) also retain a consistent view
+of the heap structure. Doing this at an acceptable cost is difficult;
+I may discuss this more in a future post.
+{% endmarginblock %}
 Second, it is difficult to provide the ergonomics that one expects
-from a smart-pointer<sup>[1](#footnote1)</sup> type analogous to
+from a smart-pointer type analogous to
 `Rc<T>`.
 
 Okay, so that's the outline of the tradeoffs of providing
@@ -270,8 +297,17 @@ different [#[allocator] crate][custom_alloc] that your GC provides."
 
 [custom_alloc]: https://doc.rust-lang.org/nightly/book/custom-allocators.html
 
+{% marginblock %}
+In truth, even for a conservative collector like [BDW][],
+one must do more than just "swap in a new `#[allocator]`" to actually
+integrate it properly; the current Rust standard library does not
+provide a way to intercept thread spawns and register the new
+stack associated with each new thread.
+<br></br>
+I only realized this only [recently](https://github.com/swgillespie/boehm_gc_allocator/issues/2).
+{% endmarginblock %}
 (The actual interface is unlikely to be so
-simple<sup>[2](#footnote2)</sup>, but the point is, there is a wide
+simple, but the point is, there is a wide
 design space to be explored here.)
 
 #### Interoperation with a "black box" GC
@@ -293,7 +329,7 @@ the code outside the VM is never given addresses of objects on the
 heap. Instead, such foreign code only has *handles* that indirectly
 point to those objects.
 
-<p id="target_anchor_black_box_gc_1"></p>
+<p id="target_anchor_black_box_gc_1" class="fullwidth"></p>
 <script>
 var stack = { id: "cluster_stack", label: "Stack", is_subgraph: true };
 var rust_heap = { rankdir:"LR", id: "cluster_rust_heap", label: "Rust Heap", is_subgraph: true };
@@ -338,7 +374,7 @@ gc_heap[3] = y;
 gc_heap[4] = z;
 
 var objects = [stack, gc_heap, rust_heap];
-post_objects("target_anchor_black_box_gc_1", objects, { rankdir:"LR", nodesep:0.2 });
+post_objects("target_anchor_black_box_gc_1", objects, { rankdir:"LR", nodesep:0.2, no_dims: true });
 </script>
 
 In this setting, direct references to objects *never* escape the black
@@ -366,7 +402,8 @@ assert!(handle_next(handle_next(handle_y).unwrap()).is_none());
 handle_set_next(handle_x, handle_next(handle_y));
 ```
 
-<p id="target_anchor_black_box_gc_2"></p>
+<p id="target_anchor_black_box_gc_2" class="fullwidth"></p>
+
 <script>
 var stack = { id: "cluster_stack", label: "Stack", is_subgraph: true };
 var rust_heap = { rankdir:"LR", id: "cluster_rust_heap", label: "Rust Heap", is_subgraph: true };
@@ -413,14 +450,14 @@ gc_heap[3] = y;
 gc_heap[4] = z;
 
 var objects = [stack, gc_heap, rust_heap];
-post_objects("target_anchor_black_box_gc_2", objects, { rankdir:"LR", nodesep:0.2 });
+post_objects("target_anchor_black_box_gc_2", objects, { rankdir:"LR", nodesep:0.2, no_dims: true });
 </script>
 
 In case it isn't clear, supporting interoperation with this kind of
 "black box" GC requires very little from the Rust side; potentially
 nothing at all. The object addresses are hidden, so the GC could move
 an object and update its address in the handle
-array.<sup>[3](#footnote3)</sup>
+array.{% marginnote 'handles' 'If the GC Heap is exposed to multiple threads, then there are complications even with the seemingly simple task of updating the handles array, since one must ensure that if two threads have consistent views of the heap object graph.' %}
 
 However, this so-called interoperation is also quite limited in
 expressiveness. The defining property of the "black box" GC, the fact
@@ -429,8 +466,66 @@ means that we cannot expose `&`-references to the objects or the state
 within them, which means we cannot use these objects with the large
 number of Rust functions that operate on `&`-references and slices.
 
+### Digression on limits of "black box" GC
+
+In addition to the limits regarding exposure of `&`-references
+described above, another issue with "black box" GC is that
+it is not clear whether client code hooking
+into the "black box" GC would be able to instantiate the GC objects
+with its own types.
+
+For example, one might think that the objects in the GC heap could be
+defined via type parameterization: `fn bbox_gc_alloc<T>(t: T) -> Handle;`
+would create an object on the heap, copy `t` into it, and return a
+handle to that object.
+
+For this to work, the layout of the list cells in the GC heap above
+would need to look something like this:
+
+```rust
+struct Cons<T> {
+    data: T,
+    next: Option<GcPtr<Cons<T>>>,
+}
+```
+
+Then constructing a list like the "X, Y, Z" in the heap diagrams
+above would look like:
+
+```rust
+let handle_z = bbox_gc_alloc(Cons { data: 'c', next: None });
+let handle_y = bbox_gc_alloc(Cons { data: 'b', next: None });
+let handle_x = bbox_gc_alloc(Cons { data: 'a', next: None });
+handle_set_next(handle_y, handle_z);
+handle_set_next(handle_x, handle_y);
+```
+
+But there are two (related) problems:
+
+  1. How does one instantiate values that *unconditionally* hold
+     pointers to GC objects.  (For example, how do we allocate an
+     instance of `Cons<GcPtr<Cons<char>>>`?)
+     <br></br>
+     We have already established that the address in the GC Heap are
+     not exposed outside of the heap, so the approach of passing in an
+     `T` value that we used with `bbox_gc_alloc` above will not work,
+     because we cannot put our hands on a `GcPtr` to use for the
+     `data` field.
+
+  2. How do we get from the `struct` definition for `Cons` to
+     the family of methods defined in terms of `Handle`?
+     <br></br>
+     Every occurrence of `GcPtr` used for the struct (as seen from
+     the point of view of the GC Heap) needs to be mapped to
+     a `Handle` in the functions exposed to the functions outside
+     of GC Heap.
+
+It could be that there is a solution to the problem lurking here; but
+as stated in the text, interoperation with a fully "black box" GC is
+not a primary goal.
+
 Also, the hidden object addresses may complicate client code trying to
-instantiate GC objects with its own types.<sup>[4](#footnote4)</sup>
+instantiate GC objects with its own types.
 
 In any case, interoperation with a blackbox GC is not a primary goal,
 since the level of indirection and handles array maintainence is not
@@ -656,7 +751,7 @@ gc_heap[0] = c;
 gc_heap[1] = x;
 
 var objects = [stack, gc_heap, rust_heap];
-post_objects("target_anchor_demo_composition_2", objects, { rankdir:"LR", nodesep:0.2 });
+post_objects("target_anchor_demo_composition_2", objects, { rankdir:"LR", nodesep:0.2, no_dims: true });
 </script>
 
 
@@ -757,7 +852,7 @@ gc_heap[2] = c;
 rust_heap[0] = o;
 
 var objects = [stack, gc_heap, rust_heap];
-post_objects("target_anchor_demo_garbage_cycle_thru_rust_heap", objects, { rankdir:"LR", nodesep:0.2 });
+post_objects("target_anchor_demo_garbage_cycle_thru_rust_heap", objects, { rankdir:"LR", nodesep:0.2, no_dims: true});
 </script>
 
 In the above diagram, "C" and "O" are unreachable by the program
@@ -780,99 +875,3 @@ This post was dedicated to identifying criteria that we would
 like GC-integration with Rust to satisfy.
 
 Next up: Why is it hard to satisfy the above criteria simultaneously?
-
-## Footnotes
-
-<a name="footnote1">1.</a> In particular, smart-pointers in Rust
-require at *least* support for the [`Deref` trait][Deref trait], so
-that dereferencing expressions like `gc_ref.field` and
-`gc_ref.method()` are compiled into code that resolves the `gc_ref` to
-a`&T` reference (and then the subsequent field or method lookup is
-performed with respect to that `&T` reference).
-
-As a reminder, the signature of the `deref` method, before lifetime
-elision, is `fn deref<'a>(&'a self) -> &'a Self::Target` (and the
-associated `Target` type for `Gc<T>` would be `T`).  Thus, the
-compiler will ensure that the reference `&'a T` we extract from the
-`gc_ref` outlive the `gc_ref` itself; this means that the `gc_ref`
-will be one (of potentially many) root keeping the object from being
-reclaimed for the entirety of the lifetime `'a`, and thus supporting
-the `Deref` trait design on a `Gc<T>` could work seamlessly on an
-entirely non-moving GC.
-
-However, moving objects complicate `Deref` support; now one needs to
-ensure not only that the object remains alive, but also that the
-reference `&'a T` consistently points to the same object that the
-original `Gc<T>` pointed to, and that references to substructure
-within the object (e.g. a `&Left` within a `Gc<(Left, Right)>` that
-has been deref'ed to `&(Left, Right)`) also retain a consistent view
-of the heap structure. Doing this at an acceptable cost is difficult;
-I may discuss this more in a future post.
-
-<a name="footnote2">2.</a> In truth, even for a conservative collector
-like [BDW][], one must do more than just "swap in a new
-`#[allocator]`" to actually integrate it properly; the current Rust
-standard library does not provide a way to intercept thread spawns and
-register the new stack associated with each new thread. I only
-realized this only
-[recently](https://github.com/swgillespie/boehm_gc_allocator/issues/2).
-
-<a name="footnote3">3.</a> If the GC Heap is exposed to multiple
-threads, then there are complications even with the seemingly simple
-task of updating the handles array, since one must ensure that if two
-threads have consistent views of the heap object graph.
-
-<a name="footnote4">4.</a> It is not clear whether client code hooking
-into the "black box" GC would be able to instantiate the GC objects
-with its own types.
-
-For example, one might think that the objects in the GC heap could be
-defined via type parameterization: `fn bbox_gc_alloc<T>(t: T) -> Handle;`
-would create an object on the heap, copy `t` into it, and return a
-handle to that object.
-
-For this to work, the layout of the list cells in the GC heap above
-would need to look something like this:
-
-```rust
-struct Cons<T> {
-    data: T,
-    next: Option<GcPtr<Cons<T>>>,
-}
-```
-
-Then constructing a list like the "X, Y, Z" in the heap diagrams
-above would look like:
-
-```rust
-let handle_z = bbox_gc_alloc(Cons { data: 'c', next: None });
-let handle_y = bbox_gc_alloc(Cons { data: 'b', next: None });
-let handle_x = bbox_gc_alloc(Cons { data: 'a', next: None });
-handle_set_next(handle_y, handle_z);
-handle_set_next(handle_x, handle_y);
-```
-
-But there are two (related) problems:
-
-  1. How does one instantiate values that *unconditionally* hold
-     pointers to GC objects.  (For example, how do we allocate an
-     instance of `Cons<GcPtr<Cons<char>>>`?)
-
-     We have already established that the address in the GC Heap are
-     not exposed outside of the heap, so the approach of passing in an
-     `T` value that we used with `bbox_gc_alloc` above will not work,
-     because we cannot put our hands on a `GcPtr` to use for the
-     `data` field.
-
-  2. How do we get from the `struct` definition for `Cons` to
-     the family of methods defined in terms of `Handle`?
-
-     Every occurrence of `GcPtr` used for the struct (as seen from
-     the point of view of the GC Heap) needs to be mapped to
-     a `Handle` in the functions exposed to the functions outside
-     of GC Heap.
-
-It could be that there is a solution to the problem lurking here; but
-as stated in the text, interoperation with a fully "black box" GC is
-not a primary goal.
-
