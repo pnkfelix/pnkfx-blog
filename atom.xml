@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-12-22T13:02:38+01:00</updated>
+  <updated>2015-12-22T13:44:34+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -1559,7 +1559,7 @@ in <code>Gc&lt;_&gt;</code>.)</p>
 
 <p>This results in a stack and heap modelled by this picture.</p>
 
-<p id="target_anchor_gc_demo_1"></p>
+<p id="target_anchor_gc_demo_1" class="fullwidth"></p>
 
 
 <script>
@@ -1603,7 +1603,7 @@ gc_heap[6] = g;
 gc_heap[7] = h;
 
 var objects = [stack, gc_heap];
-post_objects("target_anchor_gc_demo_1", objects, { rankdir:"LR", nodesep:0.2 });
+post_objects("target_anchor_gc_demo_1", objects, { rankdir:"LR", nodesep:0.2, no_dims:true });
 </script>
 
 
@@ -1650,8 +1650,35 @@ provide a garbage collector (that all clients of <code>Gc&lt;T&gt;</code> would 
 link in), or at least standardize a fixed API that third-party
 collector implementations would have to satisfy to support <code>Gc&lt;T&gt;</code>.</p>
 
-<p>Second, it is difficult to provide the ergonomics that one expects
-from a smart-pointer<sup><a href="#footnote1">1</a></sup> type analogous to
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+In particular, smart-pointers in Rust
+require at <em>least</em> support for the <a href="https://doc.rust-lang.org/std/ops/trait.Deref.html"><code>Deref</code> trait</a>, so
+that dereferencing expressions like <code>gc_ref.field</code> and
+<code>gc_ref.method()</code> are compiled into code that resolves the <code>gc_ref</code> to
+a<code>&amp;T</code> reference (and then the subsequent field or method lookup is
+performed with respect to that <code>&amp;T</code> reference).
+<br></br>
+As a reminder, the signature of the <code>deref</code> method, before lifetime
+elision, is <code>fn deref&lt;'a&gt;(&amp;'a self) -&gt; &amp;'a Self::Target</code> (and the
+associated <code>Target</code> type for <code>Gc&lt;T&gt;</code> would be <code>T</code>).  Thus, the
+compiler will ensure that the reference <code>&amp;'a T</code> we extract from the
+<code>gc_ref</code> outlive the <code>gc_ref</code> itself; this means that the <code>gc_ref</code>
+will be one (of potentially many) root keeping the object from being
+reclaimed for the entirety of the lifetime <code>'a</code>, and thus supporting
+the <code>Deref</code> trait design on a <code>Gc&lt;T&gt;</code> could work seamlessly on an
+entirely non-moving GC.
+<br></br>
+However, moving objects complicate <code>Deref</code> support; now one needs to
+ensure not only that the object remains alive, but also that the
+reference <code>&amp;'a T</code> consistently points to the same object that the
+original <code>Gc&lt;T&gt;</code> pointed to, and that references to substructure
+within the object (e.g. a <code>&amp;Left</code> within a <code>Gc&lt;(Left, Right)&gt;</code> that
+has been deref'ed to <code>&amp;(Left, Right)</code>) also retain a consistent view
+of the heap structure. Doing this at an acceptable cost is difficult;
+I may discuss this more in a future post.
+</span>
+Second, it is difficult to provide the ergonomics that one expects
+from a smart-pointer type analogous to
 <code>Rc&lt;T&gt;</code>.</p>
 
 <p>Okay, so that&rsquo;s the outline of the tradeoffs of providing
@@ -1725,13 +1752,22 @@ interoperation might end up looking something like this:</p>
 interface that the third-party collector implementation has to conform
 with.</p>
 
-<p>In a simple world (e.g., a conservative collector designed to
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+In truth, even for a conservative collector like <a href="http://www.hboehm.info/gc/">BDW</a>,
+one must do more than just &ldquo;swap in a new <code>#[allocator]</code>&rdquo; to actually
+integrate it properly; the current Rust standard library does not
+provide a way to intercept thread spawns and register the new
+stack associated with each new thread.
+<br></br>
+I only realized this only <a href="https://github.com/swgillespie/boehm_gc_allocator/issues/2">recently</a>.
+</span>
+In a simple world (e.g., a conservative collector designed to
 interoperate with C/C++, such as <a href="http://www.hboehm.info/gc/">boehm-demers-weiser</a> (BDW)), this
 standard interface could be nothing more than just &ldquo;swap in a
 different <a href="https://doc.rust-lang.org/nightly/book/custom-allocators.html">#[allocator] crate</a> that your GC provides.&rdquo;</p>
 
 <p>(The actual interface is unlikely to be so
-simple<sup><a href="#footnote2">2</a></sup>, but the point is, there is a wide
+simple, but the point is, there is a wide
 design space to be explored here.)</p>
 
 <a name="Interoperation.with.a..black.box..GC"></a>
@@ -1754,7 +1790,7 @@ the code outside the VM is never given addresses of objects on the
 heap. Instead, such foreign code only has <em>handles</em> that indirectly
 point to those objects.</p>
 
-<p id="target_anchor_black_box_gc_1"></p>
+<p id="target_anchor_black_box_gc_1" class="fullwidth"></p>
 
 
 <script>
@@ -1801,7 +1837,7 @@ gc_heap[3] = y;
 gc_heap[4] = z;
 
 var objects = [stack, gc_heap, rust_heap];
-post_objects("target_anchor_black_box_gc_1", objects, { rankdir:"LR", nodesep:0.2 });
+post_objects("target_anchor_black_box_gc_1", objects, { rankdir:"LR", nodesep:0.2, no_dims: true });
 </script>
 
 
@@ -1845,7 +1881,9 @@ the fields and maps them to handles when necessary:</p>
 
 
 
-<p id="target_anchor_black_box_gc_2"></p>
+<p id="target_anchor_black_box_gc_2" class="fullwidth"></p>
+
+
 
 
 <script>
@@ -1894,7 +1932,7 @@ gc_heap[3] = y;
 gc_heap[4] = z;
 
 var objects = [stack, gc_heap, rust_heap];
-post_objects("target_anchor_black_box_gc_2", objects, { rankdir:"LR", nodesep:0.2 });
+post_objects("target_anchor_black_box_gc_2", objects, { rankdir:"LR", nodesep:0.2, no_dims: true });
 </script>
 
 
@@ -1902,7 +1940,7 @@ post_objects("target_anchor_black_box_gc_2", objects, { rankdir:"LR", nodesep:0.
 &ldquo;black box&rdquo; GC requires very little from the Rust side; potentially
 nothing at all. The object addresses are hidden, so the GC could move
 an object and update its address in the handle
-array.<sup><a href="#footnote3">3</a></sup></p>
+array.<label for='handles' class='margin-toggle'> &#8853;</label><input type='checkbox' id='handles' class='margin-toggle'/><span class='marginnote'>If the GC Heap is exposed to multiple threads, then there are complications even with the seemingly simple task of updating the handles array, since one must ensure that if two threads have consistent views of the heap object graph. </span></p>
 
 <p>However, this so-called interoperation is also quite limited in
 expressiveness. The defining property of the &ldquo;black box&rdquo; GC, the fact
@@ -1911,8 +1949,78 @@ means that we cannot expose <code>&amp;</code>-references to the objects or the 
 within them, which means we cannot use these objects with the large
 number of Rust functions that operate on <code>&amp;</code>-references and slices.</p>
 
+<a name="Digression.on.limits.of..black.box..GC"></a>
+<h3>Digression on limits of &ldquo;black box&rdquo; GC</h3>
+
+<p>In addition to the limits regarding exposure of <code>&amp;</code>-references
+described above, another issue with &ldquo;black box&rdquo; GC is that
+it is not clear whether client code hooking
+into the &ldquo;black box&rdquo; GC would be able to instantiate the GC objects
+with its own types.</p>
+
+<p>For example, one might think that the objects in the GC heap could be
+defined via type parameterization: <code>fn bbox_gc_alloc&lt;T&gt;(t: T) -&gt; Handle;</code>
+would create an object on the heap, copy <code>t</code> into it, and return a
+handle to that object.</p>
+
+<p>For this to work, the layout of the list cells in the GC heap above
+would need to look something like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">struct</span> <span class="n">Cons</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">data</span><span class="o">:</span> <span class="n">T</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">next</span><span class="o">:</span> <span class="nb">Option</span><span class="o">&lt;</span><span class="n">GcPtr</span><span class="o">&lt;</span><span class="n">Cons</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&gt;&gt;</span><span class="p">,</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then constructing a list like the &ldquo;X, Y, Z&rdquo; in the heap diagrams
+above would look like:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="kd">let</span> <span class="n">handle_z</span> <span class="o">=</span> <span class="n">bbox_gc_alloc</span><span class="p">(</span><span class="n">Cons</span> <span class="p">{</span> <span class="n">data</span><span class="o">:</span> <span class="sc">&#39;c&#39;</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">});</span>
+</span><span class='line'><span class="kd">let</span> <span class="n">handle_y</span> <span class="o">=</span> <span class="n">bbox_gc_alloc</span><span class="p">(</span><span class="n">Cons</span> <span class="p">{</span> <span class="n">data</span><span class="o">:</span> <span class="sc">&#39;b&#39;</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">});</span>
+</span><span class='line'><span class="kd">let</span> <span class="n">handle_x</span> <span class="o">=</span> <span class="n">bbox_gc_alloc</span><span class="p">(</span><span class="n">Cons</span> <span class="p">{</span> <span class="n">data</span><span class="o">:</span> <span class="sc">&#39;a&#39;</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">});</span>
+</span><span class='line'><span class="n">handle_set_next</span><span class="p">(</span><span class="n">handle_y</span><span class="p">,</span> <span class="n">handle_z</span><span class="p">);</span>
+</span><span class='line'><span class="n">handle_set_next</span><span class="p">(</span><span class="n">handle_x</span><span class="p">,</span> <span class="n">handle_y</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>But there are two (related) problems:</p>
+
+<ol>
+<li><p>How does one instantiate values that <em>unconditionally</em> hold
+ pointers to GC objects.  (For example, how do we allocate an
+ instance of <code>Cons&lt;GcPtr&lt;Cons&lt;char&gt;&gt;&gt;</code>?)
+ <br></br>
+ We have already established that the address in the GC Heap are
+ not exposed outside of the heap, so the approach of passing in an
+ <code>T</code> value that we used with <code>bbox_gc_alloc</code> above will not work,
+ because we cannot put our hands on a <code>GcPtr</code> to use for the
+ <code>data</code> field.</p></li>
+<li><p>How do we get from the <code>struct</code> definition for <code>Cons</code> to
+ the family of methods defined in terms of <code>Handle</code>?
+ <br></br>
+ Every occurrence of <code>GcPtr</code> used for the struct (as seen from
+ the point of view of the GC Heap) needs to be mapped to
+ a <code>Handle</code> in the functions exposed to the functions outside
+ of GC Heap.</p></li>
+</ol>
+
+
+<p>It could be that there is a solution to the problem lurking here; but
+as stated in the text, interoperation with a fully &ldquo;black box&rdquo; GC is
+not a primary goal.</p>
+
 <p>Also, the hidden object addresses may complicate client code trying to
-instantiate GC objects with its own types.<sup><a href="#footnote4">4</a></sup></p>
+instantiate GC objects with its own types.</p>
 
 <p>In any case, interoperation with a blackbox GC is not a primary goal,
 since the level of indirection and handles array maintainence is not
@@ -2158,7 +2266,7 @@ gc_heap[0] = c;
 gc_heap[1] = x;
 
 var objects = [stack, gc_heap, rust_heap];
-post_objects("target_anchor_demo_composition_2", objects, { rankdir:"LR", nodesep:0.2 });
+post_objects("target_anchor_demo_composition_2", objects, { rankdir:"LR", nodesep:0.2, no_dims: true });
 </script>
 
 
@@ -2269,7 +2377,7 @@ gc_heap[2] = c;
 rust_heap[0] = o;
 
 var objects = [stack, gc_heap, rust_heap];
-post_objects("target_anchor_demo_garbage_cycle_thru_rust_heap", objects, { rankdir:"LR", nodesep:0.2 });
+post_objects("target_anchor_demo_garbage_cycle_thru_rust_heap", objects, { rankdir:"LR", nodesep:0.2, no_dims: true});
 </script>
 
 
@@ -2292,113 +2400,6 @@ this. (This was the design bug that led me to withdraw my &ldquo;Take II&rdquo;
 like GC-integration with Rust to satisfy.</p>
 
 <p>Next up: Why is it hard to satisfy the above criteria simultaneously?</p>
-
-<a name="Footnotes"></a>
-<h2>Footnotes</h2>
-
-<p><a name="footnote1">1.</a> In particular, smart-pointers in Rust
-require at <em>least</em> support for the <a href="https://doc.rust-lang.org/std/ops/trait.Deref.html"><code>Deref</code> trait</a>, so
-that dereferencing expressions like <code>gc_ref.field</code> and
-<code>gc_ref.method()</code> are compiled into code that resolves the <code>gc_ref</code> to
-a<code>&amp;T</code> reference (and then the subsequent field or method lookup is
-performed with respect to that <code>&amp;T</code> reference).</p>
-
-<p>As a reminder, the signature of the <code>deref</code> method, before lifetime
-elision, is <code>fn deref&lt;'a&gt;(&amp;'a self) -&gt; &amp;'a Self::Target</code> (and the
-associated <code>Target</code> type for <code>Gc&lt;T&gt;</code> would be <code>T</code>).  Thus, the
-compiler will ensure that the reference <code>&amp;'a T</code> we extract from the
-<code>gc_ref</code> outlive the <code>gc_ref</code> itself; this means that the <code>gc_ref</code>
-will be one (of potentially many) root keeping the object from being
-reclaimed for the entirety of the lifetime <code>'a</code>, and thus supporting
-the <code>Deref</code> trait design on a <code>Gc&lt;T&gt;</code> could work seamlessly on an
-entirely non-moving GC.</p>
-
-<p>However, moving objects complicate <code>Deref</code> support; now one needs to
-ensure not only that the object remains alive, but also that the
-reference <code>&amp;'a T</code> consistently points to the same object that the
-original <code>Gc&lt;T&gt;</code> pointed to, and that references to substructure
-within the object (e.g. a <code>&amp;Left</code> within a <code>Gc&lt;(Left, Right)&gt;</code> that
-has been deref'ed to <code>&amp;(Left, Right)</code>) also retain a consistent view
-of the heap structure. Doing this at an acceptable cost is difficult;
-I may discuss this more in a future post.</p>
-
-<p><a name="footnote2">2.</a> In truth, even for a conservative collector
-like <a href="http://www.hboehm.info/gc/">BDW</a>, one must do more than just &ldquo;swap in a new
-<code>#[allocator]</code>&rdquo; to actually integrate it properly; the current Rust
-standard library does not provide a way to intercept thread spawns and
-register the new stack associated with each new thread. I only
-realized this only
-<a href="https://github.com/swgillespie/boehm_gc_allocator/issues/2">recently</a>.</p>
-
-<p><a name="footnote3">3.</a> If the GC Heap is exposed to multiple
-threads, then there are complications even with the seemingly simple
-task of updating the handles array, since one must ensure that if two
-threads have consistent views of the heap object graph.</p>
-
-<p><a name="footnote4">4.</a> It is not clear whether client code hooking
-into the &ldquo;black box&rdquo; GC would be able to instantiate the GC objects
-with its own types.</p>
-
-<p>For example, one might think that the objects in the GC heap could be
-defined via type parameterization: <code>fn bbox_gc_alloc&lt;T&gt;(t: T) -&gt; Handle;</code>
-would create an object on the heap, copy <code>t</code> into it, and return a
-handle to that object.</p>
-
-<p>For this to work, the layout of the list cells in the GC heap above
-would need to look something like this:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">struct</span> <span class="n">Cons</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">data</span><span class="o">:</span> <span class="n">T</span><span class="p">,</span>
-</span><span class='line'>    <span class="n">next</span><span class="o">:</span> <span class="nb">Option</span><span class="o">&lt;</span><span class="n">GcPtr</span><span class="o">&lt;</span><span class="n">Cons</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&gt;&gt;</span><span class="p">,</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Then constructing a list like the &ldquo;X, Y, Z&rdquo; in the heap diagrams
-above would look like:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="kd">let</span> <span class="n">handle_z</span> <span class="o">=</span> <span class="n">bbox_gc_alloc</span><span class="p">(</span><span class="n">Cons</span> <span class="p">{</span> <span class="n">data</span><span class="o">:</span> <span class="sc">&#39;c&#39;</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">});</span>
-</span><span class='line'><span class="kd">let</span> <span class="n">handle_y</span> <span class="o">=</span> <span class="n">bbox_gc_alloc</span><span class="p">(</span><span class="n">Cons</span> <span class="p">{</span> <span class="n">data</span><span class="o">:</span> <span class="sc">&#39;b&#39;</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">});</span>
-</span><span class='line'><span class="kd">let</span> <span class="n">handle_x</span> <span class="o">=</span> <span class="n">bbox_gc_alloc</span><span class="p">(</span><span class="n">Cons</span> <span class="p">{</span> <span class="n">data</span><span class="o">:</span> <span class="sc">&#39;a&#39;</span><span class="p">,</span> <span class="n">next</span><span class="o">:</span> <span class="nb">None</span> <span class="p">});</span>
-</span><span class='line'><span class="n">handle_set_next</span><span class="p">(</span><span class="n">handle_y</span><span class="p">,</span> <span class="n">handle_z</span><span class="p">);</span>
-</span><span class='line'><span class="n">handle_set_next</span><span class="p">(</span><span class="n">handle_x</span><span class="p">,</span> <span class="n">handle_y</span><span class="p">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>But there are two (related) problems:</p>
-
-<ol>
-<li><p>How does one instantiate values that <em>unconditionally</em> hold
- pointers to GC objects.  (For example, how do we allocate an
- instance of <code>Cons&lt;GcPtr&lt;Cons&lt;char&gt;&gt;&gt;</code>?)</p>
-
-<p> We have already established that the address in the GC Heap are
- not exposed outside of the heap, so the approach of passing in an
- <code>T</code> value that we used with <code>bbox_gc_alloc</code> above will not work,
- because we cannot put our hands on a <code>GcPtr</code> to use for the
- <code>data</code> field.</p></li>
-<li><p>How do we get from the <code>struct</code> definition for <code>Cons</code> to
- the family of methods defined in terms of <code>Handle</code>?</p>
-
-<p> Every occurrence of <code>GcPtr</code> used for the struct (as seen from
- the point of view of the GC Heap) needs to be mapped to
- a <code>Handle</code> in the functions exposed to the functions outside
- of GC Heap.</p></li>
-</ol>
-
-
-<p>It could be that there is a solution to the problem lurking here; but
-as stated in the text, interoperation with a fully &ldquo;black box&rdquo; GC is
-not a primary goal.</p>
 ]]></content>
   </entry>
   
