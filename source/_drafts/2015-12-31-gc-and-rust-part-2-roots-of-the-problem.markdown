@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "GC and Rust Part 2: The Roots of the Problem"
-date: 2015-12-22 15:00
+date: 2015-12-31 24:00
 comments: true
 categories: gc rust
 ---
@@ -24,8 +24,6 @@ $(document).ready(function(){
     $('body').addClass('collapse-sidebar');
 });
 </script>
-
-TODO: terminology clean-up: "field", "member", or ...?
 
 (The body of this post makes heavy use of client-side rendering,
 because of author idiosyncrasies.  You may need to wait a moment while
@@ -64,9 +62,9 @@ I claim is *still* hard to solve for Rust in general.
 
 Throughout most of this post, I will be discussing various data
 structures to support GC activity. When providing concrete examples of
-the runtime state, the goal will be to represent something analogous
+the runtime state, the goal will usually be to represent something analogous
 to the following
-fragment of an object graph.
+fragment of an object graph (or some small variant thereof).
 
 <p id="running_example_graph"></p>
 
@@ -113,7 +111,7 @@ Instances of structured data are
 shown with a label{% sidenote 'labels-for-presentation' 'These labels are often a presentation artifact: they do not necessarily denote a header word in the memory itself.' %}
 (`StructY`, `O: StructZ`, `X`, `Y`) that identifies the data and usually includes its type.
 
-Often I will omit the type of a local variable or field (such as with
+Often I will omit the type of a local variable or member (such as with
 `o`, `y`, and `z` above). If I want to specify the type, I will do so via
 type-ascription
 syntax (e.g. `x: Gc<X>` above), and if I want to specify the particular
@@ -126,7 +124,7 @@ Every object on the GC Heap will have a label that is derived from the
 type `T` and, if necessary, a numeric suffix to disambiguate between
 multiple instances of `T` on the GC Heap.
 
-I have denoted the contents of the objects on the GC Heap by
+I have denoted the *contents* of the objects on the GC Heap by
 ellipses, because I am focusing in this post
 solely on problems related to finding the roots;
 the contents of the objects referenced by the roots, and the remaining 
@@ -139,7 +137,7 @@ type of the contents (e.g. `O: StructZ` above).
 I will tend to present examples of structured data with trivial
 structs that have one field; e.g. `StructY` has a single field `y`,
 and likewise `StructZ` has just the field `z`. (Of course in real
-programs there will be structs with multiple fields, but single field
+programs there will be structs and arrays with multiple members, but single field
 structs simplifies the diagrams here.)
 
 ## Rust complicates Root Identification
@@ -182,9 +180,9 @@ In particular, in the above picture, every entry in `handles` maps to
 exactly one `Handle` value on the "Stack" or "Rust Heap." This leads
 to some troubling questions.
 
- * What happens when you clone `boxed_o`: does that need to create a new entry in the hidden `handles` array?
+ * What happens when you clone the box referenced by the local variable `o`: does that need to create a new entry in the hidden `handles` array?
 
- * How about if you instead dropped `boxed_o` -- does that clear the `handles` entry at index 2?
+ * How about if you instead dropped `o` -- does that clear the `handles` entry at index 2?
 
    * If not, when/how will the root set be updated appropriately?
 
@@ -195,8 +193,8 @@ to some troubling questions.
 
 {% marginblock %}
 Just to be clear: the joke here is that we are basically
-suggesting layering a semi-automated memory management system
-on top of our memory management system. We should be striving to
+suggesting layering our own semi-automated memory management system
+on top of a third-party automated memory management system. We should be striving to
 *reduce* our problems to smaller subproblems, not *reproducing* them.
 {% endmarginblock %}
 ... maybe we should rethink our overall approach here.
@@ -245,22 +243,22 @@ post_objects("target_anchor_black_box_gc_1", objects, { rankdir:"LR", nodesep:0.
 
 ### Scanning the Mutator State
 
-So let's assume we are *not* dealing with a complete black box, in the
-sense that the main program (aka "the mutator") and the GC are going
+So let's assume we are *not* dealing with a complete black box;
+instead, the main program (aka "the mutator") and the GC are going
 to collaborate in some more fundamental way.
 
 In other words, let's assume that roots are allowed to leak outside of
 the GC Heap and into the mutator; no more black-box.
 
 Once we have roots floating around under the control of the mutator,
-we need to talk about identifying those roots by scanning the mutator
+we need to talk about identifying those roots by inspecting/querying the mutator
 state.
 
 Some relevant issues to consider on this topic:
 
  * Are all roots *precisely* identified as roots?
 
- * Where can the roots reside in the mutator? (Frames on the stack? The Rust Heap?)
+ * Where can the roots reside in the mutator? (Frames on the stack? Boxes on the Rust Heap?)
 
  * How is the GC informed about the location of the roots in the mutator?
 
@@ -279,17 +277,17 @@ questions, especially how it relates to Rust.
 
 ## Are roots precisely identified?
 
-The roots are somewhere in mutator managed memory.
+The roots are somewhere in mutator-managed memory.
 The GC will need to know the values held in those roots,
-and possibly will need to update those values if the associated
+and possibly will need to update those values if the referenced
 objects are moved in memory.
 
 There are two basic options for root scanning: conservative or precise.
 
-A *conservative* scan is needed when some of the values on the stack
+A *conservative* scan is needed when some of the values
 might hold an actual root, but might also hold a false-positive.
 
-This arises when, for example, there is not enough type: information
+This arises when, for example, there is not enough type information
 available{% sidenote 'avail-types' '"Not available" can mean that that the information is absent; but it can also mean that it is *untrusted*. I discuss this further below.' %}
 to know that a scanned word is meant to be interpreted by the mutator as an object
 reference.
@@ -297,7 +295,7 @@ reference.
 If there are any conservatively-scanned roots, the GC needs to
 validate their values (e.g. by checking if it lies within one of the
 ranges of addresses used for the objects allocated on the GC Heap),
-and keep any object potentially referenced by such alive.
+and trace any object potentially referenced by such values.
 
 An earlier discussion on "[pinning][]" established that any object
 referenced by a conservatively scanned root
@@ -307,14 +305,13 @@ Therefore, integrating with a GC that does not support object pinning
 will require we scan the roots precisely, not conservatively.
 
 {% marginblock %}
-One problem with assuring that a word on the stack is precisely identified
+One problem with ensuring that a word on the stack is precisely identified
 is that it requires close cooperation with the compiler backend.
 E.g. if the backend (LLVM in the case of `rustc`) is permitted to reuse a stack
 slot for two values of different types (and disjoint extents) then
 we need to take care that the GC knows whether the current value in that slot
 is or is not a GC reference.
-(LLVM is a very expressive backend, so it provides ways to ensure
-that this scenario does not happen, but it is not automatic.)
+(LLVM is a very expressive backend, so it provides mechanisms to account for this scenario, but it is not automatic.)
 {% endmarginblock %}
 A given word in memory can be *precisely* scanned
 if we ensure that the root's location in memory is
@@ -323,14 +320,14 @@ I will say that such a root can be
 "unambiguously classified" only if such assurance is established.
 
 Often the ability to classify a root unambiguously is derived from
-static types, runtime type: information, and global system invariants.
+static types, runtime type information, and global system invariants.
 
 Where the roots might reside influences the design space for
-unambiguous classification here quite a bit.
-For example, if all roots are fields in heap-allocated objects, then
+unambiguous classification quite a bit.
+For example, if all roots are members of heap-allocated objects, then
 the allocator might embed a type-tag in the header of such an object,
 or segregate objects into disjoint regions of memory based on that
-type:.
+type.
 
 Therefore, we will explore the question of where roots reside next.
 
@@ -355,14 +352,13 @@ somewhat simultaneously.
 {% marginblock %}
 This list is leaving out some other options,
 such as *completely unconstrained*, where roots might live in memory
-unknown to the both the GC and Rust runtime (which is basically
-a non-option, since I do not see a way it could work, at least not without
-programmers instrumenting foreign code with calls to root registration
+unknown to the both the GC and Rust runtime (I do not see a way this first option could work without
+requiring programmers to instrument foreign code with calls to root registration
 and deregistration functions),
-or keeping the roots solely on a *shadow stack*
+or keeping the roots solely on a [shadow stack][henderson]
 with structure isomorphic to the actual stack, but not vulnerable
-to disruption due to compiler optimizations (which I am leaving
-out since it is known to carry a significant performance penalty).
+to disruption due to compiler code transformations (I am omitting
+this second option since it is known to carry a significant performance penalty).
 {% endmarginblock %}
 
 Consider these options for locations where roots can reside:
@@ -378,7 +374,7 @@ Consider these options for locations where roots can reside:
 
 ### Roots Constrained To Boxed Values (Option 1)
 
-If roots are *solely* stored in fields of boxed values, then we might
+If roots are *solely* stored in members of boxed values, then we might
 store runtime-type metadata in an allocator-injected header.
 
 This option is seductive: Adding a header via the runtime system's
@@ -391,7 +387,7 @@ whose head is known to the GC (and thus the answer to "how does the
 GC scan the roots?" is just "it walks the list"{% sidenote 'list-maintenance' 'Do not be fooled; it would not be that easy. In particular, properly maintaining such a list could complicate the interface between the mutator and the values holding the roots.' %}).
 
 However,
-constraining roots to solely live in fields of boxed
+constraining roots to solely live in members of boxed
 values may not be feasible in Rust as it stands today.
 For example, one is always free to move the instance of `T` out of a
 `Box<T>`, deallocating the backing storage but moving the `T` into
@@ -409,8 +405,8 @@ roots.
 This search of the stack can be guided by
 "stack maps":{% sidenote 'stack maps' 'For details, see [Compiler Support for Garbage Collection in a Statically Typed Language][diwan-moss-hudson], Diwan Moss and Hudson (1992).' %}
 compiler-generated metadata providing a mapping from a
-code address{% sidenote 'code-address' 'This mapping need not have entries for *every* address from the program instruction stream; we can make do with just the addresses of *call-sites* into runtime routines that could call into the GC.' %}
-to the set of stack slots{% sidenote 'stack-map-slot' 'More specifically, the offset in a stack frame of a slot, and any relevant type: information needed by the GC the compiler opted to include.' %}
+code address{% sidenote 'code-address' 'This mapping need not have an entry for *every* address from the program instruction stream; we can make do with just the addresses of *call-sites* into runtime routines that could cause a GC.' %}
+to the set of stack slots{% sidenote 'stack-map-slot' 'More specifically, the offset in a stack frame of a slot, and any relevant type information needed by the GC the compiler opted to include.' %}
 that hold values of interest.
 
 However, restricting the roots to live solely on the stack may be
@@ -431,11 +427,11 @@ for its integration with the Spidermonkey GC.)
 
 Or, if we are willing to extend the language itself,
 we might add marker trait `Immobile` that indicates
-that values of such type: *cannot* be
-moved.{% sidenote 'hunh-moved' 'Proper integration of `trait Immobile` would probably require a way type: for type: parameters to opt-out of the capability to be moved, e.g. via a `T: ?Moved` anti-bound, analogous to the `?Sized` anti-bound.<br></br>Yes, I just made up the term "anti-bound."' %}
+that values of such type *cannot* be
+moved.{% sidenote 'hunh-moved' 'Proper integration of `trait Immobile` would probably require a way type for type parameters to opt-out of the capability to be moved, e.g. via a `T: ?Moved` anti-bound, analogous to the `?Sized` anti-bound.<br></br>Yes, I just made up the term "anti-bound."' %}
 
 But either of those options are just ways of enforcing a restriction,
-and it will outlaw certain kinds of program composition.{% sidenote 'vec-composition' 'An easy example of this: If you want to be able to put a root as part of the element type: in a `Vec<T>`, then that `T` has to be able to be moved (since expanding the capacity of a vec will require moving its contents from one backing buffer to another).' %}
+and it will outlaw certain kinds of program composition.{% sidenote 'vec-composition' 'An easy example of this: If you want to be able to put a root as part of the element type in a `Vec<T>`, then that `T` has to be able to be moved (since expanding the capacity of a vec will require moving its contents from one backing buffer to another).' %}
 
 In practice, we simply may be better off lifting such restrictions
 entirely. So, let us now consider our remaining option:
@@ -472,7 +468,7 @@ The support for the GC's root scanning capability can be seen as having three pa
     to support a potential root scan by the GC in a future, and,
 
  3. What meta-data must be gathered and emitted by the compiler
-    to support root-scanning.
+    to support root-scanning?
 
 One idea for enabling easy GC root traversal was mentioned earlier:
 why not collect the roots together in a linked list structure?
@@ -559,17 +555,17 @@ with objects, and thus requires updating of the interior links.
 So, what other options do we have?
 
 Having the GC traverse the memory of the call-stack, even with the assistance of a stack map
-to provide precise type: information, will not give us the locations of all the roots,
+to provide precise type information, will not give us the locations of all the roots,
 since some are located on the Rust Heap. A stack map cannot hold the addresses of the blocks
 of memory dynamically allocated for a box on the heap.
 
-However, the stack map *can* hold the type: information for the local
+However, the stack map *can* hold the type information for the local
 variables, and that sounds promising: If we record that a local
-variable `o` has type: `Box<Struct>`, then treat the contents of the
+variable `o` has type `Box<Struct>`, then treat the contents of the
 box on the heap as owned by the stack, so that when we encounter `o`
 during the stack scan, we can recursively scan the memory of the box,
-using the type: `Struct` to inform the scan about how to treat each of
-the embedded fields.
+using the type `Struct` to inform the scan about how to treat each of
+the embedded members.
 
 {% marginblock %}
 I have slightly modified the running example to show two instances
@@ -794,7 +790,7 @@ Here are some options for how to handle unsafe pointers:
    objects on the GC Heap alive.
 
  * Punt the question: if a program uses GC, any use of unsafe pointers
-   (as local variables or as fields in structures) needs some sort of
+   (as local variables or as members of structures) needs some sort of
    attribute or annotation that tells the GC how to interpret the value
    held in the unsafe pointer.
 
@@ -899,6 +895,11 @@ This post is already quite long, but more importantly, I want to get some
 concrete data first on the overheads imposed by the metadata injected during
 allocation in state of the art conservative GC's like [BDW][].
 
+----
+
+Oh, and finally (but completely unrelated): Happy 2016 to all the hackers out there!
+Hope that you copied over all your live objects from 2015!
+
 <script>
 // ## References
 //
@@ -912,3 +913,5 @@ allocation in state of the art conservative GC's like [BDW][].
 [on-llvms-gc]: https://eschew.wordpress.com/2013/10/28/on-llvms-gc-infrastructure/
 
 [diwan-moss-hudson]: http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.56.1641
+
+[henderson]: http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.19.5570
