@@ -100,7 +100,13 @@ function render_subgraph(subgraph, options, indent, seen_ids, todo) {
             if ((typeof object) == "function") { continue; }
             var val = ""+object;
             if (val == "[object Object]") { continue; }
-            content += idx + "=\"" + val + "\";";
+            if (val === true) {
+                content += idx + "=true;";
+            } else if (val === false) {
+                content += idx + "=false;";
+            } else {
+                content += idx + "=\"" + val + "\";";
+            }
         }
     }
     for (idx in subgraph) {
@@ -297,8 +303,15 @@ function unhide(object) {
     return object;
 }
 
+function edge_with_flags(target, flags) {
+    var edge = { is_edge: true, target: target };
+    for (i in flags) {
+        edge[flags[i]] = true;
+    }
+}
+
 function dashed_edge(target) {
-    return { is_edge: true, target: target, style: "dashed" };
+    return edge_with_flags(target, ["dashed"]);
 }
 
 function highlighted_edge(target) {

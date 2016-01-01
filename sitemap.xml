@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+    <loc>http://blog.pnkfx.org/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/</loc>
+    <lastmod>2016-01-01T00:00:00+01:00</lastmod>
+  </url>
+  <url>
     <loc>http://blog.pnkfx.org/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/</loc>
     <lastmod>2015-12-19T22:30:00+01:00</lastmod>
   </url>
@@ -123,9 +127,6 @@
   </url>
   <url>
     <loc>http://blog.pnkfx.org/blog/categories/css/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/posts/2/</loc>
   </url>
   <url>
     <loc>http://blog.pnkfx.org/linked/graphs.html</loc>

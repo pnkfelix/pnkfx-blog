@@ -685,16 +685,13 @@ above would look like:</p>
 </ol>
 
 
-<p>It could be that there is a solution to the problem lurking here; but
-as stated in the text, interoperation with a fully &ldquo;black box&rdquo; GC is
-not a primary goal.</p>
-
 <p>Also, the hidden object addresses may complicate client code trying to
 instantiate GC objects with its own types.</p>
 
-<p>In any case, interoperation with a blackbox GC is not a primary goal,
-since the level of indirection and handles array maintainence is not
-ideal.</p>
+<p>It could be that there is a solution to the problem lurking here.
+In any case, interoperation with a blackbox GC is not a primary goal,
+since the level of indirection and (perhaps more crucially)
+the maintenance of the handles array are not ideal.</p>
 
 <a name="Objectives.and.Requirements..oh.no..now.five.problems."></a>
 <h2>Objectives and Requirements (oh no, now five problems)</h2>
@@ -1139,6 +1136,10 @@ like GC-integration with Rust to satisfy.</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/">GC and Rust Part 2: The Roots of the Problem</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Surfaces and Signatures: Component Privacy versus Dependence</a>
       </li>
     
@@ -1152,10 +1153,6 @@ like GC-integration with Rust to satisfy.</p>
     
       <li class="post">
         <a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">GC and Rust Part 1: Specifying the Problem</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a>
       </li>
     
   </ul>
@@ -1217,7 +1214,7 @@ like GC-integration with Rust to satisfy.</p>
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2015 - Felix S. Klock II -
+  Copyright &copy; 2016 - Felix S. Klock II -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

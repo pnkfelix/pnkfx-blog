@@ -4,7 +4,7 @@
   <title><![CDATA[Category: gc | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/gc/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2015-12-22T13:44:34+01:00</updated>
+  <updated>2016-01-01T09:31:16+01:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,6 +12,943 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[GC and Rust Part 2: The Roots of the Problem]]></title>
+    <link href="http://blog.pnkfx.org/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/"/>
+    <updated>2016-01-01T00:00:00+01:00</updated>
+    <id>http://blog.pnkfx.org/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem</id>
+    <content type="html"><![CDATA[<p>This is the second in a series of posts will discuss why garbage
+collection is hard, especially for Rust, and brainstorm about
+solutions to the problems we face.</p>
+
+<p>The <a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">previous post</a> wrote down some criteria for integration.
+Now I want to delve into why satisfying those criteria is hard,
+at least in Rust as it stands today.</p>
+
+<!-- more -->
+
+
+
+
+<script>
+// See https://github.com/imathis/octopress/issues/424
+$(document).ready(function(){
+    $('body').addClass('collapse-sidebar');
+});
+</script>
+
+
+<p>(The body of this post makes heavy use of client-side rendering,
+because of author idiosyncrasies.  You may need to wait a moment while
+the supporting Javascript loads.)</p>
+
+<script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"></script>
+
+
+<script src="http://blog.pnkfx.org/javascripts/js_to_dot.js" charset="utf-8"></script>
+
+
+<script src="http://blog.pnkfx.org/javascripts/gc_rendering.js" charset="utf-8"></script>
+
+
+<a name="Simplifying.Assumptions"></a>
+<h2>Simplifying Assumptions</h2>
+
+<p>Let us make some assumptions, so that we can focus on why
+this problem is still hard even <em>after</em> being somewhat simplified.</p>
+
+<p>As previously discussed in <a href="http://blog.pnkfx.org/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/#how-gc-works">the proloque</a>, one can think of the
+main program and the GC as <em>coroutines</em>. We will continue with that
+mind set.</p>
+
+<p>Let us assume (for now) that the main program will not be running
+concurrently with the GC;<label for='&lsquo;no-concurrent-mutation&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;no-concurrent-mutation&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;This </span> or more specifically, the main program
+thread(s) will not read or write any GC roots nor GC Heap-allocated
+objects concurrently with the GC thread.</p>
+
+<p>In addition, let us assume that in the context of the GC coroutine, no
+mutator roots are live values in CPU registers;<label for='&lsquo;no-register-roots&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;no-register-roots&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;This </span>
+ in other words, all mutator register values that the GC might care about
+will have been saved somewhere in a mutator stack frame
+(and will be reloaded from those saved stack slots
+before subsequent use by the mutator).</p>
+
+<p>Again, these assumptions are <em>not</em> meant to be interpreted as specific
+requirements of Rust&rsquo;s final solution for GC; instead, they describe a
+simplified version of &ldquo;the GC integration problem&rdquo; that
+I claim is <em>still</em> hard to solve for Rust in general.</p>
+
+<p>Throughout most of this post, I will be discussing various data
+structures to support GC activity. When providing concrete examples of
+the runtime state, the goal will usually be to represent something analogous
+to the following
+fragment of an object graph (or some small variant thereof).</p>
+
+<p id="running_example_graph"></p>
+
+
+
+
+<script>
+var stack = { id: "cluster_stack", label: "Stack", is_subgraph: true };
+var rust_heap = { rankdir:"LR", id: "cluster_rust_heap", label: "Rust Heap", is_subgraph: true };
+var gc_heap = { id: "cluster_gc_heap", label: "GC Heap", is_subgraph: true, style: "rounded" };
+
+var o = object_record("O: StructZ", "<f0> field z (root)");
+o.id = "O";
+var x = object_record("X1", "...");
+var y = object_record("Y", "...");
+var x2 = object_record("X2", "...");
+x.style = "rounded";
+y.style = "rounded";
+x2.style = "rounded";
+
+var local_x = { id: "local_x", label: "local x: Gc&lt;X&gt; (root)", shape: "record" };
+var local_y = object_record("StructY", "<f0> field y (root)");
+var local_o = { id: "local_o", label: "local o = Box(O)", shape: "record" };
+
+stack[1] = local_x;
+stack[2] = local_y;
+stack[3] = local_o;
+local_x.ref = edge_from_to_ports(":e", ":id:nw", x);
+local_y.ref = edge_from_to_ports(":f0", ":id", y);
+local_o.box = edge_to_port(":id", o);
+
+o.f0 = edge_from_to_ports(":f0", ":id:w", x);
+rust_heap[0] = o;
+
+gc_heap[2] = x;
+gc_heap[3] = y;
+gc_heap[4] = x2;
+
+var objects = [stack, gc_heap, rust_heap];
+
+stack.rank = "same";
+
+post_objects("running_example_graph", objects, { rankdir:"LR", nodesep:0.2, no_dims: true, with_code: false });
+</script>
+
+
+<p>Instances of structured data are
+shown with a label<label for='&lsquo;labels-for-presentation&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;labels-for-presentation&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;These </span>
+(<code>StructY</code>, <code>O: StructZ</code>, <code>X</code>, <code>Y</code>) that identifies the data and usually includes its type.</p>
+
+<p>Often I will omit the type of a local variable or member (such as with
+<code>o</code>, <code>y</code>, and <code>z</code> above). If I want to specify the type, I will do so via
+type-ascription
+syntax (e.g. <code>x: Gc&lt;X&gt;</code> above), and if I want to specify the particular
+value given to a variable, I will use assignment syntax (e.g. <code>o = Box(O)</code> above).
+(Note that the assigned value should always be redundant, since there
+should also be an arrow linking to the assigned value in these diagrams.)</p>
+
+<p>Values of type <code>Gc&lt;T&gt;</code> hold references to objects allocated on the GC Heap.
+Every object on the GC Heap will have a label that is derived from the
+type <code>T</code> and, if necessary, a numeric suffix to disambiguate between
+multiple instances of <code>T</code> on the GC Heap.</p>
+
+<p>I have denoted the <em>contents</em> of the objects on the GC Heap by
+ellipses, because I am focusing in this post
+solely on problems related to finding the roots;
+the contents of the objects referenced by the roots, and the remaining
+transitively reachable objects beyond them, are not important to us today.</p>
+
+<p>Objects allocated on the Rust Heap will tend to be boxes owned by
+values of type <code>Box&lt;T&gt;</code>; they will have an identifying label and the
+type of the contents (e.g. <code>O: StructZ</code> above).</p>
+
+<p>I will tend to present examples of structured data with trivial
+structs that have one field; e.g. <code>StructY</code> has a single field <code>y</code>,
+and likewise <code>StructZ</code> has just the field <code>z</code>. (Of course in real
+programs there will be structs and arrays with multiple members, but single field
+structs simplifies the diagrams here.)</p>
+
+<a name="Rust.complicates.Root.Identification"></a>
+<h2>Rust complicates Root Identification</h2>
+
+<p>At some point, probably in response to a memory allocation request,
+the GC is going to initiate a collection.</p>
+
+<p>That requires traversing the root set of the main program, since those
+roots will be the kernel that the GC uses to identify the reachable
+objects.</p>
+
+<p>What are the options for traversing the root-set?</p>
+
+<a name="Do.we.need.to.solve.this.problem."></a>
+<h3>Do we need to solve this problem?</h3>
+
+<p>One approach is to &ldquo;define away the problem&rdquo;; one version of this I
+<a href="#Interoperation.with.a..black.box..GC">previously described</a> is to
+hide the root-set itself inside the black-box abstraction
+that we are interoperating with, and expose only handles that
+point to the roots.</p>
+
+<p id="target_anchor_black_box_gc_1" class="fullwidth"></p>
+
+
+<p>The key principle in this picture is that the GC is meant to be
+completely isolated from the state of the main program; when it does a
+collection, the GC just starts from the root-set hidden within the
+<code>handles</code> in the GC-heap. It does not inspect any state in the boxes
+labelled &ldquo;Stack&rdquo; nor &ldquo;Rust Heap.&rdquo;</p>
+
+<p>But a big problem with this, that I failed to stress in my earlier
+post, is that you now need to <em>manage</em> the hidden-root set stored in
+the <code>handles</code> array.</p>
+
+<p>In particular, in the above picture, every entry in <code>handles</code> maps to
+exactly one <code>Handle</code> value on the &ldquo;Stack&rdquo; or &ldquo;Rust Heap.&rdquo; This leads
+to some troubling questions.</p>
+
+<ul>
+<li><p>What happens when you clone the box referenced by the local variable <code>o</code>: does that need to create a new entry in the hidden <code>handles</code> array?</p></li>
+<li><p>How about if you instead dropped <code>o</code> &ndash; does that clear the <code>handles</code> entry at index 2?</p>
+
+<ul>
+<li><p>If not, when/how will the root set be updated appropriately?</p></li>
+<li><p>If so, are previously cleared entries reused? If so, how do you determine whether an entry is available for reuse &ndash; do you keep a mark-bit on each handle?</p></li>
+</ul>
+</li>
+<li><p>This handle array maintenance sounds expensive, maybe
+we should instead periodically scan the stack to look for pointers to handles &hellip;</p></li>
+</ul>
+
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Just to be clear: the joke here is that we are basically
+suggesting layering our own semi-automated memory management system
+on top of a third-party automated memory management system. We should be striving to
+<em>reduce</em> our problems to smaller subproblems, not <em>reproducing</em> them.
+</span>
+&hellip; maybe we should rethink our overall approach here.</p>
+
+<script>
+var stack = { id: "cluster_stack", label: "Stack", is_subgraph: true };
+var rust_heap = { rankdir:"LR", id: "cluster_rust_heap", label: "Rust Heap", is_subgraph: true };
+var gc_heap = { id: "cluster_gc_heap", label: "GC Heap", is_subgraph: true, style: "rounded" };
+var handles = object_record("handles", "<h2> Y | <h1> X | <h3> X");
+
+var c = object_record("C", "<f0> Gc(X) | <f1> Box(O)");
+c.style = "rounded";
+var o = object_record("O: StructZ", "<f0> field z = Handle(2)");
+o.id = "O";
+var x = object_record("X", "...");
+var y = object_record("Y", "...");
+x.style = "rounded";
+y.style = "rounded";
+var local_x = { id: "local_x", label: "local x = Handle(1)", shape: "record" };
+var local_y = { id: "local_y", label: "StructY | <f0> field y = Handle(0)", shape: "record" };
+var local_o = { id: "local_o", label: "local o = Box(O)", shape: "record" };
+
+o.f0 = edge_from_to_ports(":f0", ":h3", handles);
+
+c.f0 = edge_from_to_ports(":f0", ":id", x);
+c.f1 = edge_from_to_ports(":f1", ":id", o);
+
+stack[1] = local_x;
+stack[2] = local_y;
+stack[3] = local_o;
+
+rust_heap[0] = o;
+gc_heap[0] = handles;
+handles.x1 = edge_from_to_ports(":h1", ":id", x);
+handles.y2 = edge_from_to_ports(":h2", ":id", y);
+handles.x3 = edge_from_to_ports(":h3", ":id:sw", x);
+local_x.handle = edge_to_port(":h1", handles);
+local_y.handle = edge_from_to_ports(":f0", ":h2", handles);
+local_o.box = edge_to_port(":id", o);
+gc_heap[2] = x;
+gc_heap[3] = y;
+
+var objects = [stack, gc_heap, rust_heap];
+post_objects("target_anchor_black_box_gc_1", objects, { rankdir:"LR", nodesep:0.2, no_dims: true });
+</script>
+
+
+<a name="Scanning.the.Mutator.State"></a>
+<h3>Scanning the Mutator State</h3>
+
+<p>So let&rsquo;s assume we are <em>not</em> dealing with a complete black box;
+instead, the main program (aka &ldquo;the mutator&rdquo;) and the GC are going
+to collaborate in some more fundamental way.</p>
+
+<p>In other words, let&rsquo;s assume that roots are allowed to leak outside of
+the GC Heap and into the mutator; no more black-box.</p>
+
+<p>Once we have roots floating around under the control of the mutator,
+we need to talk about identifying those roots by inspecting/querying the mutator
+state.</p>
+
+<p>Some relevant issues to consider on this topic:</p>
+
+<ul>
+<li><p>Are all roots <em>precisely</em> identified as roots?</p></li>
+<li><p>Where can the roots reside in the mutator? (Frames on the stack? Boxes on the Rust Heap?)</p></li>
+<li><p>How is the GC informed about the location of the roots in the mutator?</p></li>
+<li><p>How does the mutator itself access the roots?</p></li>
+<li><p>What information might the mutator maintain on the behalf of the GC?</p></li>
+<li><p>Might a given root&rsquo;s value (i.e. the address of the referenced
+object on the GC Heap) be changed by the GC during the collection
+(in other words, does the GC rule out <a href="http://blog.pnkfx.org/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/#pinning-support">pinning</a>)?</p></li>
+</ul>
+
+
+<p>Let&rsquo;s explore some of the problems associated with these
+questions, especially how it relates to Rust.</p>
+
+<a name="Are.roots.precisely.identified."></a>
+<h2>Are roots precisely identified?</h2>
+
+<p>The roots are somewhere in mutator-managed memory.
+The GC will need to know the values held in those roots,
+and possibly will need to update those values if the referenced
+objects are moved in memory.</p>
+
+<p>There are two basic options for root scanning: conservative or precise.</p>
+
+<p>A <em>conservative</em> scan is needed when some of the values
+might hold an actual root, but might also hold a false-positive.</p>
+
+<p>This arises when, for example, there is not enough type information
+available<label for='&lsquo;avail-types&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;avail-types&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;&ldquo;Not </span>
+to know that a scanned word is meant to be interpreted by the mutator as an object
+reference.</p>
+
+<p>If there are any conservatively-scanned roots, the GC needs to
+validate their values (e.g. by checking if it lies within one of the
+ranges of addresses used for the objects allocated on the GC Heap),
+and trace any object potentially referenced by such values.</p>
+
+<p>An earlier discussion on &ldquo;<a href="http://blog.pnkfx.org/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/#pinning-support">pinning</a>&rdquo; established that any object
+referenced by a conservatively scanned root
+cannot be moved by the GC.
+Therefore, integrating with a GC that does not support object pinning
+(such as a fully-copying collector)
+will require we scan the roots precisely, not conservatively.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+One problem with ensuring that a word on the stack is precisely identified
+is that it requires close cooperation with the compiler backend.
+E.g. if the backend (LLVM in the case of <code>rustc</code>) is permitted to reuse a stack
+slot for two values of different types (and disjoint extents) then
+we need to take care that the GC knows whether the current value in that slot
+is or is not a GC reference.
+(LLVM is a very expressive backend, so it provides mechanisms to account for this scenario, but it is not automatic.)
+</span>
+A given word in memory can be <em>precisely</em> scanned
+if we ensure that the root&rsquo;s location in memory is
+unambiguously interpreted by the mutator as an object reference.
+I will say that such a root can be
+&ldquo;unambiguously classified&rdquo; only if such assurance is established.</p>
+
+<p>Often the ability to classify a root unambiguously is derived from
+static types, runtime type information, and global system invariants.</p>
+
+<p>Where the roots might reside influences the design space for
+unambiguous classification quite a bit.
+For example, if all roots are members of heap-allocated objects, then
+the allocator might embed a type-tag in the header of such an object,
+or segregate objects into disjoint regions of memory based on that
+type.</p>
+
+<p>Therefore, we will explore the question of where roots reside next.</p>
+
+<a name="Where.are.the.roots."></a>
+<h2>Where are the roots?</h2>
+
+<p>There are two components to the question &ldquo;where are the roots?&rdquo;:</p>
+
+<ul>
+<li><p>Where can roots <em>possibly</em> reside?</p></li>
+<li><p>Where do the roots <em>actually</em> reside?</p></li>
+</ul>
+
+
+<p>The first bullet is a question about the system as a whole; it is a
+question that we must answer as designers.</p>
+
+<p>The second bullet is about encoding how the GC will look up the memory
+addresses of the roots (potentially with the mutator&rsquo;s help) every
+time it wants to initiate a root scan.</p>
+
+<p>The two parts interact with each other, so we will address them both
+somewhat simultaneously.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+This list is leaving out some other options,
+such as <em>completely unconstrained</em>, where roots might live in memory
+unknown to the both the GC and Rust runtime (I do not see a way this first option could work without
+requiring programmers to instrument foreign code with calls to root registration
+and deregistration functions),
+or keeping the roots solely on a <a href="http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.19.5570">shadow stack</a>
+with structure isomorphic to the actual stack, but not vulnerable
+to disruption due to compiler code transformations (I am omitting
+this second option since it is known to carry a significant performance penalty).
+</span></p>
+
+<p>Consider these options for locations where roots can reside:</p>
+
+<ol>
+<li><p><em>Constrained To Boxed Values</em>:
+ Solely found embedded in boxed values on the Rust Heap.</p></li>
+<li><p><em>Constrained To Stack</em>:
+ Stored solely on the program stack, and</p></li>
+<li><p><em>Rust-Managed But Otherwise Unconstrained</em>:
+ Stored either on the stack or embedded in boxed values on Rust Heap.</p></li>
+</ol>
+
+
+<a name="Roots.Constrained.To.Boxed.Values..Option.1."></a>
+<h3>Roots Constrained To Boxed Values (Option 1)</h3>
+
+<p>If roots are <em>solely</em> stored in members of boxed values, then we might
+store runtime-type metadata in an allocator-injected header.</p>
+
+<p>This option is seductive: Adding a header via the runtime system&rsquo;s
+<code>#[allocator]</code> crate could sidestep a significant amount of compiler
+integration (maybe even all of it).</p>
+
+<p>There are some interesting ideas to explore from that starting point,
+such as collecting all such boxed values together in a linked list
+whose head is known to the GC (and thus the answer to &ldquo;how does the
+GC scan the roots?&rdquo; is just &ldquo;it walks the list&rdquo;<label for='&lsquo;list-maintenance&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;list-maintenance&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Do </span>).</p>
+
+<p>However,
+constraining roots to solely live in members of boxed
+values may not be feasible in Rust as it stands today.
+For example, one is always free to move the instance of <code>T</code> out of a
+<code>Box&lt;T&gt;</code>, deallocating the backing storage but moving the <code>T</code> into
+another location, such as a stack-allocated local variable.</p>
+
+<p>Let&rsquo;s look at the remaining two
+approaches.</p>
+
+<a name="Roots.Constrained.To.Stack..Option.2."></a>
+<h3>Roots Constrained To Stack (Option 2)</h3>
+
+<p>If roots can be stored directly on the stack (i.e. options 2 or 3 above),
+then when the GC initiates a root scan, it will need to find those
+roots.</p>
+
+<p>This search of the stack can be guided by
+&ldquo;stack maps&rdquo;:<label for='&lsquo;stack' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;stack' class='margin-toggle'/><span class='sidenote'>maps&rsquo; </span>
+compiler-generated metadata providing a mapping from a
+code address<label for='&lsquo;code-address&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;code-address&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;This </span>
+to the set of stack slots<label for='&lsquo;stack-map-slot&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;stack-map-slot&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;More </span>
+that hold values of interest.</p>
+
+<p>However, restricting the roots to live solely on the stack may be
+problematic for much the same reason that plagues the earlier idea of
+restricting roots to boxed values: in Rust today, one is always free
+to move instances of <code>T</code> from a stack-local slot into a member of a
+boxed value.</p>
+
+<p>In some circumstances, we might be able to counteract these
+&ldquo;freedom of movement&rdquo; issues in a backwards-compatible manner with a compiler
+plugin (lint) that analyzes the source and trys to flag any code might move a root
+into an illegal location. (<a href="https://servo.org/">Servo</a> already uses <a href="https://blog.mozilla.org/research/2014/08/26/javascript-servos-only-garbage-collector/#custom-static-analysis">a lint like this</a>
+for its integration with the Spidermonkey GC.)</p>
+
+<p>Or, if we are willing to extend the language itself,
+we might add marker trait <code>Immobile</code> that indicates
+that values of such type <em>cannot</em> be
+moved.<label for='&lsquo;hunh-moved&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;hunh-moved&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Proper </span></p>
+
+<p>But either of those options are just ways of enforcing a restriction,
+and it will outlaw certain kinds of program composition.<label for='&lsquo;vec-composition&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;vec-composition&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;An </span></p>
+
+<p>In practice, we simply may be better off lifting such restrictions
+entirely. So, let us now consider our remaining option:
+allowing roots to be embedded in values on the stack or boxed on the Rust Heap.</p>
+
+<a name="Roots.are.Rust-Managed..But.Otherwise.Unconstrained..Option.3."></a>
+<h2>Roots are Rust-Managed, But Otherwise Unconstrained (Option 3)</h2>
+
+<p>Now we come to what is probably the most realistic option for Rust/GC integration:
+allowing roots to reside anywhere that the Rust compiler or runtime knows about.</p>
+
+<p>Arguably, I might well have <em>started</em> this discussion with this
+approach, since it is by definition the most general of the three, and
+thus if we <em>do</em> have a solution for it, then why not jump to it?</p>
+
+<p>The reason I left it for last is that I suspect any design we adopt
+for GC integration in Rust 1.x is going to require a hybrid of the
+approaches described in the prior two sections (allocator-injected
+metadata <em>and</em> stack maps), and therefore I wanted to outline them in
+isolation, before I started mixing them together.</p>
+
+<a name="GC:..Where.are.the.roots....Mutator:......"></a>
+<h2>GC: &ldquo;Where are the roots?&rdquo;, Mutator: &ldquo;&hellip;&rdquo;</h2>
+
+<p>If we assume that roots can be embedded in values either on the stack
+or in boxes on the Rust Heap, then how will the GC find the roots when
+it needs to scan them?</p>
+
+<p>The support for the GC&rsquo;s root scanning capability can be seen as having three parts:</p>
+
+<ol>
+<li><p>What work does the GC itself do, on the fly, to determine the roots
+when it needs them,</p></li>
+<li><p>What work does the mutator do (if any) as it executes the
+program<label for='&lsquo;mutator-work&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;mutator-work&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;&ldquo;Mutator </span>
+to support a potential root scan by the GC in a future, and,</p></li>
+<li><p>What meta-data must be gathered and emitted by the compiler
+to support root-scanning?</p></li>
+</ol>
+
+
+<p>One idea for enabling easy GC root traversal was mentioned earlier:
+why not collect the roots together in a linked list structure?
+Towards this goal, we might
+consider maintaining an intrusive
+ links forming a list of all roots.</p>
+
+<p id="intrusive_list_of_roots"></p>
+
+
+
+
+<script>
+var stack = { id: "cluster_stack", label: "Stack", is_subgraph: true };
+var rust_heap = { rankdir:"LR", id: "cluster_rust_heap", label: "Rust Heap", is_subgraph: true };
+var gc_heap = { id: "cluster_gc_heap", label: "GC Heap", is_subgraph: true, style: "rounded" };
+
+var o = object_record("O: StructZ", "<f0> field z (root) | <next> next_root = null");
+o.id = "O";
+var x = object_record("X", "...");
+var y = object_record("Y", "...");
+x.style = "rounded";
+y.style = "rounded";
+
+var local_x = object_record("local_x", "<f0> (root) | <next> next_root");
+var local_y = object_record("StructY", "<f0> field y (root) | <next> next_root");
+var local_o = { id: "local_o", label: "local o = Box(O)", shape: "record" };
+
+stack[1] = local_x;
+stack[2] = local_y;
+stack[3] = local_o;
+
+local_x.ref = edge_from_to_ports(":f0", ":id", x);
+local_y.ref = edge_from_to_ports(":f0", ":id", y);
+local_o.box = edge_to_port(":id", o);
+
+o.f0 = edge_from_to_ports(":f0", ":id:sw", x);
+rust_heap[0] = o;
+
+gc_heap[2] = x;
+gc_heap[3] = y;
+
+root_head = object_record("roots", "<next> next_root");
+var anonymous_xy = {id: "anonymous_xy", style:"invis", shape: "point"};
+
+// gc_heap[0] = root_head;
+
+root_head.next = edge_from_to_ports(":next", ":f0", local_x);
+local_x.next = edge_from_to_ports(":next", ":f0", anonymous_xy);
+local_x.next.arrowhead = "none";
+
+anonymous_xy.ref = edge_to_port(":f0:w", local_y);
+local_y.next = edge_from_to_ports(":next", ":f0", o);
+
+// anonymous_yx.ref.constraint = "false";
+// anonymous_yx.ref.arrowhead = "none";
+
+stack.rank = "same";
+
+// root_head.presentation = invisible_edge(anonymous_yx);
+// local_y.presentation = invisible_edge(local_x);
+// local_x.presentation = invisible_edge(anonymous_xy);
+// stack[4] = anonymous_yx;
+
+var objects = [stack, gc_heap, rust_heap, root_head];
+post_objects("intrusive_list_of_roots", objects, { rankdir:"LR", nodesep:0.2, no_dims: true, with_code: false });
+</script>
+
+
+<p>This is an <em>intrusive</em> list because the pointers in the list are
+pointing into the interiors of objects. This allows traversing the
+list to be completely uniform (from the viewpoint of the GC,
+it looks like nothing more than a linked list of pairs).
+In this scenario, the GC does essentially <em>zero</em> work on-the-fly
+to find the locations of the roots;
+maintaining the list would become the reponsibility of the mutator as
+it creates and moves values with embedded roots.</p>
+
+<p>However, Rust today does not have good support for intrusive data structures (<a href="https://github.com/rust-lang/rfcs/issues/417">RFC Issue 417</a>).
+The already-mentioned capability to move values freely, as well as the
+capability to swap a pre-existing <code>T</code> with the value held beind a
+<code>&amp;mut T</code> reference, are among the reasons that intrusive structures
+are difficult today, since it changes the addresses associated
+with objects, and thus requires updating of the interior links.</p>
+
+<p>So, what other options do we have?</p>
+
+<p>Having the GC traverse the memory of the call-stack, even with the assistance of a stack map
+to provide precise type information, will not give us the locations of all the roots,
+since some are located on the Rust Heap. A stack map cannot hold the addresses of the blocks
+of memory dynamically allocated for a box on the heap.</p>
+
+<p>However, the stack map <em>can</em> hold the type information for the local
+variables, and that sounds promising: If we record that a local
+variable <code>o</code> has type <code>Box&lt;Struct&gt;</code>, then treat the contents of the
+box on the heap as owned by the stack, so that when we encounter <code>o</code>
+during the stack scan, we can recursively scan the memory of the box,
+using the type <code>Struct</code> to inform the scan about how to treat each of
+the embedded members.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I have slightly modified the running example to show two instances
+of the local <code>x</code> on the call-stack in separate frames, each corresponding
+to a distinct (recursive) invocation of the function <code>fn f</code>.
+<br></br>
+This is just to bring home the point that the stack map info encodes
+static information about the frame for a function (at a particular call-site),
+and thus recursive invocations of the same function can potentially
+reuse the same entry in the stack map.
+</span></p>
+
+<p id="stack_map_boxes"></p>
+
+
+
+
+<script>
+var stack = { id: "cluster_stack", label: "Stack", is_subgraph: true };
+var rust_heap = { rankdir:"LR", id: "cluster_rust_heap", label: "Rust Heap", is_subgraph: true };
+var gc_heap = { id: "cluster_gc_heap", label: "GC Heap", is_subgraph: true, style: "rounded" };
+
+var frame0 = { id: "cluster_frame0", label: "frame0: fn f()", is_subgraph: true };
+var frame1 = { id: "cluster_frame1", label: "frame1: fn g()", is_subgraph: true };
+var frame2 = { id: "cluster_frame2", label: "frame2: fn h()", is_subgraph: true };
+var frame3 = { id: "cluster_frame3", label: "frame3: fn f()", is_subgraph: true };
+
+var o = object_record("O: StructZ", "<f0> field z (root) = Gc(X1)");
+o.id = "O";
+var x  = object_record("X1", "...");
+var x2 = object_record("X2", "...");
+var y = object_record("Y", "...");
+x.style = "rounded";
+x2.style = "rounded";
+y.style = "rounded";
+
+var local_x = { id: "local_x1", label: "local x (root) = Gc(X1)", shape: "record" };
+var local_x2 = { id: "local_x2", label: "local x (root) = Gc(X2)", shape: "record" };
+
+var local_y = object_record("StructY", "<f0> field y (root) = Gc(Y)");
+var local_o = { id: "local_o", label: "local o = Box(O)", shape: "record" };
+
+frame0[0] = local_x;
+frame1[0] = local_y;
+frame2[0] = local_o;
+frame3[0] = local_x2;
+
+// frame3[0].ref = { is_edge: true, target: frame2[0], ltail: frame3.id, lhead: frame2.id, constraint: false };
+// frame2[0].ref = { is_edge: true, target: frame1[0], ltail: frame2.id, lhead: frame1.id, constraint: false };
+// frame1[0].ref = { is_edge: true, target: frame0[0], ltail: frame1.id, lhead: frame0.id, constraint: false };
+
+stack[0] = frame0;
+stack[1] = frame1;
+stack[2] = frame2;
+stack[3] = frame3;
+
+local_x.ref = edge_to_port(":id:nw", x);
+local_x2.ref = edge_to_port(":id:sw", x2);
+local_y.ref = edge_from_to_ports(":f0", ":id", y);
+local_o.box = edge_to_port(":id", o);
+
+o.f0 = edge_from_to_ports(":f0", ":id:w", x);
+rust_heap[0] = o;
+
+gc_heap[2] = x;
+gc_heap[3] = y;
+gc_heap[4] = x2;
+
+var objects = [stack, gc_heap, rust_heap];
+
+stack.rank = "same";
+
+post_objects("stack_map_boxes", objects, { rankdir:"LR", nodesep:0.2, compound: true, no_dims: true, with_code: false });
+</script>
+
+
+<p>The principle is that when control shifts to the GC coroutine,
+it walks through the stack backtrace, consulting the stack
+map for each callsite.</p>
+
+<pre><code>stack_map_info for callsite 0x0010_ABBA in fn f:
+  local x:
+    offset: [...]
+    type: Gc&lt;X&gt;
+
+stack_map_info for callsite 0x0020_BACA in fn g:
+  local _:
+    offset: [...]
+    type: StructY
+
+stack_map_info for callsite 0x0030_C0C0 in fn h:
+  local o:
+    offset: [...]
+    type: Box&lt;StructZ&gt;
+</code></pre>
+
+<p>From the stack map, it finds the offsets of relevant local variables
+within that stack frame, and the type information for those locals, so
+that it knows when it needs to dereference an pointer to inspect a
+block on the Rust Heap (such as the <code>Box(O)</code> in our running example).</p>
+
+<p>The GC will need separate meta-data describing the layout of each
+type, with the offset and type of each field of interest:</p>
+
+<pre><code>type_map_info for type StructY:
+  field y:
+    offset: [...]
+    type: Gc&lt;Y&gt;
+
+type_map_info for type Box&lt;StructZ&gt;:
+  field 0:
+    offset: [...]
+    type: StructZ
+
+type_map_info for type StructZ:
+  field z:
+    offset: [...]
+    type: Gc&lt;X&gt;
+</code></pre>
+
+<p>The boxed objects may themselves own other root-holding objects on the Rust Heap,
+like so:</p>
+
+<p id="nested_stack_map_boxes" class="fullwidth"></p>
+
+
+
+
+<script>
+var stack = { id: "cluster_stack", label: "Stack", is_subgraph: true };
+var rust_heap = { rankdir:"LR", id: "cluster_rust_heap", label: "Rust Heap", is_subgraph: true };
+var gc_heap = { id: "cluster_gc_heap", label: "GC Heap", is_subgraph: true, style: "rounded" };
+
+var frame0 = { id: "cluster_frame0", label: "frame0: fn f()", is_subgraph: true };
+var frame1 = { id: "cluster_frame1", label: "frame1: fn g()", is_subgraph: true };
+var frame2 = { id: "cluster_frame2", label: "frame2: fn h()", is_subgraph: true };
+var frame3 = { id: "cluster_frame3", label: "frame3: fn f()", is_subgraph: true };
+
+var o = object_record("O: StructB", "<f0> field b (root) = Box(Z)");
+o.id = "O";
+var b = object_record("Z: StructZ", "<f0> field z (root) = Gc(X1)");
+b.id = "B";
+var x  = object_record("X1", "...");
+var x2 = object_record("X2", "...");
+var y = object_record("Y", "...");
+x.style = "rounded";
+x2.style = "rounded";
+y.style = "rounded";
+
+var local_x = { id: "local_x1", label: "local x (root) = Gc(X1)", shape: "record" };
+var local_x2 = { id: "local_x2", label: "local x (root) = Gc(X2)", shape: "record" };
+
+var local_y = object_record("StructY", "<f0> field y (root) = Gc(Y)");
+var local_o = { id: "local_o", label: "local o = Box(O)", shape: "record" };
+
+frame0[0] = local_x;
+frame1[0] = local_y;
+frame2[0] = local_o;
+frame3[0] = local_x2;
+
+// frame3[0].ref = { is_edge: true, target: frame2[0], ltail: frame3.id, lhead: frame2.id, constraint: false };
+// frame2[0].ref = { is_edge: true, target: frame1[0], ltail: frame2.id, lhead: frame1.id, constraint: false };
+// frame1[0].ref = { is_edge: true, target: frame0[0], ltail: frame1.id, lhead: frame0.id, constraint: false };
+
+stack[0] = frame0;
+stack[1] = frame1;
+stack[2] = frame2;
+stack[3] = frame3;
+
+local_x.ref = edge_to_port(":id:w", x);
+local_x2.ref = edge_to_port(":id:sw", x2);
+local_y.ref = edge_from_to_ports(":f0", ":id", y);
+local_o.box = edge_to_port(":id", o);
+
+o.f0 = edge_from_to_ports(":f0", ":id:w", b);
+b.f0 = edge_from_to_ports(":f0", ":id:nw", x);
+rust_heap[0] = o;
+rust_heap[1] = b;
+
+gc_heap[2] = x;
+gc_heap[3] = y;
+gc_heap[4] = x2;
+
+var objects = [stack, gc_heap, rust_heap];
+
+stack.rank = "same";
+
+post_objects("nested_stack_map_boxes", objects, { rankdir:"LR", nodesep:0.2, compound: true, no_dims: true, with_code: false });
+</script>
+
+
+<p>To find all the roots starting from the stack
+in the presence of such ownership chains
+(which may go through other types like <code>Vec</code>),
+the GC will need to recursively traverse the boxes,
+or otherwise enqueue them onto a worklist structure.
+In principle, if we can prove that certain types never
+transitively own roots, then the GC should be able to skip traversing
+boxed data for such types.</p>
+
+<p>Using the stack map and type map data to find all roots transitively
+owned by the stack is a promising approach. What is the catch, if any?</p>
+
+<a name="Unsafe.Pointers"></a>
+<h2>Unsafe Pointers</h2>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+The <code>from_raw</code> method that converts a <code>*mut T</code> to <code>Box&lt;T&gt;</code>
+is unsafe, but <code>into_raw</code> is a safe method. Safe code
+can always convert a <code>Box&lt;T&gt;</code> to a <code>*mut T</code>, and clients
+expect it to also be reasonable to round-trip via <code>from_raw</code>.
+</span>
+What should we do about unsafe pointers <code>*mut T</code> and <code>*const T</code>.
+For example, it is not uncommon for library code to convert
+boxed data <code>Box&lt;T&gt;</code> to a <code>*mut T</code> or vice versa;
+that is an ownership transfer.</p>
+
+<p>I used <code>local o = Box(O)</code> above (where <code>o: Box&lt;StructB&gt;</code>),
+but it is entirely possible that <code>o</code> has type <code>*mut StructB</code>.</p>
+
+<p>Here are some options for how to handle unsafe pointers:</p>
+
+<ul>
+<li><p>Skip unsafe pointers during root scanning.</p>
+
+<p>This seems almost certain to cause unsound behavior; as noted above,
+transmuting <code>Box&lt;T&gt;</code> to <code>*mut T</code> is an ownership transfer, and if
+<code>T</code> holds a root, then later code might access it. This means that
+the roots owned by <code>T</code> need to be scanned, to keep their associated
+objects on the GC Heap alive.</p></li>
+<li><p>Punt the question: if a program uses GC, any use of unsafe pointers
+(as local variables or as members of structures) needs some sort of
+attribute or annotation that tells the GC how to interpret the value
+held in the unsafe pointer.</p>
+
+<p>This would be quite difficult to put into practice. <a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">Part 1</a>
+included a <a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/#modularity">&ldquo;Modularity&rdquo; goal</a>:</p>
+
+<blockquote><p>A Rust program that uses GC should be able to link to a crate
+whose source code was authored without knowledge of GC.</p></blockquote>
+
+<p>Requiring annotations on
+every use of unsafe pointers means sacrificing this goal.</p></li>
+<li><p>Treat unsafe pointers as potential root owners: Traverse them
+and use their type as the basis for the scan.</p>
+
+<p>This seems like the most reasonable option. But, can the types
+of unsafe pointers be trusted?</p></li>
+</ul>
+
+
+<a name="Is.the.meta-data.trustworthy."></a>
+<h2>Is the meta-data trustworthy?</h2>
+
+<p>We assumed the existence of stack and type maps.
+But where do they come from?</p>
+
+<p>These maps need to be generated by the <code>rustc</code> compiler; after all,
+they rely on low-level details of the generated code, such as the
+offsets of fields within types, the offsets of local variables in a
+stack frame, or the addresses of function call-sites.</p>
+
+<p>The <code>rustc</code> compiler, in turn, is going to generate the information
+based on the source code text. So far, so good.</p>
+
+<p>Here&rsquo;s the rub: we assumed that the stack map will tell us the types
+we need for all local variables of interest for all frames on the call
+stack.</p>
+
+<p>But in practice, a value can be <em>cast</em> to a different type.</p>
+
+<p>In particular, in today&rsquo;s Rust 1.x, it is considered <em>safe</em> to cast
+between <code>*mut T</code> and <code>*mut U</code> for any <code>T</code> and <code>U</code>:</p>
+
+<pre><code class="rust">fn main() {
+    let b = Box::new("peanut butter"); // (imagine if this held rooted data)
+    let mut p = Box::into_raw(b);
+    let pb = p as *mut String; // bogus type, but safe
+    p = Box::into_raw(Box::new("jelly"));
+    // this is where a potential GC would be worrisome
+    println!("p: {:?} p2: {:?}", p, pb);
+
+    // (just demonstrating recovery of original value via unsafe code)
+    let pb = pb as *mut &amp;'static str;
+    let recover = unsafe { Box::from_raw(pb) };
+    println!("recovered: {:?}", recover);
+}
+</code></pre>
+
+<p>This is a real problem, in terms of the goals we have set up for ourselves.
+100% modular GC requires that we be able to link with code that does things
+like the above with the owners of its roots, and that includes when the roots
+are indirectly held in boxes on the Rust Heap.</p>
+
+<p>We may be able to add constraints on the <code>Gc&lt;T&gt;</code> type to prevent such things
+from occurring when the types are apparent (e.g. when one is working with a
+local variable of type <code>Gc&lt;T&gt;</code>). But in general, the types will
+not be apparent to the code performing the cast; in particular,
+we would still need to address type-parametric code that performs
+such casts of unsafe pointers.</p>
+
+<a name="Solutions"></a>
+<h2>Solutions</h2>
+
+<p>What can we do about these problems?</p>
+
+<p>One obvious response to the untrustworthy meta-data problem would be to change the language and make casts from <code>*T</code> to <code>*U</code>
+<em>unsafe</em>.<label for='&lsquo;unsafe-casts&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;unsafe-casts&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Indeed, </span>
+ This would deal with the problem at a surface level, in the sense that
+we would be able to at least allow a program using GC to link to a
+GC-oblivious crate if the latter crate did not use any <code>unsafe</code>
+blocks.
+But it would not be terribly satisfactory; we want Rust&rsquo;s
+solution for GC to be able to link to as many crates as possible, and
+ruling out all code that does any cast of an unsafe pointer seems quite limiting.</p>
+
+<p>We could also revise the set of goals, e.g. scale back our ambitions
+with respect to compositionality, and return to ideas like having the
+roots constrained to stack, as <a href="#Roots.Constrained.To.Stack..Option.2.">discussed above</a>.</p>
+
+<p>An alternative solution I have been considering is to try to adopt a
+hybrid approach for root scanning: use stack maps for the local
+variables, but also have the allocator inject tracing meta-data onto
+the objects allocated on the Rust Heap, and do a kind of conservative
+scanning, but <em>solely</em> for finding roots embeded in objects on the
+Rust Heap. This way, unsafe casts might become irrelevant: when
+encountering <em>any</em> native pointer (e.g. <code>*mut u8</code>), we would ignore
+the referenced type and instead look up whether it is an object on the
+Rust Heap, and if so, extract the allocator-injected tracing
+information.</p>
+
+<p>I plan to dive more deeply into discussing solutions in a follow-up post.
+This post is already quite long, but more importantly, I want to get some
+concrete data first on the overheads imposed by the metadata injected during
+allocation in state of the art conservative GC&rsquo;s like <a href="http://www.hboehm.info/gc/">BDW</a>.</p>
+
+<hr />
+
+<p>Oh, and finally (but completely unrelated): Happy 2016 to all the hackers out there!
+Hope that you copied over all your live objects from 2015!</p>
+
+<script>
+// ## References
+//
+// * [On LLVM’s GC Infrastructure][on-llvms-gc]
+//
+// * [Compiler Support for Garbage Collection in a Statically Typed Language][diwan-moss-hudson]
+</script>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[GC and Rust Part 1: Specifying the Problem]]></title>
@@ -534,16 +1471,13 @@ handle_set_next(handle_x, handle_y);
 </ol>
 
 
-<p>It could be that there is a solution to the problem lurking here; but
-as stated in the text, interoperation with a fully &ldquo;black box&rdquo; GC is
-not a primary goal.</p>
-
 <p>Also, the hidden object addresses may complicate client code trying to
 instantiate GC objects with its own types.</p>
 
-<p>In any case, interoperation with a blackbox GC is not a primary goal,
-since the level of indirection and handles array maintainence is not
-ideal.</p>
+<p>It could be that there is a solution to the problem lurking here.
+In any case, interoperation with a blackbox GC is not a primary goal,
+since the level of indirection and (perhaps more crucially)
+the maintenance of the handles array are not ideal.</p>
 
 <a name="Objectives.and.Requirements..oh.no..now.five.problems."></a>
 <h2>Objectives and Requirements (oh no, now five problems)</h2>
