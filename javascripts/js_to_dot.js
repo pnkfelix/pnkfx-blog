@@ -299,6 +299,9 @@ function hide(object) {
 function unhide(object) {
     if (object.style == "invis") {
         delete object.style;
+        if (object["dashed"]) {
+            object.style = "dashed";
+        }
     }
     return object;
 }
@@ -312,7 +315,9 @@ function edge_with_flags(target, flags) {
 }
 
 function dashed_edge(target) {
-    return edge_with_flags(target, ["dashed"]);
+    var edge = edge_with_flags(target, ["dashed"]);
+    edge.style = "dashed";
+    return edge;
 }
 
 function highlighted_edge(target) {
