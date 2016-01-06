@@ -308,6 +308,7 @@ function edge_with_flags(target, flags) {
     for (i in flags) {
         edge[flags[i]] = true;
     }
+    return edge;
 }
 
 function dashed_edge(target) {
