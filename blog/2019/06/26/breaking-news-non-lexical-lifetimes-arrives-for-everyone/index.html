@@ -554,8 +554,8 @@ Since the <code>Split</code> iterator is what is providing the inputs to this <c
 the <code>&amp;mut</code>-borrow of <code>separator</code> has to live <em>across</em> the body of the <code>for</code>-loop.</p>
 
 <p>The Rust memory model does not allow you to have a <code>&amp;mut</code>-borrow alive
-across other accesses to its data, so this is rejected by the compiler
-The compiler issues an error (which is downgraded above to a warning by the migration mode).</p>
+across other accesses to its data, so this is rejected by the MIR borrow-checker.
+The compiler issues an error, which is downgraded above to a warning by the migration mode (due to the old buggy AST borrow-checker accepting the code as written).</p>
 
 <a name="How.can.you.fix.this."></a>
 <h4>How can you fix this?</h4>
@@ -1274,7 +1274,7 @@ points in the control-flow.</p>
 
 <p>This liveness rule was a change that Niko had spent some time
 considering adding to the AST borrow-check as well, as documented in
-[PR 55988: introduce &ldquo;type must be valid for&rdquo; into lexical region solver][PR 55988].
+<a href="https://github.com/rust-lang/rust/pull/55988">PR 55988: introduce &ldquo;type must be valid for&rdquo; into lexical region solver</a>.
 In the end, he found a narrower fix that addressed the most serious cases,
 and we ended up falling back on our default plan of letting the remaining bugs in this area
 just get fixed with the migration to NLL.</p>
