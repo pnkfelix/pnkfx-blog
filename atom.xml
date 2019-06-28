@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2019-06-28T02:51:58+02:00</updated>
+  <updated>2019-06-28T02:56:04+02:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -37,7 +37,7 @@ as a Rust developer should be excited about it as a feature
 
 <p>However, even though the main feature of NLL is to <em>increase</em>
 the set of programs that Rust accepts,
-the vast majority of this post will focus cases where the
+the vast majority of this post will focus on cases where the
 switch to NLL has caused the compiler to start
 rejecting<label for='soundness-as-a-feature' class='margin-toggle'> &#8853;</label><input type='checkbox' id='soundness-as-a-feature' class='margin-toggle'/><span class='marginnote'>Rejecting unsound code is also a Rust feature that I value highly; but it often fails to excite developers, especially when it causes their legacy code to stop compiling. </span>
 code that it used to accept erroneously.</p>
