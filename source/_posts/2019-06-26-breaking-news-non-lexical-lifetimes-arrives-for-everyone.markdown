@@ -31,6 +31,13 @@ code that it used to accept erroneously.
 
 <!-- more -->
 
+<script>
+// See https://github.com/imathis/octopress/issues/424
+$(document).ready(function(){
+    $('body').addClass('collapse-sidebar');
+});
+</script>
+
 ## Table of Contents
 
  * [Background: What is NLL](#Background:.What.is.NLL)
