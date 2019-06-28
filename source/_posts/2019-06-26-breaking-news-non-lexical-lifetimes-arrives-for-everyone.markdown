@@ -900,7 +900,7 @@ previously missed, where the existential type returned by `iter` holds
 instances of the type `T`.
 The compiler wants the code to state up front that these values will
 not carry any non-static references, because of the liveness rule:
-since we do not have any constraint on` where in this control-flow
+since we do not have any constraint on where in this control-flow
 this iterator will be used, any regions in its type must contain all
 points in the control-flow.
 
