@@ -9,9 +9,10 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="Background Encoding via parameters is unpalatable Rust-specific issues Niko&rsquo;s blog posts
-Simpler syntax: What about binding? Insight
-The &hellip;">
+  <meta name="description" content="Background: Closures (recurring and otherwise)
+Background: DST
+The Problem: DST and Closures Is fn~ too ugly?
+Leveraging a proc keyword/expression &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -66,6 +67,85 @@ The &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-07T10:17:00+02:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><ul>
+<li><a href="#background_fns">Background: Closures (recurring and otherwise)</a></li>
+<li><a href="#background_dst">Background: DST</a></li>
+<li><a href="#the_problem">The Problem: DST and Closures</a>
+
+<ul>
+<li><a href="#is_fn_too_ugly">Is fn~ too ugly?</a></li>
+<li><a href="#leveraging_proc">Leveraging a proc keyword/expression</a></li>
+<li><a href="#other_ways_to_proc">Other ways to express proc</a>
+
+<ul>
+<li><a href="#digression_on_macros">A Personal Digression on Macros</a></li>
+</ul>
+</li>
+<li><a href="#more_followup_on_procs_and_fns">More followups on procs and fns</a></li>
+</ul>
+</li>
+<li><a href="#where_are_we">So where are we?</a></li>
+</ul>
+
+
+<p>I have recently been trying to keep myself abreast of a flurry of
+discussion about reforming the design of Rust closures.  Niko has a
+series of blog posts (<a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">1</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">2</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/recurring-closures-and-dynamically-sized-types/">3</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">4</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">5</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">6</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">7</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">8</a>); the
+content of some of those posts were further discussed at Rust team
+meetings (<a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-04-30">11</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-07">12</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-14">13</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-21">14</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-28">15</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-06-04">16</a>), and there have been some
+more formalized proposals with their own set of discussions: (<a href="https://github.com/mozilla/rust/wiki/Proposal-for-closure-reform">9</a>,
+<a href="https://github.com/mozilla/rust/wiki/Proposal-for-closure-reform-%28specific%29">10</a>).</p>
+
+<p>There are also associated github issues (<a href="https://github.com/mozilla/rust/issues/2202">17</a>, <a href="https://github.com/mozilla/rust/issues/3569">18</a>, <a href="https://github.com/mozilla/rust/issues/6308">19</a>), though
+without sufficient context the discussion in the github issues may not
+always be intelligible.</p>
+
+<p>Some of the links above are more about &ldquo;Dynamically Sized Types&rdquo;
+(DST), a related topic, as we shall see.</p>
+
+<p>This post is my attempt to condense all of this information down into
+something where I can see all the pieces at once, and discard the
+red herrings along the way.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2013/06/07/detective-work-on-rust-closures/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -455,6 +535,10 @@ and see how that goes.</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/">Breaking News: Non-Lexical Lifetimes arrives for everyone</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/">GC and Rust Part 2: The Roots of the Problem</a>
       </li>
     
@@ -468,10 +552,6 @@ and see how that goes.</p>
     
       <li class="post">
         <a href="/blog/2015/11/27/cherrypicking-tuftes-of-hair/">Cherry-picking from the shoulders of giants</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">GC and Rust Part 1: Specifying the Problem</a>
       </li>
     
   </ul>
@@ -532,7 +612,7 @@ and see how that goes.</p>
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2016 - Felix S. Klock II -
+  Copyright &copy; 2019 - Felix S. Klock II -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

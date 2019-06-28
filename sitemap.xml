@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+    <loc>http://blog.pnkfx.org/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/</loc>
+    <lastmod>2019-06-26T12:54:29+02:00</lastmod>
+  </url>
+  <url>
     <loc>http://blog.pnkfx.org/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/</loc>
     <lastmod>2016-01-01T00:00:00+01:00</lastmod>
   </url>
@@ -69,10 +73,10 @@
     <lastmod>2012-12-31T14:34:00+01:00</lastmod>
   </url>
   <url>
-    <loc>http://blog.pnkfx.org/blog/archives/</loc>
+    <loc>http://blog.pnkfx.org/</loc>
   </url>
   <url>
-    <loc>http://blog.pnkfx.org/</loc>
+    <loc>http://blog.pnkfx.org/blog/archives/</loc>
   </url>
   <url>
     <loc>http://blog.pnkfx.org/blog/categories/octopress/</loc>
@@ -129,11 +133,14 @@
     <loc>http://blog.pnkfx.org/blog/categories/css/</loc>
   </url>
   <url>
-    <loc>http://blog.pnkfx.org/linked/graphs.html</loc>
-    <lastmod>2015-10-28T13:52:35+01:00</lastmod>
+    <loc>http://blog.pnkfx.org/posts/2/</loc>
   </url>
   <url>
     <loc>http://blog.pnkfx.org/linked/lub-graphs.html</loc>
-    <lastmod>2015-10-28T13:52:35+01:00</lastmod>
+    <lastmod>2019-06-26T12:37:32+02:00</lastmod>
+  </url>
+  <url>
+    <loc>http://blog.pnkfx.org/linked/graphs.html</loc>
+    <lastmod>2019-06-26T12:37:32+02:00</lastmod>
   </url>
 </urlset>
