@@ -24,7 +24,7 @@ as a Rust developer should be excited about it as a feature
 
 However, even though the main feature of NLL is to *increase*
 the set of programs that Rust accepts,
-the vast majority of this post will focus cases where the
+the vast majority of this post will focus on cases where the
 switch to NLL has caused the compiler to start
 rejecting{% marginnote 'soundness-as-a-feature' 'Rejecting unsound code is also a Rust feature that I value highly; but it often fails to excite developers, especially when it causes their legacy code to stop compiling.' %}
 code that it used to accept erroneously.
