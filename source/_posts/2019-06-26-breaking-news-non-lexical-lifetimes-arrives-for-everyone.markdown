@@ -394,8 +394,8 @@ Since the `Split` iterator is what is providing the inputs to this `for`-loop,
 the `&mut`-borrow of `separator` has to live *across* the body of the `for`-loop.
 
 The Rust memory model does not allow you to have a `&mut`-borrow alive
-across other accesses to its data, so this is rejected by the compiler
-The compiler issues an error (which is downgraded above to a warning by the migration mode).
+across other accesses to its data, so this is rejected by the MIR borrow-checker.
+The compiler issues an error, which is downgraded above to a warning by the migration mode (due to the old buggy AST borrow-checker accepting the code as written).
 
 #### How can you fix this?
 
@@ -910,6 +910,8 @@ considering adding to the AST borrow-check as well, as documented in
 In the end, he found a narrower fix that addressed the most serious cases,
 and we ended up falling back on our default plan of letting the remaining bugs in this area
 just get fixed with the migration to NLL.
+
+[PR 55988]: https://github.com/rust-lang/rust/pull/55988
 
 ----
 
