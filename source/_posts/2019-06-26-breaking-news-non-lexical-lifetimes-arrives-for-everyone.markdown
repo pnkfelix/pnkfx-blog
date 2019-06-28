@@ -29,6 +29,8 @@ switch to NLL has caused the compiler to start
 rejecting{% marginnote 'soundness-as-a-feature' 'Rejecting unsound code is also a Rust feature that I value highly; but it often fails to excite developers, especially when it causes their legacy code to stop compiling.' %}
 code that it used to accept erroneously.
 
+<!-- more -->
+
 ## Table of Contents
 
  * [Background: What is NLL](#Background:.What.is.NLL)
