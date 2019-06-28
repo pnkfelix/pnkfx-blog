@@ -1268,7 +1268,7 @@ previously missed, where the existential type returned by <code>iter</code> hold
 instances of the type <code>T</code>.
 The compiler wants the code to state up front that these values will
 not carry any non-static references, because of the liveness rule:
-since we do not have any constraint on` where in this control-flow
+since we do not have any constraint on where in this control-flow
 this iterator will be used, any regions in its type must contain all
 points in the control-flow.</p>
 
