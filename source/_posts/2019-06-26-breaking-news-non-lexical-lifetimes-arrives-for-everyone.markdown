@@ -5,6 +5,14 @@ date: 2019-06-26 12:54:29 +0200
 comments: true
 categories: 
 ---
+{% marginblock %}
+*Update 1 July 2019*: fixed bugs in <a href="#Closure.fixes">`EscapingWriter`</a> and
+<a href="#Fixed.leaking.into.Drop">`as_reader`</a> examples.
+{% endmarginblock %}
+
+[reddit thread]: https://www.reddit.com/r/rust/comments/c6hs2t/breaking_news_nonlexical_lifetimes_arrives_for/
+[urlo thread]: https://users.rust-lang.org/t/blog-post-breaking-news-non-lexical-lifetimes-arrives-for-everyone/29714
+
 Hey there everyone!
 
 It has been literally years since I last posted to this blog.
@@ -30,6 +38,22 @@ rejecting{% marginnote 'soundness-as-a-feature' 'Rejecting unsound code is also 
 code that it used to accept erroneously.
 
 <!-- more -->
+
+----
+
+A note on quality of content (or lack thereof):
+After I wrote this post, feedback on [reddit][reddit thread] and
+the [users forum][urlo thread] pointed out bugs in some of the examples
+ below. 
+
+The bugs themselves leaked through because of three mistakes
+I made in my own development process for this post.
+
+ 1. Failure to write comparative tests for all of my proposed "fixes",
+ 2. Failure to think about exception safety when writing `unsafe` code, and
+ 3. Worst of all: Waited too long to start writing (and then rushed to finish).
+
+I will note each significant update (in the margin at the start of the post) as I post them.
 
 <script>
 // See https://github.com/imathis/octopress/issues/424
@@ -336,7 +360,7 @@ and then show how one might resolve the problem exposed by the compiler.
 NLL fixes the handling of closures in various ways.
 
 Here is an example reduced from (an outdated version of) the `bart` crate
-([play](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=21b506be36f876dddfd523c72f8cc8f2)):
+([play](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=0cfa8715b2b266970154b1d228bcb4d4)):
 
 ```rust
 use std::fmt::{self, Write};
@@ -407,7 +431,7 @@ In this specific case, it seems like the `str` API is a bit impoverished;
 I see many variants of the `split` method,
 but I see none that let you extract each of the delimiters that matched the given pattern while also extracting the portions of the string that did not match.
 
-My answer, at least for now, is probably to rewrite the loop using [`match_indices`][str::match_indices] ([play](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=2b49e65b1134438104b43d1167101315)):
+My answer, at least for now, is probably to rewrite the loop using [`match_indices`][str::match_indices] ([play](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=6806bb295e057b0b4f4c0be543735a19)):
 
 ```rust
 use std::fmt::{self, Write};
@@ -417,13 +441,13 @@ pub struct EscapingWriter<'a> { inner: &'a mut Write }
 impl<'a> Write for EscapingWriter<'a> {
     fn write_str(&mut self, buf: &str) -> fmt::Result {
         let mut last_index = 0;
-        for (index, delim) in buf.match_indices(|x| x == '\'') {
+        for (index, delim) in buf.match_indices(|x| x == '\"') {
             self.inner.write_str(&buf[last_index..index])?;
             match delim {
-                "\'" => self.inner.write_str("&quot;"),
+                "\"" => self.inner.write_str("&quot;"),
                 _ => Ok(()),
             }?;
-            last_index = index;
+            last_index = index + 1;
         }
         self.inner.write_str(&buf[last_index..])?;
 
@@ -432,6 +456,20 @@ impl<'a> Write for EscapingWriter<'a> {
 }
 ```
 
+{% marginblock %}
+A previously posted version of this code was untested, and
+it mishandled the delimiter and `index` state;
+this brings to mind this variation of an old adage:
+"Beware of bugs in this code; I have only proved it sound, not tried it."
+{% endmarginblock %}
+The [`match_indices`][str::match_indices] method works by returning
+both the matched delimiter and the index where that delimiter
+*started* in the given string.
+This version of the code is still saving state outside of the loop:
+it remembers the index where the previous delimiter *ended* (`index + 1`,
+since in this case we are only matching against delimiters of length 1),
+and then after each iteration of the loop, we write the portion
+of the input that followed that delimiter (`buf[last_index..index]`).
 
 [str::match_indices]: https://doc.rust-lang.org/std/primitive.str.html#method.match_indices
 
@@ -790,33 +828,31 @@ You might have noticed that `as_reader` is already doing the same work that `dro
 So it would be nice if we could move the file out of `self` and then `mem::forget(self)` to prevent its destructor from running.
 Unfortunately, that does not work: `mem::forget` still wants a fully-formed value for its input.
 
-
-{% marginblock %}
-Note however that this API has not been stablized and is only
-available in the Nightly channel.
-{% endmarginblock %}
-The previous idea does yield the basis for a valid second approach, though:
-wrap `ManuallyDrop` around the `&mut F`, and use
- its [`take` method][manually-drop-take]
-to extract the file before forgetting `self`. (This does require using `unsafe`1, though.)
-Here what that looks like ([play](https://play.rust-lang.org/?version=nightly&mode=debug&edition=2018&gist=e8be2d4004746e6264ac87327f9a0454)):
+The previous idea *does* yield the basis for a valid second approach, though ([play](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=f4446f2e88a6ffc19b65a845fb05c6f4)):
 
 ```rust
-    pub fn as_reader(mut self) -> Result<Reader<'a, F>> {
-        {
-            let s = &mut self;
-            s.finalize();
-        }
-        unsafe {
-            let r = Reader::new(ManuallyDrop::take(&mut self.file));
-            std::mem::forget(self);
-            r
-        }
+pub fn as_reader(mut self) -> Result<Reader<'a, F>> {
+    {
+        let s = &mut self;
+        s.finalize();
     }
-
+    let file: &mut F = unsafe {
+        let f: *const &mut F = &mut self.file;
+        std::mem::forget(self);
+        std::ptr::read(f)
+    };
+    Reader::new(file)
+}
 ```
 
+{% marginblock %}
+An earlier version of this post wrapped the `&mut F` in a `ManuallyDrop` in the definition of `struct Writer`, and called (the currently unstable) [`take`][manually-drop-take] method to extract a copy of the reference. But this is not really an intended use of `ManuallyDrop`. After all, `&mut F` has no destructor *itself*, so it was (at best) an awkward way to express the intent: store a local copy of the `self.file` reference before forgetting `self`. That intent is more clearly expressed via `ptr::read`.
+{% endmarginblock %}
+This new version uses [`ptr::read`][std-ptr-read] to extract the file before forgetting `self`.
+(This does require using `unsafe`, though.)
+
 [manually-drop-take]: https://doc.rust-lang.org/std/mem/struct.ManuallyDrop.html#method.take
+[std-ptr-read]: https://doc.rust-lang.org/std/ptr/fn.read.html
 
 ----
 
