@@ -15,7 +15,7 @@ The motivation for this blog post: The next version of Rust, 1.36, is
 going to have NLL turned on for the 2015 edition. Going forward,
 all editions of Rust will now use NLL.
 That is a big change.
-It is mostly an change that empowers developers;
+It is mostly a change that empowers developers;
 but it also is a change that will cause some existing code to break.
 
 This post is going to talk a little bit about what NLL is and why you
