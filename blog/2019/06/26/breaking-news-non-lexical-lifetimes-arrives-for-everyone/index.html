@@ -9,9 +9,9 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="Hey there everyone! It has been literally years since I last posted to this blog.
-I have been doing a bunch of Rust compiler work.
-One big feature &hellip;">
+  <meta name="description" content="&#8853;
+Update 1 July 2019: fixed bugs in EscapingWriter and
+as_reader examples. Hey there everyone! It has been literally years since I last posted &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -92,7 +92,12 @@ One big feature &hellip;">
   </header>
 
 
-<div class="entry-content"><p>Hey there everyone!</p>
+<div class="entry-content"><p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+<em>Update 1 July 2019</em>: fixed bugs in <a href="#Closure.fixes"><code>EscapingWriter</code></a> and
+<a href="#Fixed.leaking.into.Drop"><code>as_reader</code></a> examples.
+</span></p>
+
+<p>Hey there everyone!</p>
 
 <p>It has been literally years since I last posted to this blog.
 I have been doing a bunch of Rust compiler work.
@@ -102,7 +107,7 @@ One big feature has been deployed: Non-Lexical Lifetimes (hereafter denoted &ldq
 going to have NLL turned on for the 2015 edition. Going forward,
 all editions of Rust will now use NLL.
 That is a big change.
-It is mostly an change that empowers developers;
+It is mostly a change that empowers developers;
 but it also is a change that will cause some existing code to break.</p>
 
 <p>This post is going to talk a little bit about what NLL is and why you
@@ -119,7 +124,24 @@ code that it used to accept erroneously.</p>
 <!-- more -->
 
 
+<hr />
 
+<p>A note on quality of content (or lack thereof):
+After I wrote this post, feedback on <a href="https://www.reddit.com/r/rust/comments/c6hs2t/breaking_news_nonlexical_lifetimes_arrives_for/">reddit</a> and
+the <a href="https://users.rust-lang.org/t/blog-post-breaking-news-non-lexical-lifetimes-arrives-for-everyone/29714">users forum</a> pointed out bugs in some of the examples
+ below.</p>
+
+<p>The bugs themselves leaked through because of three mistakes
+I made in my own development process for this post.</p>
+
+<ol>
+<li>Failure to write comparative tests for all of my proposed &ldquo;fixes&rdquo;,</li>
+<li>Failure to think about exception safety when writing <code>unsafe</code> code, and</li>
+<li>Worst of all: Waited too long to start writing (and then rushed to finish).</li>
+</ol>
+
+
+<p>I will note each significant update (in the margin at the start of the post) as I post them.</p>
 
 <script>
 // See https://github.com/imathis/octopress/issues/424
@@ -462,7 +484,7 @@ and then show how one might resolve the problem exposed by the compiler.</p>
 <p>NLL fixes the handling of closures in various ways.</p>
 
 <p>Here is an example reduced from (an outdated version of) the <code>bart</code> crate
-(<a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2018&amp;gist=21b506be36f876dddfd523c72f8cc8f2">play</a>):</p>
+(<a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2018&amp;gist=0cfa8715b2b266970154b1d228bcb4d4">play</a>):</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -568,7 +590,7 @@ bind the specific separator it found for <em>each</em> iteration of the loop.</p
 I see many variants of the <code>split</code> method,
 but I see none that let you extract each of the delimiters that matched the given pattern while also extracting the portions of the string that did not match.</p>
 
-<p>My answer, at least for now, is probably to rewrite the loop using <a href="https://doc.rust-lang.org/std/primitive.str.html#method.match_indices"><code>match_indices</code></a> (<a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2018&amp;gist=2b49e65b1134438104b43d1167101315">play</a>):</p>
+<p>My answer, at least for now, is probably to rewrite the loop using <a href="https://doc.rust-lang.org/std/primitive.str.html#method.match_indices"><code>match_indices</code></a> (<a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2018&amp;gist=6806bb295e057b0b4f4c0be543735a19">play</a>):</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -597,13 +619,13 @@ but I see none that let you extract each of the delimiters that matched the give
 </span><span class='line'><span class="k">impl</span><span class="o">&lt;</span><span class="nl">&#39;a</span><span class="o">&gt;</span> <span class="n">Write</span> <span class="k">for</span> <span class="n">EscapingWriter</span><span class="o">&lt;</span><span class="nl">&#39;a</span><span class="o">&gt;</span> <span class="p">{</span>
 </span><span class='line'>    <span class="k">fn</span> <span class="n">write_str</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="bp">self</span><span class="p">,</span> <span class="n">buf</span><span class="o">:</span> <span class="o">&amp;</span><span class="kt">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">fmt</span><span class="o">::</span><span class="nb">Result</span> <span class="p">{</span>
 </span><span class='line'>        <span class="kd">let</span> <span class="k">mut</span> <span class="n">last_index</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'>        <span class="k">for</span> <span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">delim</span><span class="p">)</span> <span class="k">in</span> <span class="n">buf</span><span class="p">.</span><span class="n">match_indices</span><span class="p">(</span><span class="o">|</span><span class="n">x</span><span class="o">|</span> <span class="n">x</span> <span class="o">==</span> <span class="sc">&#39;\&#39;&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">for</span> <span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">delim</span><span class="p">)</span> <span class="k">in</span> <span class="n">buf</span><span class="p">.</span><span class="n">match_indices</span><span class="p">(</span><span class="o">|</span><span class="n">x</span><span class="o">|</span> <span class="n">x</span> <span class="o">==</span> <span class="sc">&#39;\&quot;&#39;</span><span class="p">)</span> <span class="p">{</span>
 </span><span class='line'>            <span class="bp">self</span><span class="p">.</span><span class="n">inner</span><span class="p">.</span><span class="n">write_str</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="n">last_index</span><span class="p">..</span><span class="n">index</span><span class="p">])</span><span class="o">?</span><span class="p">;</span>
 </span><span class='line'>            <span class="k">match</span> <span class="n">delim</span> <span class="p">{</span>
-</span><span class='line'>                <span class="s">&quot;</span><span class="se">\&#39;</span><span class="s">&quot;</span> <span class="o">=&gt;</span> <span class="bp">self</span><span class="p">.</span><span class="n">inner</span><span class="p">.</span><span class="n">write_str</span><span class="p">(</span><span class="s">&quot;&amp;quot;&quot;</span><span class="p">),</span>
+</span><span class='line'>                <span class="s">&quot;</span><span class="se">\&quot;</span><span class="s">&quot;</span> <span class="o">=&gt;</span> <span class="bp">self</span><span class="p">.</span><span class="n">inner</span><span class="p">.</span><span class="n">write_str</span><span class="p">(</span><span class="s">&quot;&amp;quot;&quot;</span><span class="p">),</span>
 </span><span class='line'>                <span class="n">_</span> <span class="o">=&gt;</span> <span class="nb">Ok</span><span class="p">(()),</span>
 </span><span class='line'>            <span class="p">}</span><span class="o">?</span><span class="p">;</span>
-</span><span class='line'>            <span class="n">last_index</span> <span class="o">=</span> <span class="n">index</span><span class="p">;</span>
+</span><span class='line'>            <span class="n">last_index</span> <span class="o">=</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
 </span><span class='line'>        <span class="p">}</span>
 </span><span class='line'>        <span class="bp">self</span><span class="p">.</span><span class="n">inner</span><span class="p">.</span><span class="n">write_str</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buf</span><span class="p">[</span><span class="n">last_index</span><span class="p">..])</span><span class="o">?</span><span class="p">;</span>
 </span><span class='line'>
@@ -612,6 +634,21 @@ but I see none that let you extract each of the delimiters that matched the give
 </span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+A previously posted version of this code was untested, and
+it mishandled the delimiter and <code>index</code> state;
+this brings to mind this variation of an old adage:
+&ldquo;Beware of bugs in this code; I have only proved it sound, not tried it.&rdquo;
+</span>
+The <a href="https://doc.rust-lang.org/std/primitive.str.html#method.match_indices"><code>match_indices</code></a> method works by returning
+both the matched delimiter and the index where that delimiter
+<em>started</em> in the given string.
+This version of the code is still saving state outside of the loop:
+it remembers the index where the previous delimiter <em>ended</em> (<code>index + 1</code>,
+since in this case we are only matching against delimiters of length 1),
+and then after each iteration of the loop, we write the portion
+of the input that followed that delimiter (<code>buf[last_index..index]</code>).</p>
 
 <p>You can read about other fixes to the handling of closures at the following issues:</p>
 
@@ -1111,15 +1148,7 @@ This is sort of a drag though, since it means all the other <code>Writer</code> 
 So it would be nice if we could move the file out of <code>self</code> and then <code>mem::forget(self)</code> to prevent its destructor from running.
 Unfortunately, that does not work: <code>mem::forget</code> still wants a fully-formed value for its input.</p>
 
-<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
-Note however that this API has not been stablized and is only
-available in the Nightly channel.
-</span>
-The previous idea does yield the basis for a valid second approach, though:
-wrap <code>ManuallyDrop</code> around the <code>&amp;mut F</code>, and use
- its <a href="https://doc.rust-lang.org/std/mem/struct.ManuallyDrop.html#method.take"><code>take</code> method</a>
-to extract the file before forgetting <code>self</code>. (This does require using <code>unsafe</code>1, though.)
-Here what that looks like (<a href="https://play.rust-lang.org/?version=nightly&amp;mode=debug&amp;edition=2018&amp;gist=e8be2d4004746e6264ac87327f9a0454">play</a>):</p>
+<p>The previous idea <em>does</em> yield the basis for a valid second approach, though (<a href="https://play.rust-lang.org/?version=stable&amp;mode=debug&amp;edition=2018&amp;gist=f4446f2e88a6ffc19b65a845fb05c6f4">play</a>):</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -1132,19 +1161,27 @@ Here what that looks like (<a href="https://play.rust-lang.org/?version=nightly&
 <span class='line-number'>9</span>
 <span class='line-number'>10</span>
 <span class='line-number'>11</span>
+<span class='line-number'>12</span>
 </pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">pub</span> <span class="k">fn</span> <span class="n">as_reader</span><span class="p">(</span><span class="k">mut</span> <span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">Result</span><span class="o">&lt;</span><span class="nb">Reader</span><span class="o">&lt;</span><span class="nl">&#39;a</span><span class="p">,</span> <span class="n">F</span><span class="o">&gt;&gt;</span> <span class="p">{</span>
 </span><span class='line'>    <span class="p">{</span>
 </span><span class='line'>        <span class="kd">let</span> <span class="n">s</span> <span class="o">=</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="bp">self</span><span class="p">;</span>
 </span><span class='line'>        <span class="n">s</span><span class="p">.</span><span class="n">finalize</span><span class="p">();</span>
 </span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>    <span class="k">unsafe</span> <span class="p">{</span>
-</span><span class='line'>        <span class="kd">let</span> <span class="n">r</span> <span class="o">=</span> <span class="nb">Reader</span><span class="o">::</span><span class="n">new</span><span class="p">(</span><span class="n">ManuallyDrop</span><span class="o">::</span><span class="n">take</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="bp">self</span><span class="p">.</span><span class="n">file</span><span class="p">));</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">file</span><span class="o">:</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">F</span> <span class="o">=</span> <span class="k">unsafe</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kd">let</span> <span class="n">f</span><span class="o">:</span> <span class="o">*</span><span class="kr">const</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="n">F</span> <span class="o">=</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="bp">self</span><span class="p">.</span><span class="n">file</span><span class="p">;</span>
 </span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">mem</span><span class="o">::</span><span class="n">forget</span><span class="p">(</span><span class="bp">self</span><span class="p">);</span>
-</span><span class='line'>        <span class="n">r</span>
-</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">ptr</span><span class="o">::</span><span class="n">read</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">};</span>
+</span><span class='line'>    <span class="nb">Reader</span><span class="o">::</span><span class="n">new</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
 </span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+An earlier version of this post wrapped the <code>&amp;mut F</code> in a <code>ManuallyDrop</code> in the definition of <code>struct Writer</code>, and called (the currently unstable) <a href="https://doc.rust-lang.org/std/mem/struct.ManuallyDrop.html#method.take"><code>take</code></a> method to extract a copy of the reference. But this is not really an intended use of <code>ManuallyDrop</code>. After all, <code>&amp;mut F</code> has no destructor <em>itself</em>, so it was (at best) an awkward way to express the intent: store a local copy of the <code>self.file</code> reference before forgetting <code>self</code>. That intent is more clearly expressed via <code>ptr::read</code>.
+</span>
+This new version uses <a href="https://doc.rust-lang.org/std/ptr/fn.read.html"><code>ptr::read</code></a> to extract the file before forgetting <code>self</code>.
+(This does require using <code>unsafe</code>, though.)</p>
 
 <hr />
 

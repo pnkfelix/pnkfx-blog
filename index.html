@@ -9,9 +9,9 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="Hey there everyone! It has been literally years since I last posted to this blog.
-I have been doing a bunch of Rust compiler work.
-One big feature &hellip;">
+  <meta name="description" content="&#8853;
+Update 1 July 2019: fixed bugs in EscapingWriter and
+as_reader examples. Hey there everyone! It has been literally years since I last posted &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -95,7 +95,12 @@ One big feature &hellip;">
   </header>
 
 
-  <div class="entry-content"><p>Hey there everyone!</p>
+  <div class="entry-content"><p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+<em>Update 1 July 2019</em>: fixed bugs in <a href="#Closure.fixes"><code>EscapingWriter</code></a> and
+<a href="#Fixed.leaking.into.Drop"><code>as_reader</code></a> examples.
+</span></p>
+
+<p>Hey there everyone!</p>
 
 <p>It has been literally years since I last posted to this blog.
 I have been doing a bunch of Rust compiler work.
@@ -105,7 +110,7 @@ One big feature has been deployed: Non-Lexical Lifetimes (hereafter denoted &ldq
 going to have NLL turned on for the 2015 edition. Going forward,
 all editions of Rust will now use NLL.
 That is a big change.
-It is mostly an change that empowers developers;
+It is mostly a change that empowers developers;
 but it also is a change that will cause some existing code to break.</p>
 
 <p>This post is going to talk a little bit about what NLL is and why you
