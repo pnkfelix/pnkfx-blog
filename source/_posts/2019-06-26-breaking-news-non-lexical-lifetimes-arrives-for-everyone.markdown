@@ -8,6 +8,8 @@ categories:
 {% marginblock %}
 *Update 1 July 2019*: fixed bugs in <a href="#Closure.fixes">`EscapingWriter`</a> and
 <a href="#Fixed.leaking.into.Drop">`as_reader`</a> examples.
+<br></br>
+*Update 8 July 2019*: fixed a new bug in <a href="#Fixed.leaking.into.Drop">`as_reader`</a> example.
 {% endmarginblock %}
 
 [reddit thread]: https://www.reddit.com/r/rust/comments/c6hs2t/breaking_news_nonlexical_lifetimes_arrives_for/
@@ -828,7 +830,7 @@ You might have noticed that `as_reader` is already doing the same work that `dro
 So it would be nice if we could move the file out of `self` and then `mem::forget(self)` to prevent its destructor from running.
 Unfortunately, that does not work: `mem::forget` still wants a fully-formed value for its input.
 
-The previous idea *does* yield the basis for a valid second approach, though ([play](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=f4446f2e88a6ffc19b65a845fb05c6f4)):
+The previous idea *does* yield the basis for a valid second approach, though ([play](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=8c49528676a43eff7a2dda5db0306f35)):
 
 ```rust
 pub fn as_reader(mut self) -> Result<Reader<'a, F>> {
@@ -837,9 +839,10 @@ pub fn as_reader(mut self) -> Result<Reader<'a, F>> {
         s.finalize();
     }
     let file: &mut F = unsafe {
-        let f: *const &mut F = &mut self.file;
+        let ptr_f: *const &mut F = &self.file;
+        let file: &mut F = std::ptr::read(ptr_f);
         std::mem::forget(self);
-        std::ptr::read(f)
+        file
     };
     Reader::new(file)
 }
@@ -848,11 +851,15 @@ pub fn as_reader(mut self) -> Result<Reader<'a, F>> {
 {% marginblock %}
 An earlier version of this post wrapped the `&mut F` in a `ManuallyDrop` in the definition of `struct Writer`, and called (the currently unstable) [`take`][manually-drop-take] method to extract a copy of the reference. But this is not really an intended use of `ManuallyDrop`. After all, `&mut F` has no destructor *itself*, so it was (at best) an awkward way to express the intent: store a local copy of the `self.file` reference before forgetting `self`. That intent is more clearly expressed via `ptr::read`.
 {% endmarginblock %}
+{% marginblock %}
+Another version called `ptr::read` after the `mem::forget`, but this is undefined behavior because `mem::forget(x)` [might invalidate][std-mem-forget] pointers into the memory for `x`. The fix: call `ptr::read` before `mem::forget`.
+{% endmarginblock %}
 This new version uses [`ptr::read`][std-ptr-read] to extract the file before forgetting `self`.
 (This does require using `unsafe`, though.)
 
 [manually-drop-take]: https://doc.rust-lang.org/std/mem/struct.ManuallyDrop.html#method.take
 [std-ptr-read]: https://doc.rust-lang.org/std/ptr/fn.read.html
+[std-mem-forget]: https://doc.rust-lang.org/std/mem/fn.forget.html
 
 ----
 
