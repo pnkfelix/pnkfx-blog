@@ -44,11 +44,13 @@ So, without further ado: here is the odyssey of my minimization of
 
 A goal of a "minimal" test case could mean minimize lines of code; or the number of characters. It
 is also good to minimize the number of source files: one file,
-cut-and-pastable into play.rust-lang.org, is especially desirable.
+cut-and-pastable into [play.rust-lang.org][], is especially desirable.
 {% marginblock %}
 One could even argue that the number of nodes in the abstract syntax tree
-is a better metric to use when minimizing.
+is a better metric to use than text-oriented metrics when minimizing.
 {% endmarginblock %}
+
+[play.rust-lang.org]: https://play.rust-lang.org/
 
 But those syntactic metrics of minimality overlook something:
 The end goal here is a better
@@ -58,25 +60,7 @@ reading the test case.
 {% marginblock %}
 I am writing this post from the viewpoint of a `rustc` developer. So I may have a slightly skewed view on what is useful or minimal.
 {% endmarginblock %}
-And for such understanding, there are other metrics that are also useful:
-
- * Minimize dependencies: reduce the number of language features in
-   use and the number of imports your test uses from other crates
-   {% marginblock %}
-   As a concrete example of how reducing imports may help expose a bug's root cause : some people will have a bug that occurs with
-   some combination of `#[derive(Debug)]` and a call to `format!` or
-   `write`, and the test showing the problem may be only a few lines
-   long. But it hides a lot of complexity behind those uses of
-   `derive`, macros, and `std::io` trait machinery; a longer test that
-   defines its *own* trait, a local `impl` of that trait, and a small
-   function illustrating the same bug, may make the bug more
-   immediately apparent to a `rustc` developer.
-   {% endmarginblock %}
-   (*including* the `std` library!).
-
-   This can help expose the essential cause of the bug, potentially
-   making it immediately apparent what is occurring.
-
+And for such understanding, there are other metrics to keep in mind:
 
  * Minimize the amount of time the compiler runs before it hits the bug.
 
@@ -92,6 +76,25 @@ And for such understanding, there are other metrics that are also useful:
 
    (Such time reduction often occurs anyway when you remove lines of code and/or dependencies;
     I just want to point out that it has value in its own right.)
+
+   {% marginblock %}
+   As a concrete example of how reducing imports may help expose a bug's root cause:
+   some people will have a bug that occurs with
+   some combination of `#[derive(Debug)]` and a call to `format!` or
+   `write`, and the test showing the problem may be only a few lines
+   long. But it hides a lot of complexity behind those uses of
+   `derive`, macros, and `std::io` trait machinery; a longer test that
+   defines its *own* trait, a local `impl` of that trait, and a small
+   function illustrating the same bug, may make the bug more
+   immediately apparent to a `rustc` developer.
+   {% endmarginblock %}
+ * Minimize dependencies: reduce the number of language features in
+   use and the number of imports your test uses from other crates
+   (*including* the `std` library!).
+
+   This can help expose the essential cause of the bug, potentially
+   making it immediately apparent what is occurring.
+
 
   * Minimize your jumping around in the source code.
 
@@ -131,10 +134,14 @@ code, there should be a voice in the back of your head asking "can we
 
 ## Assumptions and Conventions
 
+{% marginblock %}
+Some of the techniques may also be applicable to cases where the compiler is
+*accepting* code that it should be rejecting; but I am little wary of advertising these tools
+for use in that context, which is why you're reading this in the margin and not the main text.
+{% endmarginblock %}
 The tests I am talking about minimizing in this post are cases where
-the compiler itself fails in some way: an ICE, a link failure,
-rejecting code that it should be accepting, or accepting code that it
-should be rejecting. Bugs that are witnessed by actually running the
+the compiler itself fails in some way: an ICE, a link failure, or
+rejecting code that it should be accepting. Bugs that are witnessed by actually running the
 generated code are, for the most part, *not* covered by the patterns
 here. In particular: many of the patterns presented here rely on
 making semantic changes to the input: changing values, or replacing
@@ -226,9 +233,12 @@ re-run the compile.
 ## The test case
 
 As I mentioned at the start: The presentation here will be
-driven by referencing a concrete test case that I reduced recently:
+driven by referencing a [concrete test case][demo initial state]
+that I reduced recently:
 we have been given a crate graph, and we can observe a bug when we
 build as follows:
+
+[demo initial state]: https://github.com/pnkfelix/demo-minimization/tree/f979a3718a9c4350530b9e8c5beb09937799f67a
 
 ```bash
 % ( cd tock/boards/arty-e21/ && \
@@ -367,8 +377,8 @@ There two techniques I use for ["mod-inlining"][]:
    module's
    contents. Then replace the `;` with `{` and `}`, and finally paste
    the contents in between the curly brackets you just added. You
-   don't even have to re-indent it if you don't want to (its not like
-   this is Python)!
+   don't even have to re-indent{% marginnote 'not-python' It's not like this is Python!' %}
+   it if you don't want to.
 
    For a small module tree, such as we find in `boards/arty-e21`,
    manually cut-and-pasting is entirely reasonable. But if you have a
@@ -389,9 +399,11 @@ There two techniques I use for ["mod-inlining"][]:
    to a new rust source
 
 I will show a concrete example of using `rustc` in this way later in
-the blog post. But for now I will just manually cut-and-paste the
+the blog post. But for now I will just [manually cut-and-paste][demo inline arty-e21] the
 contents of `boards/arty-e21/src/timer_test.rs` and
 `boards/arty-e21/src/io.rs` into `main.rs`
+
+[demo inline arty-e21]: https://github.com/pnkfelix/demo-minimization/commit/600c31d2643ac0c44e03f345b390eed2a0210e2d
 
 After doing the inline, make sure the bug reproduces.
 
@@ -439,26 +451,27 @@ to `<empty-string>`
 In this case, I have used `^` and `$` as markers for the beginning and end
 of lines (just like in regexps).
 
+Or, as an Emacs `M-x query-replace-regexp`
+input: `^ *//.*^J*`{% marginnote 'ctrl-j' 'The `^J` there is a carriage-return inserted via `M-x quoted-insert` (aka `C-q`) in Emacs.' %}
+(and empty string as replacement text).
+
 {% marginblock %}
-Why `M-x query-replace-regexp`: it previews the
-matches, I verify a few by eye,
-and then hit `!` to do all the remaining replacements.
+Why I use `M-x query-replace-regexp`: it previews the matches, I verify a few by eye, and then hit `!` to do all the remaining replacements.
 {% endmarginblock %}
-Or, as an Emacs `M-x query-replace-regexp` input: `^ *//.*^J*` (and
-empty string as replacement text).
 
+Another related transformation: get rid of the other blank lines that
+are not preceded by comments. I leave that regexp as an exercise for
+the reader.
 
-In the case of `boards/arty-e21`, this got rid of 53 lines of
+In the case of `boards/arty-e21`, this [got rid of 53 lines][demo decommentification arty-e21] of
 comments (and blank lines succeeding them):
+
+[demo decommentification arty-e21]: https://github.com/pnkfelix/demo-minimization/commit/fb6daad45a09e3cd44376e232698af4c76a01df7
 
 ```bash
 % wc tock/boards/arty-e21/src/main.rs
      295     575    8551 tock/boards/arty-e21/src/main.rs
 ```
-
-Another related transformation: get rid of the other blank lines that
-are not preceded by comments. I leave that regexp as an exercise for
-the reader.
 
 {% marginblock %}
 theme: Trivialize Content
@@ -512,17 +525,17 @@ from your IDE.
  More specifically, I have used Emacs to define a keyboard macro (via `C-x (`) that:
    1. searches for the next occurrence of ` fn`,
    2. searches forward from there for the first `{`, which often (but *not always*) corresponds to the start of the function's body,
-   3. runs `M-x kill-sexp` to delete the `{ ... }` and
+   3. runs `M-x kill-sexp` to delete the `{ ---- }` and
    4. types in `{ loop { } }`, replacing the method body.
 This is incredibly satisfying to watch in action.
 {% endmarginblock %}
 In my own case, I have often used Emacs `M-x kill-sexp` to delete the
-`{ ... }` in `fn foo { ... }`
+`{ ---- }` block in `fn foo { ---- }`
 
 If you want to take a risk, you can ask `rustc` to do the replacement
 of `fn` bodies with `loop { }` for you as part of pretty-printing via
-the `-Z unpretty=everybody_loops` flag. I'll speak more on that later.
-
+the `-Z unpretty=everybody_loops` flag.
+I'll [speak more on that later]["loopification" via pretty-printer].
 
 Once the body has been removed, you can optionally replace all of the
 formal parameters with `_`:
@@ -544,9 +557,11 @@ delete the parameters outright yet (see ["param-elimination"][] for that), but w
 mark them as completely useless by writing them as `_: ParamType`.
 
 In the case of `board/argy-e21/main.rs`, there was one `const fn`, and you cannot ["loopify"][] that.
-For the other `fn`'s, I was able to replace all but
+For the other `fn`'s, I [was able to][demo loopify arty-e21] replace all but
 the last `fn` body with `loop { }`. (Replacing the last one made the
 bug go away.)
+
+[demo loopify arty-e21]: https://github.com/pnkfelix/demo-minimization/commit/58118ddd3d806d0d2a8f66f5633a49eeb3615fc4
 
  * In practice, the ICE diangostic often gives me some hint
    about *which* `fn` is the problem, and therefore I can blindly
@@ -555,7 +570,7 @@ bug go away.)
  * But even without such a hint, once can often *bisect* over the
    set of `fn`'s to try to identify a maximal subset that can
    have their bodies replaced with `loop { }`. We will talk
-   more about how to do such bisection later.
+   more about [how to do such bisection later][Reduction via Bisection].
 
 ```bash
 % wc tock/boards/arty-e21/src/main.rs
@@ -634,7 +649,10 @@ latter half is causing the bug. So bisect that latter half (again, favoring
 commenting out second halves).
 
 Eventually, by recursively processing the suffix statements,
-we identify that the bug does not reproduce with this code:
+we [identify][demo suffix-bisect arty-e21] that the bug does not reproduce with this code:
+
+[demo suffix-bisect arty-e21]: https://github.com/pnkfelix/demo-minimization/commit/cd73c2659e59ac8fa4a1b1ff01fdc3634972f271
+
 
 ```rust
 {
@@ -686,6 +704,12 @@ Now that we've identified this function call to `load_processes` as part of the
 cause of the bug, the new goal is to simplify
 the earlier part of the function to the bare minimum necessary
 to support this function call.
+
+{% marginblock %}
+In all of these cases, if an otherwise unused
+statement or expression influences the type-inference for the body, you may
+need to keep it around, or some variant of it.
+{% endmarginblock %}
 
  * Get rid of all non-binding statements. (We should not need any
    side-effecting computations to reproduce the bug.)
@@ -768,7 +792,9 @@ able to just jump to each unused item and remove it in some way.
 Make sure to check periodically that the bug still reproduces
 (Sometimes supposedly unused things still matter)!
 
-This got `boards/arty-e21` down to 95 lines:
+[This][demo unusedify arty-e21] got `boards/arty-e21` down to 95 lines:
+
+[demo unusedify arty-e21]: https://github.com/pnkfelix/demo-minimization/commit/72412f6ce7e1ba13fc1f71a7f08ad4eed47f4524
 
 ```
 % wc tock/boards/arty-e21/src/main.rs
@@ -819,6 +845,10 @@ to:
 unused_or_little_used_item { ---- }
 ```
 
+{% marginblock %}
+No, I do not know how to pronounce "cfgment"; I have only typed it, never uttered it.
+*Iä! Sheol-Nugganoth!*
+{% endmarginblock %}
 I call this ["cfgmenting"][] out code (as opposed to "*commenting* out code").
 
 Whether or not you choose to use comments, ["cfgments"], or just delete
@@ -846,13 +876,15 @@ though it may seem obvious that they are not used.
  * This can be a consequence of the `impl`s in the source; see ["Deimplification"][] below.
 
  * Also some cases are only identified after doing
-   ["depublification"][] of the contents of such modules, which is also discussed below.
+  ["depublification"][] of the contents of such modules, which is also discussed below.
 
 
 In the case of `boards/arty-e21` I was able to identify `mod timer_test`
 as entirely unsed.
 
-After ["cfgmenting"] it out and further  ["decommentification"][], we have this:
+After ["cfgmenting"] it [out][demo demodulify arty-e21] and further  ["decommentification"][], we have this:
+
+[demo demodulify arty-e21]: https://github.com/pnkfelix/demo-minimization/commit/564145229124075a23eb8967a80ce9d65ac0aa2a
 
 ```bash
 % wc tock/boards/arty-e21/src/main.rs
@@ -895,7 +927,9 @@ to:
 struct S { }
 ```
 
-This, combined with ["unusedification"][] of a now-unused import, leaves us with:
+[This][demo adt-reduce arty-e21], combined with ["unusedification"][] of a now-unused import, leaves us with:
+
+[demo adt-reduce arty-e21]: https://github.com/pnkfelix/demo-minimization/commit/a41a1c17ea77a4e67ec86b8bda593f9d65e51946
 
 ```bash
 % wc tock/boards/arty-e21/src/main.rs
@@ -990,7 +1024,7 @@ themes: Delete the Unnecessary, Identify the Unnecessary
 
 After ["loopification"][], often whole `impl` blocks can be eliminated.
 
-In the case of `artye21`, we have this:
+In the case of `arty-e21`, we have this:
 
 ```rust
 impl Write for Writer {
@@ -1008,7 +1042,9 @@ couldn't have removed its definition without first removing all of its
 associated `impl` blocks. Thus, ["deimplification"][] is an important
 step in our reduction odysssey.
 
-That, plus more ["unusedification"][] gets us to 55 lines:
+[That][demo deimplify arty-e21], plus more ["unusedification"][] gets us to 55 lines:
+
+[demo deimplify arty-e21]: https://github.com/pnkfelix/demo-minimization/commit/c11012b6729b6f4a197a9f6e08a08797a2ecdd90
 
 ```bash
 % wc tock/boards/arty-e21/src/main.rs
@@ -1125,8 +1161,10 @@ dependencies?)
 In any case, from inspecting `arty-e21`, we can see that it directly
 uses only two dependencies now: `kernel` and `chips/arty_e21`.
 
-We can remove other dependencies from the `Cargo.toml` and see where
+We can [remove other dependencies][demo dep-reduce arty-e21] from the `Cargo.toml` and see where
 it gets us:
+
+[demo dep-reduce arty-e21]: https://github.com/pnkfelix/demo-minimization/commit/71b8fd41c5f9b8b5802e6e580c53f678a46bb8db
 
 ```toml
 [dependencies]
@@ -1224,7 +1262,9 @@ or `struct`, `enum`, `type`, `trait`, `fn`, etc; basically any `pub` item.
 This can help compiler see that items or imports are in fact not used
 outside of the current crate, and thus can be eliminated.
 
-For `chips/arty_e21`, I was above to successfully do this replacement:
+For `chips/arty_e21`, I was able to successfully do [this replacement][demo depub arty_e21]:
+
+[demo depub arty_e21]: https://github.com/pnkfelix/demo-minimization/commit/e0a22e4d07731f4f41a81606588ff3a9ad1d019a
 
 Change:
 ```rust
@@ -1246,8 +1286,10 @@ each of `mod interrupts`, `mod gpio`, and `mod uart`
 (since its so easy to try when they are declared as out-of-line modules). Unfortunately,
 `pub mod chip;` currently depends on all of them being present.
 
-So that's when I went ahead and inlined the module definitions, leaving me with a 371-line `lib.rs`
+So that's when I went ahead and [inlined][demo mod-inline arty_e21] the module definitions, leaving me with a 371-line `lib.rs`
 for `chips/arty_e21`:
+
+[demo mod-inline arty_e21]: https://github.com/pnkfelix/demo-minimization/commit/76a8d5f8289ad4b974e2aebad219e424ac283b59
 
 ```bash
 % wc tock/chips/arty_e21/src/lib.rs
@@ -1263,11 +1305,15 @@ your reachable (`pub`) modules in the crate, and then do subsequent
 though; its not that hard to ["demodulify"][] a module, since its just a matter
 of ["cfgmenting"][] out the `mod` declaration.
 {% endmarginblock %}
-Then I ["loopified"][] it; in this case, I was lucky and was able to loopify *everything*
+Then I ["loopified"][] it; in this case, I was lucky and was able to [loopify *everything*][demo loopify arty_e21]
 in `chips/arty_e21`, and the bug still reproduces.
 
+[demo loopify arty_e21]: https://github.com/pnkfelix/demo-minimization/commit/9381c62b9ade2d82709a86ff57ef64c7acb312d7
+
 After ["loopification"][], I was able to successfully ["demodulify"][] *all*
-of `mod interrupts`, `mod gpio`, and `mod uart`. 
+of [`mod interrupts`, `mod gpio`, and `mod uart`][demo demodulify arty_e21].
+
+[demo demodulify arty_e21]: https://github.com/pnkfelix/demo-minimization/commit/1187a5bd7dbf6e7e2734ccb7787592d2778aa1f1
 
 Finally, I did some ["deimplification"][], and managed to remove everything
 except for a `impl kernel::Chip for ArtyExx { ... }` and
@@ -1300,9 +1346,14 @@ impls rather than inherent ones. In those cases,
 we cannot just remove methods from the `impl`s willy-nilly, as that
 would cause the compiler to reject the trait implementation.
 
-... unless you do some work up front ... (can you see it coming?)
+{% marginblock %}
+Did you see this coming?
+{% endmarginblock %}
+So, you have to keep that `impl` entirely intact...
+unless you do some work up front ...
 
-Namely, first add a trait default implementation:
+Here's the trick around that.
+First add a trait default implementation:
 
 Change:
 ```rust
@@ -1325,10 +1376,14 @@ impl Tr for C { ... }
 ```
 
 Thats right, you can turn a non-default trait method into a ["loopified"][]
-default trait method. You can do this transformation piecewise, or for
-the whole trait definition, as you like. And (I think) you can do it
+default trait method, and that enables you to freely remove instances of that
+method from all of that trait's `impl`s.
+You can do this transformation piecewise, or for
+the whole trait definition, as you like.
+
+And (I think) you can do it
 pretty much as freely as you like: you should not need to worry about
-changing a trait method to a loopified default causing breakage
+changing a trait method to a ["loopified"][] default causing breakage
 elsewhere when compiling the crate graph (unless there is some
 potential interaction with specialization that I have not conidered).
 
@@ -1337,7 +1392,7 @@ If you apply the transformation repeatedly, it can often result in
 trait Tr { ---- } // all methods loopified
 impl Tr for C { }
 ```
-which is simplfy awesome.
+which is simply awesome.
 
 In our specific case, the trait in question is upstream: `impl kernel::Chip for ArtyExx { ... }`
 
@@ -1349,8 +1404,12 @@ a ["loopified"][] body to each one.
 
 (In my case, I'm going to decommentify the relevant file first too.)
 
-After doing adding ["loopified"][] default methods to the traits in `kernel::platform`, we can return
-to `chips/arty_e21` and further simplify the `impl` there to this:
+After adding ["loopified"][] default methods [to the traits in `kernel::platform`][demo simpl-impl trait kernel], we can return
+to `chips/arty_e21` and [further simplify][demo simpl-impl impl arty_e21] the `impl` there to this:
+
+[demo simpl-impl trait kernel]: https://github.com/pnkfelix/demo-minimization/commit/c62a7b05755321ec7e6876d34d8aae7fb90d68df
+
+[demo simpl-impl impl arty_e21]: https://github.com/pnkfelix/demo-minimization/commit/02d13aef0478443858d4a7bb13238858f183b4d7
 
 ```rust
 impl kernel::Chip for ArtyExx {
@@ -1549,8 +1608,10 @@ of the generated file:
 #![feature(derive_clone_copy, compiler_builtins_lib, fmt_internals, core_panic, derive_eq)]
 ```
 
-*Then* the compilation of this expanded `kernel` worked, and the downstream problem continued to reproduce.
+*Then* the compilation of this expanded `kernel` [worked][demo expand-inline kernel], and the downstream problem continued to reproduce.
 Success!
+
+[demo expand-inline kernel]: https://github.com/pnkfelix/demo-minimization/commit/00bb383f27ced7463263868dd36857c6e47ffbc6
 
 At least, success if your definition of success is this:
 
@@ -1568,6 +1629,7 @@ theme: Simplify Workflow
 {% marginblock %}
 aka `-Z everybody_loops`
 {% endmarginblock %}
+["loopification" via pretty-printer]: #L..loopification.....via.pretty-printer
 
 Well, that's okay: There are some steps we haven't taken yet. Specifically, we haven't done ["loopification."][]
 
@@ -1596,62 +1658,55 @@ It in fact motivates another technique: bisecting ["loopification"][].
 
 Warning: this technique may seem... strange. But I love it so.
 
-The steps are as follows:
+The three steps are as follows:
 
- 1. Unify modules into a single source file (which we did up above, via the pretty-printer).
-    But in particular, *leave* leave the original source files for the mod tree in
-    place. (You'll see why in a moment.)
+1. Unify modules into a single source file (which we did up above, via the pretty-printer).
+   But in particular, *leave* leave the original source files for the mod tree in
+   place. (You'll see why in a moment.)
 
- 2. Replace all function bodies with loop (which we just did, again via the pretty-printer).
+2. Replace all function bodies with
+   `loop { }`{% marginnote 'congrats-same-failure' 'If after doing this, you still get the same failure again, then congratulations: You have a single file (with a potentially huge set `mod` tree) and all of its function bodies are trivial `loop { }`. But of course, in our case of `kernel`, we know that we are not in this scenario.' %}
+   (which we just did, again via the pretty-printer).
 
-    Now that you've done this, run the compiler. If you still get the same
-    failure again, then congratulations: You have a single file (with a
-    potentially huge set `mod` tree) and all of its function bodies are
-    trivial `loop { }`.
+ 3. Finally, swap modules in and out via ["cfgmenting"].
 
-    But of course, in our case of `kernel`, we know that we are not in this scenario.
+Remember [up above]["mod-inlining"] when I suggested leaving the source files in place?
+This is where that comes into play.
 
-    So what's the next step?
-
- 3. Swap modules in and out
-
-    Remember up above when I suggested leaving the source files in place?
-    This is where that comes into play.
-
-    A relatively tiny (and easily mechanized) change to the source
-    code readily reverts individual modules back to their prior form:
+A relatively tiny (and easily mechanized) change to the source
+code readily reverts individual modules back to their prior form:
 
 
-    Change:
-    ```rust
-    mod child_mod_1 {
-        use import::stuff;
-        fn some_function() -> ReturnType {
-            loop { }
-        }
-    
-        mod even_more_inner {
-           ...
-        }
+Change:
+```rust
+mod child_mod_1 {
+    use import::stuff;
+    fn some_function() -> ReturnType {
+        loop { }
     }
-    ```
-    to:
-    ```rust
-    mod child_mod_1;
-    #[cfg(commented_out_for_bisection)]
-    mod child_mod_1 {
-        use import::stuff;
-        fn some_function() -> ReturnType {
-            loop { }
-        }
-    
-        mod even_more_inner {
-           ...
-        }
-    }
-    ```
 
-    This effectively puts back in the original code for `child_mod_1`.
+    mod even_more_inner {
+       ...
+    }
+}
+```
+to:
+```rust
+mod child_mod_1;
+#[cfg(commented_out_for_bisection)]
+mod child_mod_1 {
+    use import::stuff;
+    fn some_function() -> ReturnType {
+        loop { }
+    }
+
+    mod even_more_inner {
+       ...
+    }
+}
+```
+
+This effectively puts back in the original code for `child_mod_1`.
 
 You can search through your single `lib.rs` (or `main.rs`) file that
 holds the whole module tree (where function bodies are replaced with
@@ -1662,7 +1717,10 @@ You can do this for, e.g., the first half the modules, and then re-run
 the compiler to see if the failure re-arises. If so, huzzah!
 
 I successfully used this methodology to identify *which* `mod` in `kernel`
-we needed to keep in order to reproduce the bug: `mod process;`.
+we [needed to keep][demo bisect-mod-loopify kernel] in non-loopified form
+in order to reproduce the bug: `mod process;`.
+
+[demo bisect-mod-loopify kernel]: https://github.com/pnkfelix/demo-minimization/commit/b9c47edced44c33c5362137040acbb814ddd70b5
 
 And that gets us down to:
 
@@ -1679,30 +1737,8 @@ process` are the ones that we need for replicating the bug. For this,
 we can do bisection over the `fn` items within the (still
 out-of-line) `mod process`.
 
-## Aside: Reduction via Bisection
-[Reduction via Bisection]: #Aside:.Reduction.via.Bisection
-
-Some thoughts on bisecting sets of items follow.
-
-### Regroup `fn` items in inherent `impl`s.
-
-Note that it may be much easier to ["cfgment"][]-out whole `impl` items, rather
-["cfgmenting"][]-out each individual `fn` item in an `impl`. Furthermore,
-you can ["split-impls"][], and then ["cfgment"][] its parts
-independently (assuming the relevant bodies are all `loop`ed).
-
-### Add default methods to trait declarations
-
-You may have already realized that you cannot freely add or remove
-methods from most trait impls: As soon as you write `impl Trait for Type { ... }`,
-you need to have a definition for every method in that `...`. *Except* for default methods!
-
-So, I strongly recommend ensuring all methods in the trait declaration
-have default `{ loop { } }` bodies. Then you can freely add
-`#[cfg(bisecting)]` to individual method items in any of that trait's
-xoimpls.
-
-### One is not enough
+## Reduction via Bisection
+[Reduction via Bisection]: #Reduction.via.Bisection
 
 Sometimes you cannot simply remove all (or all but one) of the method
 bodies. For one reason or antoher (e.g. `impl Trait` in return position)
@@ -1714,15 +1750,15 @@ eliminate irrelevant details in the *other* methods. But what is the
 best way to identify which methods are relevant and which aren't?
 Well, that's a fine segue to our original topic.
 
-## Back to `mod process`
-
 (... a significant amount of time has passed.)
 
 Okay: after spending a lot of time doing pseudo-bisection, I managed
-to isolate *three* methods in process.rs that are necessary to
+to [isolate *three* methods][demo bisect-fn-loopify process] in process.rs that are necessary to
 reproduce the issue.
 
-Part of the process here was to switch mindset away from trying to
+[demo bisect-fn-loopify process]: https://github.com/pnkfelix/demo-minimization/commit/62ebace8bfb317e4419d7939e66b9d99c4edcc28
+
+Part of my own process here (not `process`, ha ha) was to switch mindset away from trying to
 bisect to find the "one fn body" that causes the faiure. Instead, I
 had to focus on identifying a minimal subset of bodies that are
 necessary to cause it to *arise*.
@@ -1737,10 +1773,10 @@ Then I'd mark that one `fn` as strictly necessary, and repeat the
 process on the N-1 `fn`-items that still remained.
 
 To be clear: this switch in mindset changes so-called "bisection" from
-a O(log n) process to an O(n log n) one: because you are going to do a
-separate O(log n) bisection step on O(n) `fn`-items. But on the plus
-side, its still a pretty mechanical process and probably could be
-automated.
+a O(log&nbsp;n) process to an O(n&nbsp;log&nbsp;n) one: because you are going to do a
+separate O(log&nbsp;n) bisection step on O(n) `fn`-items. But on the plus
+side, its still a pretty mindless process (and probably could be
+mechanically automated).
 
 Eventually, this led me to identify the three functions in `process.rs`
 whose non-["loopified"][] definitions are needed to witness the bug:
@@ -1764,7 +1800,9 @@ remove the `stored_state` field from `struct Process`:
 The answer is unfortuately still no: two of the three methods we kept from `mod process`
 refer to that field.
 
-But we can do soem directed editing to see if the bug repreoduces after *removing* those references:
+But we can do some [directed editing][demo remove-uses stored_state] to see if the bug repreoduces after *removing* those references:
+
+[demo remove-uses stored_state]: https://github.com/pnkfelix/demo-minimization/commit/84e6e3d9ecf746e16480d827a5eadacb55246720
 
 ```diff
 --- INDEX/tock/kernel/src/lib.rs
@@ -1809,7 +1847,9 @@ But we can do soem directed editing to see if the bug repreoduces after *removin
 And the answer is: YES. The bug reproduces!
 
 And *now* we can move forward
-with removing that field... YES, still reproduces:
+with [removing that field][demo remove-field stored_state]... YES, still reproduces:
+
+[demo remove-field stored_state]: https://github.com/pnkfelix/demo-minimization/commit/1e6f3af833a5e84f94fefccaacc41cc473af1a55
 
 ```diff
 --- a/tock/kernel/src/lib.rs
@@ -1826,8 +1866,10 @@ with removing that field... YES, still reproduces:
      fault_response: FaultResponse,
 ```
 
-And then see about getting rid of the
-bound on the associated type that sent us on this path... YES
+And then see about
+[removed the bound][demo remove-bound assoc-type] on the associated type that sent us on this path... YES
+
+[demo remove-bound assoc-type]: https://github.com/pnkfelix/demo-minimization/commit/454e113532cded34be70fd11ab729785db061c20
 
 ```diff
 --- a/tock/kernel/src/lib.rs
@@ -1861,7 +1903,9 @@ and apply ["type-trivializaton"][]:
 
 We did it!
 
-With that in place, we can do more ["dep-reduction"][], by removing the `rv32i` dependency from `chips/arty_e21`.
+[With that in place, we can do][demo type-trivial] more ["dep-reduction"][], by removing the `rv32i` dependency from `chips/arty_e21`.
+
+[demo type-trivial]: https://github.com/pnkfelix/demo-minimization/commit/b9abaf69418a2cb94c508586c35f4c340221d596
 
 At this point, we could continue with the above transformations to further reduce `kernel`.
 
@@ -1945,8 +1989,10 @@ pub fn load_processes<C: Chip>(
 
 The fact that `Process::create` was *another* function that we could
 not ["loopify"][] gives us a hint has to how to simplfy this further: can we
-reduce this method body to *just* a `Process::create` call, and see
+[reduce this method body][demo expr-elim for] to *just* a `Process::create` call, and see
 if the bug persists?
+
+[demo expr-elim for]: https://github.com/pnkfelix/demo-minimization/commit/4b60bdd00f670d55c3508ad5cee9d1f4778e361d
 
 ```diff
 --- INDEX/tock/kernel/src/lib.rs
@@ -2000,7 +2046,9 @@ variable defined by the `let` or `const`. Once all uses of the
 variable have been replaced, you can try removing the `let` or `const`
 itself (i.e. ["unusedification"][])
 
-In our specific case, we can apply this to `load_processes`:
+In our specific case, we [can apply this][demo rhs-inline load_processes] to `load_processes`:
+
+[demo rhs-inline load_processes]: https://github.com/pnkfelix/demo-minimization/commit/f80808f057c22d0b8bbdee6765cbef6304565fe5
 
 ```diff
 --- a/tock/kernel/src/lib.rs
@@ -2061,7 +2109,9 @@ to:
 const fn cfoo(----) -> u32 { 0 }
 ```
 
-In the case of `load_processes`, ["defaultification"][] yields this:
+In the case of `load_processes`, ["defaultification"][] [yields this][demo defaultify load_processes]:
+
+[demo defaultify load_processes]: https://github.com/pnkfelix/demo-minimization/commit/c6ed070fc55ce2ca5364f477154f53174eec5849
 
 ```diff
 --- INDEX/tock/kernel/src/lib.rs
@@ -2109,7 +2159,7 @@ to:
 ```rust
 fn foo<A>(_: A, ----) -> ReturnType { loop { } }
 ```
-or even more simply (in terms of locality of the transformation:
+or even more simply (in terms of locality of the transformation):
 ```rust
 fn foo(_: impl Sized, ----) -> ReturnType { loop { } }
 ```
@@ -2117,19 +2167,20 @@ fn foo(_: impl Sized, ----) -> ReturnType { loop { } }
 The beauty of this is that it can almost always be applied even if
 there remain uses of `foo` elsewhere in the code.
 
- * The main case where ti cannot be applied is when an existing
-   use is relying on the existing type for inference purposes.
-   We will see an example of this below.
-
 Therefore, I tend to recommend it over
-["param-elimination"][[], described below.
+["param-elimination"][], described below.
 
+ * However, this transformation does not work if `fn foo` must not carry
+   any generic type parameters; e.g., if `fn foo` needs to be
+   object-safe, then you cannot add the type parameteter `A`.
 
-However, this transformation does not work if `fn foo` must not carry
-any generic type parameters; e.g., if `fn foo` needs to be
-object-safe, then you cannot add the type parameteter `A`.
+ * The other case where it cannot be applied is when an existing
+   use is relying on the existing type for inference purposes.
+   We will [see an example of this below]["you can't always genertrify what you want"].
 
-In the case of `load_processes`, ["genertrification"][] allows this change:
+In the case of `load_processes`, ["genertrification"][] allows [this change][demo genertrify load_processes]:
+
+[demo genertrify load_processes]: https://github.com/pnkfelix/demo-minimization/commit/25dbbfbe418263460e671bbb6401c290e191d226
 
 ```diff
 --- INDEX/tock/kernel/src/lib.rs
@@ -2253,6 +2304,10 @@ And now we can apply ["genertrification"][]:
              let mut process: &mut Process<C> =
                  &mut *((&mut []).as_mut_ptr() as *mut Process<'static, C>);
 ```
+
+#### "you can't always genertrify what you want"
+
+["you can't always genertrify what you want"]: #L.you.can.t.always.genertrify.what.you.want.
 
 Unfortunately, I was not able to ["genertrify"][] the `remaining_app_memory`
 formal parameter, even though it is unused in the function body. Why
@@ -2408,7 +2463,9 @@ like:
 ```
 
 And we already updated the single call-site to pass `()` or `0` for each of the parameters of type `impl Sized`,
-so now we can just remove them entirely:
+so now [we can just remove them entirely][demo param-elim process]:
+
+[demo param-elim process]: https://github.com/pnkfelix/demo-minimization/commit/540231a22733485eef87bdfe1314f079821d7abc
 
 ```diff
 --- INDEX/tock/kernel/src/lib.rs
@@ -2547,7 +2604,9 @@ impl<C: 'static + Chip> Process<'a, C> {
 }
 ```
 
-We can simplfy this API by reducing the return type to the core element that matters: the trait object:
+We can [simplfy this API][demo api-simplify process] by reducing the return type to the core element that matters: the trait object:
+
+[demo api-simplify process]: https://github.com/pnkfelix/demo-minimization/commit/27540630839cf2efc4a52dee42657fca35dce0f0
 
 ```diff
 --- a/tock/kernel/src/lib.rs
@@ -2585,9 +2644,14 @@ theme: Trivialize Content
 ["None-defaulting"]: #Technique:..None-defaulting.
 ["none-defaulting"]: #Technique:..None-defaulting.
 
+{% marginblock %}
+This is yet another case where the fact that we are debugging a compile-time issue is
+crucial. You obviously cannot be tossing `None.unwrap()` into code you expect to run
+usefully.
+{% endmarginblock %}
 The idea of ["none-defaulting"][] is simple: You need the compiler to think you have a value of type
 `T`. But the steps to make an instance of `T` are not relevant to reproducing the bug.
-So just make a `None::<Option<T>>`, and unwrap it.
+So just make a `None::<T>`, and unwrap it.
 
 Change:
 ```rust
@@ -2598,7 +2662,9 @@ to:
 let x: T = None.unwrap();
 ```
 
-In our case, applying this technique to `Process::create` yields this:
+In our case, [applying this technique][demo none-default process] to `Process::create` yields this:
+
+[demo none-default process]: https://github.com/pnkfelix/demo-minimization/commit/c52b9f55c95c55723a32077c72451c772e00e618
 
 ```rust
 impl<C: 'static + Chip> Process<'a, C> {
@@ -2727,7 +2793,8 @@ That *looks* pretty simple (after all, its a a three line body).
 But its still doing some relatively interesting stuff: there's that
 `format_args!` macro in there, and a closure being constructed.
 
-We might try to simplify the body further: turn the closure body into body of `process_detail_fmt` itself.
+We might try to simplify the body further: turn the closure body into
+the main body of `process_detail_fmt` itself.
 
 The closure takes an input of type `config`; a quick inspect of the `map` method
 shows that should have the same type as is fed into the `MapCell` here:
@@ -2813,7 +2880,9 @@ or
 type Type<'a, T> = (&'a (), Option<T>);
 ```
 
-In our case, we are going to make a local version of `tock_cells::MapCell`.
+In our case, we are going to [make a local version][demo cut-spaghetti mapcell] of `tock_cells::MapCell`.
+
+[demo cut-spaghetti mapcell]: https://github.com/pnkfelix/demo-minimization/commit/a01b629c084ca3a0baa8ba81d179451008f67c66
 
 ```rust
 struct MapCell<T> {
@@ -2895,8 +2964,9 @@ to:
 fn top_foo<X, T>(args: ---) -> ReturnType { --- }
 ```
 
-In our case, lets try to pull `MapCell::map` out of `MapCell`:
+In our case, lets [try to pull][demo deobjectify mapcell] `MapCell::map` out of `MapCell`:
 
+[demo deobjectify mapcell]: https://github.com/pnkfelix/demo-minimization/commit/4eb3e7ef3cb4737d23b5dc1b88ffba8a356d9230
 
 ```diff
 --- a/tock/kernel/src/lib.rs
@@ -3052,6 +3122,10 @@ impl<C: 'static + Chip> Process<'a, C> {
 And furthermore, we can apply ["deobjectification"][] and
 ["param-elimination"][] here; this method doesn't even have a `self`
 parameter.
+
+That [gets us here][demo ret-ascribe process]:
+
+[demo ret-ascribe process]: https://github.com/pnkfelix/demo-minimization/commit/71c6e538854171b043b7628b15e4fe4f23a056a8
 
 ```rust
 pub fn load_processes<C: Chip>(_: &'static C) { process_create::<C>(); }
