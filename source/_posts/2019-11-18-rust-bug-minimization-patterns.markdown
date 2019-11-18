@@ -40,36 +40,30 @@ So, without further ado: here is the odyssey of my minimization of
 
 ## Philosophical meandering
 
-The over-arching goal in minification is to remove all distractions:
-to reduce the problematic input (in this case, Rust source code) to
-its essence: a minimal amount necessary to *understand* the problem.
-
-I'm writing this post from the viewpoint of a `rustc` developer. So I
-may have a slightly skewed view on what is minimal.
-
 ### What does "minimal" mean anyway?
 
 A goal of a "minimal" test case could mean minimize lines of code; or the number of characters. It
-is also good to minimize the number of source files (one file,
-cut-and-pastable into play.rust-lang.org, is especially desirable).
+is also good to minimize the number of source files: one file,
+cut-and-pastable into play.rust-lang.org, is especially desirable.
+{% marginblock %}
+One could even argue that the number of nodes in the abstract syntax tree
+is a better metric to use when minimizing.
+{% endmarginblock %}
 
-Here's the thing: Often a minimum amount of code needed for
-*understanding* does correlate with a minimum amount of code needed
-for *reproduction*. This explains why using lines-of-code as a
-metric can be useful when reporting a bug.
+But those syntactic metrics of minimality overlook something:
+The end goal here is a better
+*understanding* of the bug: for you, and for other developers who are
+reading the test case.
 
-But we must remember that the end goal here is still a better
-understanding of the bug.
+{% marginblock %}
+I am writing this post from the viewpoint of a `rustc` developer. So I may have a slightly skewed view on what is useful or minimal.
+{% endmarginblock %}
 And for such understanding, there are other metrics that are also useful:
 
  * Minimize dependencies: reduce the number of language features in
    use and the number of imports your test uses from other crates
-   (*including* the `std` library!).
-
-   This can help expose the essential cause of the bug, potentially
-   making it immediately apparent what is occurring.
-
-   As a concrete example: some people will have a bug that occurs with
+   {% marginblock %}
+   As a concrete example of how reducing imports may help expose a bug's root cause : some people will have a bug that occurs with
    some combination of `#[derive(Debug)]` and a call to `format!` or
    `write`, and the test showing the problem may be only a few lines
    long. But it hides a lot of complexity behind those uses of
@@ -77,11 +71,14 @@ And for such understanding, there are other metrics that are also useful:
    defines its *own* trait, a local `impl` of that trait, and a small
    function illustrating the same bug, may make the bug more
    immediately apparent to a `rustc` developer.
+   {% endmarginblock %}
+   (*including* the `std` library!).
+
+   This can help expose the essential cause of the bug, potentially
+   making it immediately apparent what is occurring.
+
 
  * Minimize the amount of time the compiler runs before it hits the bug.
-
-   (You often get this when you remove lines of code and/or dependencies;
-    I just want to point out that it has value in its own right.)
 
    Minimizing the compiler's execution time before failure
    serves two purposes:
@@ -92,6 +89,27 @@ And for such understanding, there are other metrics that are also useful:
     2. When the `rustc` developers themselves examine the behavior
        of the compiler on the test, they will be grateful to have
        a shorter execution trace of the compiler to analyze.
+
+   (Such time reduction often occurs anyway when you remove lines of code and/or dependencies;
+    I just want to point out that it has value in its own right.)
+
+  * Minimize your jumping around in the source code.
+
+    If you can fit all the code needed to recreate the bug
+    onto your monitor screen at once,
+    by any means necessary,
+    that is a serious accomplishment. Less time spent scrolling through
+    a file or switching editor windows is more time you can spend thinking about
+    the bug itself.
+
+To be clear: Often a minimum amount of code needed for
+understanding does correlate with a minimum amount of code needed
+for *reproduction*. (This explains why using lines-of-code or the size of the syntax tree as a
+metric can be useful when reporting a bug.)
+
+The over-arching goal in minification is to remove all distractions:
+to reduce the problematic input (in this case, Rust source code) to
+its essence: a minimal amount necessary to *understand* the problem.
 
 ### Why not build it up from scratch?
 
@@ -104,10 +122,12 @@ However, this post is dedicated to the problem of what you can do when
 you *haven't* hit that level of understanding. When you're looking at
 a set of files that make up over 90,000 lines of code, you want a set
 of semi-mechanical techniques to take that test input and strips it
-down to its essence. Once you have reduced those 90,000 lines into
-something small enough to fit on a screen or two, usually *then* you
-are in a much better position to make a test case from scratch, if
-that is still desired.
+down to its essence.
+
+To be honest, the most effective methodology is going to use a blend
+of build-up and tear-down. As you are tearing down the 90,000 lines of
+code, there should be a voice in the back of your head asking "can we
+*now* try what we've learned to try to build up a minimal example?"
 
 ## Assumptions and Conventions
 
@@ -120,39 +140,73 @@ here. In particular: many of the patterns presented here rely on
 making semantic changes to the input: changing values, or replacing
 complex expressions with something trivial like `loop { }`.
 
-As a sort of joke, I tried to name each transformation. Usually
-the names were made-up words like "Unusedification"; in all such cases
-of made-up words, I put them in explicit quotation marks to try to
+I named each transformation, usually
+with absurd made-up words like ["unusedification"][].
+They are all in explicit quotation marks to try to
 make it clear that I am speaking nonsense, deliberately.
 
-Several of the transformations serve similar goals, like "delete the
-unnecessary". I had originally planned to structure this post so that
-all such transformations would be present together, so that you'd see
-all the transformations for that goal at once. But as I wrote, it
-became clear that if I am to follow the narrative of actually *doing*
+{% marginblock %}
+I had originally planned to structure this post so that
+all transformations for a given theme would be present together, so that you'd see
+all the transformations for that theme at once. But as I wrote, it
+became clear over the course of actually *doing*
 a reduction, then we often bounce around between transformations, and
-it usually does not end up being so nicely grouped.
-
+it usually does not end up being nicely grouped with all transformatiosn for one theme colocated
+in time.
 So rather than using that hierarchical presentation, I am instead just
 going to try to *mention* the grouping by marking each as
 transformation being part of a "theme".
+{% endmarginblock %}
+Several of the transformations serve similar goals, like "delete the
+unnecessary". I have attempted to categorize the different tranformations
+according
+to what purpose they serve in the minimization process. Over the course
+of documenting these transformations, I identified the following
+*themes*:
+
+ * Simplify Workflow: Make your own life easier.
+   * Enable Incremental Steps
+ * Delete the Unnecessary: Remove items not related to bug!
+ * Identify the Unnecessary: Eliminate accidental necessity.
+ * Trivialize Content: Turn complex expressions to trival ones.
+ * Eliminate Coupling: Break links between items.
 
 
-### Note on Notation
 
-In this post, I will tend to use `...` for irrelevant code that will
-be removed from a transformation, and `----` as a placeholder for
-irrelevant code that will be kept approximately the same (modulo
+### Notes on Notation
+
+In this post, I follow typical notation by using `...` as a placeholder for
+(possibly relevant) code that will be kept approximately the same (modulo
 mechanical updates like alpha-renaming) by a transformation.
+However, I also use the non-standard notation of `----` for irrelevant code 
+that *removed* via a transformation. This is meant to draw attention to the
+distinct kinds of code, so that you can more easily tell which code is being removed
+by a particular transformation.
 
 Sometimes I will show an explicit regexp that I am feeding to a tool
 to do the transformation, but usually I will stick to informal patterns
-with the aforementioned `...` and `---` placeholders.
+with the aforementioned `...` and `----` placeholders.
 
-At times I will use `^` and `$` as markers for the beginning and end
-of lines (just like in regexps).
+When a given item or expression can appear within the context of a middle of a sequence
+(e.g. consider `{ ... THING ... }`),
+I often use the standard shorthand of just writing `{ THING ... }` or `{ ... THING }`,
+to simplify the textual presentation and focus attention on the transformation itself.
 
-### Continuous test the test.
+{% marginblock %}
+theme: Simplify Workflow
+{% endmarginblock %}
+### Record your steps
+
+Before you do any reduction, move the test case into its own local `git` repository
+(or whatever versioning tool you prefer: SVN, RCS, etc).
+Being back to backtrack through previous reduction steps
+is an incredibly important option when doing this kind of
+of work.
+
+{% marginblock %}
+theme: Simplify Workflow
+{% endmarginblock %}
+### Continuously test the test.
 
 Finally: A crucial part of reduction is to *continuously* double-check
 that the bug still reproduces after every reduction step. I'll show
@@ -177,7 +231,9 @@ we have been given a crate graph, and we can observe a bug when we
 build as follows:
 
 ```bash
-% ( cd tock/boards/arty-e21/ && RUSTFLAGS="-C link-arg=-Tlayout.ld" cargo build --target riscv32imac-unknown-none-elf )
+% ( cd tock/boards/arty-e21/ && \
+    RUSTFLAGS="-C link-arg=-Tlayout.ld" \
+    cargo build --target riscv32imac-unknown-none-elf )
    Compiling tock-registers v0.4.0 (/Users/felixklock/Dev/Mozilla/issue65774/demo-minimization/tock/libraries/tock-register-interface)
    Compiling tock-cells v0.1.0 (/Users/felixklock/Dev/Mozilla/issue65774/demo-minimization/tock/libraries/tock-cells)
    Compiling tock_rt0 v0.1.0 (/Users/felixklock/Dev/Mozilla/issue65774/demo-minimization/tock/libraries/tock-rt0)
@@ -196,24 +252,25 @@ error: internal compiler error: src/librustc/traits/codegen/mod.rs:127: Encounte
 In reality the command line was a little more complicated:
 
 ```bash
-% ( cd tock/boards/arty-e21/ && RUSTFLAGS="-C link-arg=-Tlayout.ld -C linker=rust-lld -C linker-flavor=ld.lld -C relocation-model=dynamic-no-pic -C link-arg=-zmax-page-size=512" cargo +nightly build  --target riscv32imac-unknown-none-elf   )
+% ( cd tock/boards/arty-e21/ && \
+    RUSTFLAGS="-C link-arg=-Tlayout.ld -C linker=rust-lld -C linker-flavor=ld.lld -C relocation-model=dynamic-no-pic -C link-arg=-zmax-page-size=512" \
+    cargo build --target riscv32imac-unknown-none-elf   )
 ...
 error: internal compiler error: src/librustc/traits/codegen/mod.rs:127: Encountered errors `[FulfillmentError(Obligation(predicate=Binder(TraitPredicate(<() as core::fmt::Display>)), depth=1),Unimplemented)]` resolving bounds after type-checking
 ```
+{% marginblock %}
+An eagle-eyed reader might look at that ICE
+message and immediately consider grepping the source
+code, such as uses of the trait bound `core::fmt::Display`. A
+fine idea, but intuitive jumping to an
+answer is *not* what I'm focusing on here.
+{% endmarginblock %}
 
 but for the purposes of the experiments presented in this blog post I
 will use the simplified invocation. (The difference only matters once
 we hit cases where the bug goes away.)
 
-A eagle-eyed readers might be able to look at that ICE
-message and immediately consider grepping the source
-code, such as uses of the trait bound `core::fmt::Display`. That's a
-fine idea, but that sort of Sherlock Holmes style jumping to the
-answer is *not* what I'm focusing on at the moment. (And also, as we
-will see, this bug ends up depending on a number of moving pieces; I
-don't think its very easy to jump to the final answer in this case.)
-
-Finally, remember that 90,000 lines of code number that I mentioned a
+Remember that 90,000 lines of code number that I mentioned a
 few paragraphs ago? It didn't come out of nowhere:
 
 ```bash
@@ -225,19 +282,51 @@ few paragraphs ago? It didn't come out of nowhere:
 So this is an excellent example of an input that we really want to
 reduce down to something smaller.
 
-## Tactic: Start at the leaves
+{% marginblock %}
+theme: Simplify Workflow
+{% endmarginblock %}
+## Tactic: Reduce the driving code first
 
 We have many input files, and they make up a crate graph with at least
 13 crates in it.
 
-It would be good to remove unnecessary crates. To do that, we need to
-identify what imports we can discard in `boards/arty-e21`, and then
+<script src="/javascripts/viz.js" charset="utf-8"></script>
+
+<!--
+<div id="target_anchor1"></div>
+<script>
+    var dot_source = 'digraph {\
+        rankdir="TB";\
+        bgcolor="transparent"; \
+        "boards/arty-e21" -> kernel;\
+        "boards/arty-e21" -> "chips/arty_e21";\
+        "chips/arty_e21" -> "chips/sifive";\
+        "chips/arty_e21" -> kernel;\
+        "chips/sifive" -> "arch/rv32i";\
+        "arch/rv32i" -> kernel;\
+        "arch/rv32i" -> "libraries/tock-r0";\
+        "arch/rv32i" -> "libraries/tock-register-interface";\
+        "arch/rv32i" -> "libraries/riscv-csr";\
+        "libraries/riscv-csr" -> "libraries/tock-register-interface";\
+        kernel -> "libraries/tock-register-interface";\
+        kernel -> "libraries/tock-cells";\
+    }';
+    var elem = document.getElementById("target_anchor1");
+    elem.innerHTML = Viz(dot_source, "svg");
+</script>
+-->
+
+We know from our command line invocation that it is the build of
+`boards/arty-e21` that is exposing the ICE.
+It would be good to remove unnecessary crates from the crate graph 
+for `boards/arty-e21`. But to do that most effectively, we need to
+first discard as many imports as possible from  `boards/arty-e21`, and then
 work our way backwards through the dependency chain.
 
 So, will start by reducing the `boards/arty-e21` crate to the minimum
 necessary to reproduce the bug.
 
-Now, this leaf crate is a much easier thing to work with:
+This single crate is a much easier thing to work with:
 
 ```bash
 % find tock/boards/arty-e21/ -name '*.rs' | xargs wc
@@ -252,7 +341,11 @@ However, we *still* want to reduce it as much as we can: Every import
 we can remove from `arty-e21` represents swaths of code that we
 might be able to remove in the rest of the crate graph.
 
-## Technique: "mod-inlining" (theme: workflow simplification)
+{% marginblock %}
+theme: Simplify Workflow
+{% endmarginblock %}
+## Technique: "mod-inlining"
+["mod-inlining"]: #Technique:..mod-inlining.
 
 This technique may surprise some: I like to reduce the number of files
 involved early in the game, if I can. An easy way to do this is to
@@ -267,31 +360,33 @@ with, the compiler has to do the same amount of work, et cetera.
 Howver, I still prefer to do it, because I find that it helps with
 later reduction steps if I can do my transformations on a single file.
 
-There two techniques I use for doing this:
+There two techniques I use for ["mod-inlining"][]:
 
-1. Manually cut-and-paste.
-
-   Just take each instance of `mod foo;` in the root file, find its
+1. Manually cut-and-paste:
+   take each instance of `mod foo;` in the root file, and find that
+   module's
    contents. Then replace the `;` with `{` and `}`, and finally paste
    the contents in between the curly brackets you just added. You
-   don't even have to re-indent it if you don't want to; its not like
-   this is Python!
+   don't even have to re-indent it if you don't want to (its not like
+   this is Python)!
 
    For a small module tree, such as we find in `boards/arty-e21`,
    manually cut-and-pasting is entirely reasonable. But if you have a
    large module tree, with many directories and files, it can become
    tedious and error-prone.
 
-2. Alternative: use `rustc` to expand the module-tree.
-   You can add `--verbose` to the `cargo build` invocation to see the actual `rustc` command line invocation `cargo` is using, and then
-   you can add `-Z unstable-options --pretty=expanded` to that `rustc` invocation, piping the output
-   to a new rust source file.
-
+   {% marginblock %}
    Warning: this will not only expand the module tree: it will also
    expand all the macro invocations, including `#[derive]` attributes.
    This can be a bit overwhelming. (I am continually tempted to add a
    new unstable `--pretty` variant that *just* expands the module tree
    but does *not* expand the macros otherwise.)
+   {% endmarginblock %}
+
+2. Alternative: use `rustc` to expand the module-tree.
+   You can add `--verbose` to the `cargo build` invocation to see the actual `rustc` command line invocation `cargo` is using, and then
+   you can add `-Z unstable-options --pretty=expanded` to that `rustc` invocation, piping the output
+   to a new rust source
 
 I will show a concrete example of using `rustc` in this way later in
 the blog post. But for now I will just manually cut-and-paste the
@@ -300,10 +395,9 @@ contents of `boards/arty-e21/src/timer_test.rs` and
 
 After doing the inline, make sure the bug reproduces.
 
-Its up to you whether you want to delete the out-of-line module files.
-Rust does not treat their presence as some sort of conflict with the
-inline definition (though that might be a nice lint for fsomeone to
-add!). You will see later in the post cases where keeping them around
+It is up to you whether you want to delete the out-of-line module files.
+Today, Rust does not treat their presence as some sort of conflict with the
+inline definition{% marginnote 'modfilelint' 'Checking for unused out-of-line module files might be a nice lint for someone to add to `rustc`' %}. You will see later in the post cases where keeping them around
 on the file-system can be useful. But for the case of
 `boards/arty-e21`, I will go ahead and delete them.
 
@@ -314,18 +408,24 @@ on the file-system can be useful. But for the case of
      352     846   10789 total
 ```
 
-As expected, this didn't reduce the line count. But it did make it so
-we can work with a single file at the leaf.
+As expected, this didn't reduce the line count. But it *did* make it so
+we can work with a single file at the leaf. That simplifies my own
+workflow.
 
-## Tactic: "Decommentification" (theme: Delete the unnecessary)
+{% marginblock %}
+theme: Delete the Unnecessary
+{% endmarginblock %}
+## Tactic: "Decommentification"
+["decommentification"]: #Tactic:..Decommentification.
 
-This may be obvious, but its a step that I often forget to do right
-off the bat, even those its easy and pays off handsomely.
+This may be obvious, but it is a step that I often forget to do at the
+outset of test reduction, even though it is easy and pays off
+handsomely.
 
 Comments in code are typically there to explain or justify some detail
 of the implementation. When diagnosing compiler bugs, the purpose of
-the original code is usually not relevant. You will usually be better
-served by increasing the number of lines of actual code that you can
+the original code is usually not relevant. You are better off
+increasing the number of lines of actual code that you can
 fit on your screen at once.
 
 In short, the transformation looks like this:
@@ -335,51 +435,70 @@ In short, the transformation looks like this:
 ```
 to `<empty-string>`
 
-(again, that's using `^` as a marker for start of line, and `$` for end of line)
 
+In this case, I have used `^` and `$` as markers for the beginning and end
+of lines (just like in regexps).
+
+{% marginblock %}
+Why `M-x query-replace-regexp`: it previews the
+matches, I verify a few by eye,
+and then hit `!` to do all the remaining replacements.
+{% endmarginblock %}
 Or, as an Emacs `M-x query-replace-regexp` input: `^ *//.*^J*` (and
 empty string as replacement text).
 
-I like to use `M-x query-replace-regexp` because then I get a preview of the
-things it matches, and I can verify a few to double-check it roughly works,
-and then hit `!` to do all the remaining replacements.
+
+In the case of `boards/arty-e21`, this got rid of 53 lines of
+comments (and blank lines succeeding them):
 
 ```bash
 % wc tock/boards/arty-e21/src/main.rs
      295     575    8551 tock/boards/arty-e21/src/main.rs
 ```
 
-In the case of `boards/arty-e21`, this got rid of 53 lines of
-comments (and blank lines succeeding them).
-
 Another related transformation: get rid of the other blank lines that
 are not preceded by comments. I leave that regexp as an exercise for
 the reader.
 
-## Tactic: "Body Loopification" aka "Every Body Loops" (theme: Trivialize Content)
+{% marginblock %}
+theme: Trivialize Content
+{% endmarginblock %}
+## Tactic: "Body Loopification"
+["Loopification"]: #Tactic:..Body.Loopification.
+["loopification"]: #Tactic:..Body.Loopification.
+["loopification."]: #Tactic:..Body.Loopification.
+["loopify"]: #Tactic:..Body.Loopification.
+["loopified"]: #Tactic:..Body.Loopification.
+["loopified."]: #Tactic:..Body.Loopification.
 
-```rust
-fn foo(----) -> ReturnType { ... }
-```
-to
-```rust
-fn foo(----) -> ReturnType { loop { } }
-```
-
-"Loopification" removes the body of a given function or method item,
+{% marginblock %}
+see also: ["none-defaulting"][]
+{% endmarginblock %}
+["Loopification"][] removes the body of a given function or method item,
 replacing it with `loop { }`.
 
+Change:
+```rust
+fn foo(...) -> ReturnType { ---- }
+```
+to:
+```rust
+fn foo(...) -> ReturnType { loop { } }
+```
+
+{% marginblock %}
+You might choose to use alternatives like `unimplemented!()`. I personally
+like `loop { }` because its something you almost never see in other people's
+code, so its easy to search for and be pretty certain that it was introduced as part
+of reduction. Also `loop { }` relies on less machinery from the `core` library than
+`unimplemented!` does.
+{% endmarginblock %}
 The use of `loop { }` is deliberate: since `loop { }` is known by the
 compiler to diverge, it can be assigned any type at all. So this
 transformation can be performed blindly.
 
- * (You might choose to use alternatives like `unimplemented!()`. I personally
-   like `loop { }` because its something you almost never see in other people's
-   code, so its easy to search for and be pretty certain that it was introduced as part
-   of reduction. Also `loop { }` relies on less machinery from the `core` library than
-   `unimplemented!` does.)
-
- * Note that this does not work for `const fn`; the compiler currently rejects it as invaild syntax.
+ * Note that this does not work for `const fn`; the compiler currently
+   rejects `const fn foo() { loop { } }`  as invaild syntax.
 
 
  * Also, it generally will not work for `impl Trait` in return position: the compiler needs a
@@ -387,42 +506,49 @@ transformation can be performed blindly.
    unless you ascribed it a non-`!` type in some manner.
 
 
-If you want to take a risk, you can ask `rustc` to do the replacement
-of `fn` bodies with `loop { }` for you as part of pretty-printing via
-the `-Z unpretty=everybody_loops` flag. I'll speak more on that later.
-
-But if you want to loopify on a case by case basis, you can often get help
-from your IDE. In my own case, I have often used Emacs `M-x kill-sexp` to delete the
-`{ ... }`.
-
- * More specifically, I have used Emacs to define a keyboard macro (via `C-x (`) that:
-
+When it comes to replacing a function body with `loop { }`, you may be able to get help
+from your IDE.
+{% marginblock %}
+ More specifically, I have used Emacs to define a keyboard macro (via `C-x (`) that:
    1. searches for the next occurrence of ` fn`,
    2. searches forward from there for the first `{`, which often (but *not always*) corresponds to the start of the function's body,
    3. runs `M-x kill-sexp` to delete the `{ ... }` and
    4. types in `{ loop { } }`, replacing the method body.
+This is incredibly satisfying to watch in action.
+{% endmarginblock %}
+In my own case, I have often used Emacs `M-x kill-sexp` to delete the
+`{ ... }` in `fn foo { ... }`
+
+If you want to take a risk, you can ask `rustc` to do the replacement
+of `fn` bodies with `loop { }` for you as part of pretty-printing via
+the `-Z unpretty=everybody_loops` flag. I'll speak more on that later.
+
 
 Once the body has been removed, you can optionally replace all of the
 formal parameters with `_`:
 
+Change:
 ```rust
 fn foo(a: A, b: B, ...) -> ReturnType { loop { } }
 ```
-to
+to:
 ```rust
 fn foo(_: A, _: B, ...) -> ReturnType { loop { } }
 ```
 
-This is essentially a special case of "unusedification"; we do not
-delete them outright yet (see "param-eliminatoion" for that), but we
+{% marginblock %}
+These explicit marks can be useful as hints for future reduction steps; see ["genertrification"][])
+{% endmarginblock %}
+This is essentially a special case of ["unusedification"][]; we do not
+delete the parameters outright yet (see ["param-elimination"][] for that), but we
 mark them as completely useless by writing them as `_: ParamType`.
 
-In the case of `board/argy-e21/main.rs`, there was one `const fn`, and you cannot "loopify" that.
+In the case of `board/argy-e21/main.rs`, there was one `const fn`, and you cannot ["loopify"][] that.
 For the other `fn`'s, I was able to replace all but
 the last `fn` body with `loop { }`. (Replacing the last one made the
 bug go away.)
 
- * In practice I often have some hint, based on the code that failed,
+ * In practice, the ICE diangostic often gives me some hint
    about *which* `fn` is the problem, and therefore I can blindly
    replace the other `fn` bodies with `loop { }`.
 
@@ -436,32 +562,56 @@ bug go away.)
      262     523    7584 tock/boards/arty-e21/src/main.rs
 ```
 
-(Okay, only removing 33 lines of code isn't very impressive. The technique
+(Okay, only removing 33 lines of code might not be very impressive. The technique
 will pay off more as we move further along.)
 
-## Tactic: "Expr-elimination" (theme: Trivialize Content)
+{% marginblock %}
+theme: Trivialize Content
+{% endmarginblock %}
+## Tactic: "Expr-elimination"
+["Expr-elimination"]: #Tactic:..Expr-elimination.
+["expr-elimination"]: #Tactic:..Expr-elimination.
+["expr-eliminate"]: #Tactic:..Expr-elimination.
 
 Even if you were not able to replace a whole `fn` body with `loop { }`,
 you can usually simplify the `fn` bodies that remain now.
 
+
+{% marginblock %}
+themes: Trivialize Content, Identify the Unnecessary
+{% endmarginblock %}
 ### Technique: Suffix-bisection
+["Suffix-bisection"]: #Technique:.Suffix-bisection
+["suffix-bisection"]: #Technique:.Suffix-bisection
 
-In this case, I recommend a form of bisection where you comment out
-the latter half of the `fn`-body, and see if the problem reproduces.
-If it does, then you can delete that half. If it doesn't reproduce,
-then the bug relies on something in the latter half. but if you're
-lucky, it *only* relies on stuff in the latter half.
+In this case, I recommend a form of bisection where you first
+comment out
+the bottom half of the original `fn`-body, and see if the problem reproduces.
 
- * Why comment out the latter half? Well, if you comment out the first
+ * Why comment out the latter half? Well, if you comment out the top
    half, you're almost certainly going to comment out `let`-bindings
-   that the latter half relies on. Its easier to try the latter half
-   first.
+   that the bottom half relies on. The top half very rarely relies
+   on items in the bottom half.
 
  * If the `fn` in question has a return type, then you can usually use
-   a `loop { }` at the end for that. (See, "loopification" comes in
-   handy.)
+   a `loop { }` as a tail-expression at the end of the `fn`-body to
+   satisfy the return-type; a natural variant of ["loopification"][].
 
-I use `M-x forward-sexp` to identify the start and end of the `fn`-body.
+If it does reproduce without the bottom half,
+then you can delete that half, and recursively process
+the top half.
+
+If it *doesn't* reproduce,
+then the bug relies on something in the bottom half. If you're
+lucky, it *only* relies on stuff in the latter half, and you can try deleting the top half now.
+But even if
+you're *"unlucky"* and the bottom half relies on stuff in the top half,
+you leave the top half in place (at least for now)
+and recursively process the bottom half, narrowing the code until you can identify
+a single statement whose presence or absence is the line between triggering the ICE or not.
+
+If the `fn` is too large for fit on one screen, then I
+use `M-x forward-sexp` to identify the start and end of the `fn`-body.
 Then I jump to a line in the middle, and search around for the start
 of a statment in the body, and then comment out everything
 from that statement forward in `/* ... */`
@@ -483,9 +633,11 @@ But: This is okay! We still have learned something: Something in the
 latter half is causing the bug. So bisect that latter half (again, favoring
 commenting out second halves).
 
-Eventually, we identify that the bug does not reproduce with this code:
+Eventually, by recursively processing the suffix statements,
+we identify that the bug does not reproduce with this code:
 
 ```rust
+{
     ...
 /*
     kernel::procs::load_processes(
@@ -500,11 +652,14 @@ Eventually, we identify that the bug does not reproduce with this code:
 
     board_kernel.kernel_loop(&artye21, chip, None, &main_loop_cap);
 */
+}
 ```
 
 but *does* reproduce with this code:
 
 ```rust
+{
+    ...
     kernel::procs::load_processes(
         board_kernel,
         chip,
@@ -518,24 +673,28 @@ but *does* reproduce with this code:
 /*
     board_kernel.kernel_loop(&artye21, chip, None, &main_loop_cap);
 */
+}
 ```
 
-So, now we have a function call that seems to be intimately related to the bug.
+So, now we have identified a function call to `load_processes`
+that seems to be intimately related to the bug.
 
-Unfortunately, its a function call to an item defined in an external
-crate. (We'll get there though.)
+Unfortunately, `load_processes` is an item defined in an external
+crate. (We will deal with that eventually.)
 
-Now that we've identified this function call, the new goal is to simplify
+Now that we've identified this function call to `load_processes` as part of the
+cause of the bug, the new goal is to simplify
 the earlier part of the function to the bare minimum necessary
 to support this function call.
 
- * Get rid of all the side-effecting computations.
+ * Get rid of all non-binding statements. (We should not need any
+   side-effecting computations to reproduce the bug.)
 
- * Initialize things to their default values (see "Defaultification" below).
+ * Initialize things to their default values (see ["Defaultification"][] below).
 
- * Eliminate unused lets (see "Unusedification" below).
+ * Eliminate unused `let`s (see ["Unusedification"][] below).
 
-After applying those steps repeatedly, and further decommentification,
+After applying those steps repeatedly, and further ["decommentification"][],
 we are left with this:
 
 ```rust
@@ -569,17 +728,23 @@ Its not 100% minimized yet, but its about as far as we can go in
 changes to `fn reset_handler` without making changes to crates
 upstream in dependency graph.
 
-## Tactic: "Unusedification" (theme: Delete the unnecessary)
+{% marginblock %}
+theme: Delete the Unnecessary
+{% endmarginblock %}
+## Tactic: "Unusedification"
+["Unusedification"]: #Tactic:..Unusedification.
+["unusedification"]: #Tactic:..Unusedification.
+["unusedifying"]: #Tactic:..Unusedification.
 
-Another perhaps obvious way to remove distractions: remove unused items.
+Another way to remove distractions: remove them.
 
 ```rust
-non_pub_locally_unused_item(...) { ... }
+non_pub_locally_unused_item(----) { ---- }
 ```
 to `<empty-string>`
 
-At this point, after our initial round of "Loopification", we should
-have a whole bunch of unused stuff: variables, struct fields, imports,
+At this point, after our initial round of ["loopification"][], we should
+have a **lot** of unused stuff: variables, struct fields, imports,
 etc. And even better, the compiler is probably already telling you about
 all of them!
 
@@ -589,11 +754,12 @@ In the specific case of `arty-e21`, I am currently seeing 25 warnings:
 and 5 field is never used warnings.
 
 If you're doing the compilation runs in your IDE, then you should be
-able to just jump to each one and remove it in some way.
+able to just jump to each unused item and remove it in some way.
 
- * In the case of `fn` parameters, you can replace it with `_`.
+ * In the case of `fn` parameters, you can replace it with `_`
+   as previously discussed.
  * ADT contents (struct and enum fields) may require more subtlety;
-   see "ADT-reduction" below. For now, you can prefix their names with `_`.
+   see ["ADT-reduction"][] below. For now, you can prefix their names with `_`.
  * Warning: Items with attributes like `#[no_mangle]` or `#[link_section]` may
    also want special treatment: you may be able to remove them without
    causing the bug to go away, but once the bug *does* go away,
@@ -613,61 +779,80 @@ Again, not so impressive yet. But as with optimizations, sometimes
 the effect of these techniques only becomes apparent when they
 are combined together.
 
-## Technique: "Cfgments" (theme: Delete the unnecessary)
+{% marginblock %}
+theme: Delete the Unnecessary
+{% endmarginblock %}
+## Technique: "Cfgments"
+["Cfgments"]: #Technique:..Cfgments.
+["cfgments"]: #Technique:..Cfgments.
+["cfgmenting"]: #Technique:..Cfgments.
+["cfgment"]: #Technique:..Cfgments.
+["cfgmented"]: #Technique:..Cfgments.
 
 As a note: As a test run, you can easilly preview the effects of
-"unusedification" and "demodulification" (discussed below)
+["unusedification"][] and ["demodulification"][] (discussed below)
 transformations without actually deleting code. (After all, you may
 quickly discover that you need to put it back.) One classic approach
 for this is a comment block:
 
 ```rust
 /*
-non_pub_locally_unused_item(...) { ... }
+non_pub_locally_unused_item(----) { ---- }
 */
 ```
 
 But it not always easy to toggle such comments on and off, since you
 need add and remove the `/*` and matching `*/` each time you want to
-toggle it.
+toggle it. Some IDEs help with this, but I still prefer to use more
+local changed if I can.
 
 A less used option that is more specific to Rust (and that I use *all
-the time*), is to `#[cfg]` the code out:
+the time*), is to use a `#[cfg]` attribute to temporarily remove the code:
 
+Change:
 ```rust
 unused_or_little_used_item { ---- }
 ```
-to
+to:
 ```rust
 #[cfg(not_now)]
 unused_or_little_used_item { ---- }
 ```
 
-I call this "cfgmenting" out code (as opposed to "*commenting* out code").
+I call this ["cfgmenting"][] out code (as opposed to "*commenting* out code").
 
-Whether or not you choose to use comments, "cfgments", or just delete
+Whether or not you choose to use comments, ["cfgments"], or just delete
 code outright is up to you, (though I do recommend you *eventually*
-delete the lines in question; see again "Decommentification").
+delete the lines in question, as discussed in ["decommentification"][]).
 
-## Tactic: "Demodulification" (theme: Delete the unnecessary)
+{% marginblock %}
+theme: Delete the Unnecessary
+{% endmarginblock %}
+## Tactic: "Demodulification"
+["Demodulification"]: #Tactic:..Demodulification.
+["demodulification"]: #Tactic:..Demodulification.
+["demodulify"]: #Tactic:..Demodulification.
 
-In addition to "unusedifying" each identified unused item, you might
+In addition to ["unusedifying"][] each identified unused item, you might
 try this: You may *also* be lucky enough to be able to just remove
-whole modules from this crate at this point. Go ahead and try it!
+whole modules from this crate at this point. If the compiler is telling
+you that a lot of the items in a given module are unused, maybe you
+can get rid of the whole module. Go ahead and try it!
 
 There can be a bit of guesswork involved here. For various reasons the
-compiler's lints do not identify some definitions as nused even
-though it seems clear to me that they are.
+compiler's lints do not identify some definitions as unused even
+though it may seem obvious that they are not used.
 
- * This can be a consequence of the `impl`s in the source; see "Deimplification" below.
+ * This can be a consequence of the `impl`s in the source; see ["Deimplification"][] below.
 
- * Also the cases are only identified after doing "Depublification" of the contents of such modules;
-   again, see below.
+ * Also some cases are only identified after doing
+   ["depublification"][] of the contents of such modules, which is also discussed below.
+
 
 In the case of `boards/arty-e21` I was able to identify `mod timer_test`
 as entirely unsed.
 
-After "cfgmenting" it out and further  "decommentification", we have this:
+After ["cfgmenting"] it out and further  ["decommentification"][], we have this:
 
 ```bash
 % wc tock/boards/arty-e21/src/main.rs
@@ -677,7 +862,11 @@ After "cfgmenting" it out and further  "decommentification", we have this:
 (For now we have to keep the `mod io { ... }`; it defines a panic-handler, and we won't
 be able to get rid of that until we do more reduction elsewhere.)
 
-## Technique: "ADT-reduction" (theme: Delete the unnecessary)
+{% marginblock %}
+theme: Delete the Unnecessary
+{% endmarginblock %}
+## Technique: "ADT-reduction"
+["ADT-reduction"]: #Technique:..ADT-reduction.
 
 What more is there to reduce here? Well, there is a `struct ArtyE21` all of whose fields are unused:
 
@@ -697,22 +886,23 @@ struct ArtyE21 {
 We got lucky here: This `struct` has no lifetime or type parameters, so we can just
 do a trivial replacement, like so:
 
+Change:
 ```rust
-struct S { ... }
+struct S { ---- }
 ```
-to
+to:
 ```rust
 struct S { }
 ```
 
-This, combined with "unusedification" of a now-unused import, leaves us with:
+This, combined with ["unusedification"][] of a now-unused import, leaves us with:
 
 ```bash
 % wc tock/boards/arty-e21/src/main.rs
       63     170    1549 tock/boards/arty-e21/src/main.rs
 ```
 
-### "ADT-reduction" in general
+### ["ADT-reduction"][] in general
 
 In the general case, if there is a generic parameter on the struct,
 you will need it to retain a field (to allow the compiler to compute
@@ -720,31 +910,34 @@ the variance of the parameter).
 
 Usually lifetime parameters are (co)variant, in which case this suffices:
 
+Change:
 ```rust
-struct S<'a>{ ... }
+struct S<'a>{ ---- }
 ```
-to
+to:
 ```rust
 struct S<'a>{ _inner: &'a () }
 ```
 
-vIf you need an *invariant* lifetime parameter to reproduce the bug, then you
+If you need an *invariant* lifetime parameter to reproduce the bug, then you
 can do it this way:
 
+Change:
 ```rust
-struct S<'a>{ ... }
+struct S<'a>{ ---- }
 ```
-to
+to:
 ```rust
 struct S<'a>{ _inner: &'a mut () }
 ```
 
 Likewise, type parameters can usually be encoded like so:
 
+Change:
 ```rust
-struct S<T> { ... }
+struct S<T> { ---- }
 ```
-to
+to:
 ```rust
 struct S<T> { _inner: Option<T> }
 ```
@@ -752,33 +945,36 @@ struct S<T> { _inner: Option<T> }
 If the type parameter has the `?Sized` (anti)bound, then you can use
 this variant:
 
+Change:
 ```rust
-struct S<T: ?Sized> { ... }
+struct S<T: ?Sized> { ---- }
 ```
-to
+to:
 ```rust
 struct S<T> { _inner: Option<Box<T>> }
 ```
 
-Often if there is both a liftime and a type parameter, then I will combine them into one field:
+Often if there is both a lifetime and a type parameter, then I will combine them into one field:
 
+Change:
 ```rust
-struct S<'a, T> { ... }
+struct S<'a, T> { ---- }
 ```
-to
+to:
 ```rust
 struct S<'a, T> { _inner: Option<&'a T> }
 ```
 
-but in general that might not reflect the contents of the original
-struct (for example, it implicitly requires that `T` outlive `'a`,
-which may not have been the case originaly), and thus may cause the
+but in general that might not reflect the
+contents{% marginnote 'outlives-inference' "for example, it implicitly requires that `T` outlive `'a`, which may not have been the case originaly" %}
+of the original struct, and thus may cause the
 original bug to be masked. So in general you may have to do:
 
+Change:
 ```rust
-struct S<'a, T> { ... }
+struct S<'a, T> { ---- }
 ```
-to
+to:
 ```rust
 struct S<'a, T> { _inner1: &'a (), _inner2: Option<T> }
 ```
@@ -786,9 +982,13 @@ or some variation thereof.
 
 Having said that, its pretty rare that `struct S<'a, T> { _inner: Option<&'a T> }` doesn't suffice.
 
-## Tactic: "Deimplificiation" (themes: delete the unnecessary, identify the unnecessary)
+{% marginblock %}
+themes: Delete the Unnecessary, Identify the Unnecessary
+{% endmarginblock %}
+## Tactic: "Deimplificiation"
+["Deimplification"]: #Tactic:..Deimplificiation.
 
-After "loopification", often whole `impl` blocks can be eliminated.
+After ["loopification"][], often whole `impl` blocks can be eliminated.
 
 In the case of `artye21`, we have this:
 
@@ -799,61 +999,66 @@ impl Write for Writer {
 ```
 which is entirely unused.
 
-So we can "cfgment" it out, and now the compiler identifies two unused
+So we can ["cfgment"] it out, and now the compiler identifies two unused
 imports (since this `impl`-block was their only use); more
 importantly, it now also identifies that the `struct Writer` is never
 constructed. (Which we already knew since we were able to revise its
-fields at will during "ADT-reduction"; but the point is that we
+fields at will during ["ADT-reduction"][]; but the point is that we
 couldn't have removed its definition without first removing all of its
-associated `impl` blocks. Thus, "deimplification" is an important
+associated `impl` blocks. Thus, ["deimplification"][] is an important
 step in our reduction odysssey.
 
-That, plus more "unusedification" gets us to 55 lines:
+That, plus more ["unusedification"][] gets us to 55 lines:
 
 ```bash
 % wc tock/boards/arty-e21/src/main.rs
       55     146    1396 tock/boards/arty-e21/src/main.rs
 ```
 
-### Fine-grained "deimplification"
+### Fine-grained ["deimplification"][]
 
 In general you may not be able to remove the whole `impl` block.
 But you can still try to remove individual items from it, like so:
 
+Change:
 ```rust
 impl Foo {
-   ---
-   fn method(...) { ... }
-   ---
+   fn method(----) { ---- }
+   ...
 }
 ```
-to
+to:
 ```rust
 impl Foo {
-   ---
-   ---
+   ...
 }
 ```
 
-### "split-impls": Regroup `fn` items in inherent `impl`s.
+#### Technique: "split-impls"
+{% marginblock %}
+aka Regroup `fn` items in inherent `impl`s.
+{% endmarginblock %}
+["split-impls"]: #Technique:..split-impls.
 
-Another option that I sometimes like to employ: Rust lets you define
+I sometimes like to employ
+As a special technique to remove individual methods from an inherent `impl`: Rust lets you define
 *multiple* inherent impls for a given type. So rather than deleting code
-or using "cfgments" for each item, I will instead take an impl and
-break it into two, where one of them has a blank "cfgment":
+or using ["cfgments"][] for each item, I will instead take an impl and
+break it into two, where one of them is ["cfgmented"][] out:
 
+Change:
 ```rust
 impl Foo {
-    fn method1(...) { ... }
+    fn method1(----) { ---- }
     fn method2(...) { ... }
     fn method3(...) { ... }
 }
 ```
-to
+to:
 ```rust
 #[cfg(not_now)]
 impl Foo {
-    fn method1(...) { ... }
+    fn method1(----) { ---- }
 }
 impl Foo {
     fn method2(...) { ... }
@@ -861,18 +1066,19 @@ impl Foo {
 }
 ```
 
-Here, you can now move items freely between the "cfgmented"-out `impl`
-and the still present `impl`. It has a similar effect to "cfgmenting"
+Here, you can now move items freely between the ["cfgmented"][]-out `impl`
+and the still present `impl`. It has a similar effect to ["cfgmenting"][]
 out the individual items, but in practice it feels a lot more like an
 easy bisection process, at least for my fingers.
 
- * Especially since you can start with the whole `impl` "cfgmented"-out,
+ * Especially since you can start with the whole `impl` ["cfgmented"][]-out,
    and let the compiler tell you which methods you need to put back (e.g.
    due to downstream uses.)
 
 You can also sometimes do this `impl` as a way to make more fine-grained
 `impl`-blocks that have looser constraints, like so:
 
+Change:
 ```rust
 impl<X: Bound> Foo<X> {
     fn method1(...) { ... }
@@ -880,7 +1086,7 @@ impl<X: Bound> Foo<X> {
     fn method3(...) { ... }
 }
 ```
-to
+to:
 ```rust
 impl<X: Bound> Foo {
     fn method1(...) { ... }
@@ -902,7 +1108,14 @@ dependencies.
 
 Lets look at the situation there.
 
-## "dep-reduction" aka "eliminate upstream dependencies"  (theme: identify the unnecessary)
+{% marginblock %}
+theme: Identify the Unnecessary
+{% endmarginblock %}
+## Tactic: "dep-reduction"
+{% marginblock %}
+aka "eliminate upstream dependencies"
+{% endmarginblock %}
+["dep-reduction"]: #Tactic:..dep-reduction.
 
 We have not yet changed anything about the crate graph as a whole.
 Technicaly, building `arty-e21` still builds 12 crates before starting
@@ -970,34 +1183,40 @@ pub mod uart;
 
 Now I have a choice: do I go ahead and inline these module defintions
 like we did with `boards/arty-e21`? Well, lets figure out if we can
-first isolate its exports to a bare minimum before doing that, via
-"depublification".
+first isolate its exports to a bare minimum before doing that.
 
-## Tactic: "Depublification" (theme: identify the unnecessary)
+{% marginblock %}
+theme: Identify the Unnecessary
+{% endmarginblock %}
+## Tactic: "Depublification"
+["Depublification"]: #Tactic:..Depublification.
+["depublification"]: #Tactic:..Depublification.
 
 As I already mentioned, the compiler is probably already tellling you
-about some of these (see "unusedification").
+about some of these (see ["unusedification"][]).
 
 But if you want to maximize the set of unused things that the compiler
 will identify for you, you mihght need to help it along the way by
 removing `pub` annotations, like so:
 
+Change:
 ```rust
-pub mod foo { --- }
+pub mod foo { ... }
 ```
-to
+to:
 ```rust
-mod foo { --- }
+mod foo { ... }
 ```
 
 or
 
+Change:
 ```rust
-pub use ----;
+pub use foo;
 ```
-to
+to:
 ```rust
-use ----;
+use foo;
 ```
 
 or `struct`, `enum`, `type`, `trait`, `fn`, etc; basically any `pub` item.
@@ -1007,12 +1226,13 @@ outside of the current crate, and thus can be eliminated.
 
 For `chips/arty_e21`, I was above to successfully do this replacement:
 
+Change:
 ```rust
 pub mod chip;
 pub mod gpio;
 pub mod uart;
 ```
-to
+to:
 ```rust
 pub mod chip;
 mod gpio;
@@ -1021,7 +1241,8 @@ mod uart;
 
 and everything still built.
 
-After this point, I attempted blind "demodulification" each of `mod interrupts`, `mod gpio`, and `mod uart`
+After this point, I attempted blind ["demodulification"][]
+each of `mod interrupts`, `mod gpio`, and `mod uart`
 (since its so easy to try when they are declared as out-of-line modules). Unfortunately,
 `pub mod chip;` currently depends on all of them being present.
 
@@ -1033,54 +1254,77 @@ for `chips/arty_e21`:
      371    1354   12137 tock/chips/arty_e21/src/lib.rs
 ```
 
-Then I "loopified" it; in this case, I was lucky and was able to loopify *everything*
+{% marginblock %}
+Maybe this argues
+for a stratgy where one should attempt targetted ["loopification"][] on
+your reachable (`pub`) modules in the crate, and then do subsequent
+["demodulification"][] of the out-of-line modules before jumping into
+["mod-inlining"][]. I have not tried that workflow too seriously yet,
+though; its not that hard to ["demodulify"][] a module, since its just a matter
+of ["cfgmenting"][] out the `mod` declaration.
+{% endmarginblock %}
+Then I ["loopified"][] it; in this case, I was lucky and was able to loopify *everything*
 in `chips/arty_e21`, and the bug still reproduces.
 
-After "loopification", I was able to successfully "demodulify" *all*
-of `mod interrupts`, `mod gpio`, and `mod uart`. (Maybe this argues
-for a stratgy where one should attempt targetted "loopification" on
-your reachable (`pub`) modules in the crate, and then do subsequent
-"demodulification" of the out-of-line modules before jumping into
-"mod-inlining". I have not tried that workflow too seriously yet,
-though; its not that hard to "demodulify" an inlined module.)
+After ["loopification"][], I was able to successfully ["demodulify"][] *all*
+of `mod interrupts`, `mod gpio`, and `mod uart`. 
 
-Finally, I did some "deimplification", and managed to remove everything
+Finally, I did some ["deimplification"][], and managed to remove everything
 except for a `impl kernel::Chip for ArtyExx { ... }` and
 one inherent method on `struct ArtyExx`.
 
-Those steps, plus "decommentification", removed about 320 lines.
+Those steps, plus ["decommentification"][], removed about 320 lines.
 
 ```bash
 % wc tock/chips/arty_e21/src/lib.rs
       52     163    1180 tock/chips/arty_e21/src/lib.rs
 ```
 
-Perhaps most importantly, it got the source code to the point where it fits on a screen.
+Perhaps most importantly, it got the source code to the point where
+it fits on a screen.
 
-### Tactic: "simpl-impl" aka use trait defaults (theme: identify the unnecessary)
+{% marginblock %}
+themes: Enable Incremental Steps, Identify the Unnecessary
+{% endmarginblock %}
+### Tactic: "simpl-impl"
+{% marginblock %}
+aka use trait defaults
+{% endmarginblock %}
+["simpl-impl"]: #Tactic:..simpl-impl.
+["simpl-impled"]: #Tactic:..simpl-impl.
 
 I did just mention that I had to keep an `impl kernel::Chip for ArtyExx { ... }`.
 
 In general, the `impl` blocks we are trying to eliminate may be trait
 impls rather than inherent ones. In those cases,
-we cannot just remove methods willy-nilly, unless ... (can you see it coming?)
+we cannot just remove methods from the `impl`s willy-nilly, as that
+would cause the compiler to reject the trait implementation.
 
+... unless you do some work up front ... (can you see it coming?)
+
+Namely, first add a trait default implementation:
+
+Change:
 ```rust
-trait Tr { ---- fn m(); ---- }
-impl Tr for C { ---- fn m() { ... } ---- }
+trait Tr { ... fn m(); }
 ```
-to
+to:
 ```rust
-trait Tr { ---- fn m() { loop { } } ---- }
-impl Tr for C { ---- fn m() { ... } ---- }
-```
-and then to:
-```rust
-trait Tr { ---- fn m() { loop { } } ---- }
-impl Tr for C { ---- ---- }
+trait Tr { ... fn m() { loop { } } }
 ```
 
-Thats right, you can turn a non-default trait method into a "loopified"
+This enables the subsequent transformation:
+
+Change:
+```rust
+impl Tr for C { ... fn m() { ---- } }
+```
+to:
+```rust
+impl Tr for C { ... }
+```
+
+Thats right, you can turn a non-default trait method into a ["loopified"][]
 default trait method. You can do this transformation piecewise, or for
 the whole trait definition, as you like. And (I think) you can do it
 pretty much as freely as you like: you should not need to worry about
@@ -1101,11 +1345,11 @@ So we are going to make an
 exception to our earler rule about trying to work at the leaves first: Here, we are
 justified in jumping upstream, to `kernel/src/platform/mod.rs`,
 and changing the definition of `kernel::Chip`, doing `M-x query-replace` of `;` with `{ loop { } }` to easily jump through the `fn`-items and add
-a "loopified" body to each one.
+a ["loopified"][] body to each one.
 
 (In my case, I'm going to decommentify the relevant file first too.)
 
-After doing adding "loopified" default methods to the traits in `kernel::platform`, we can return
+After doing adding ["loopified"][] default methods to the traits in `kernel::platform`, we can return
 to `chips/arty_e21` and further simplify the `impl` there to this:
 
 ```rust
@@ -1118,7 +1362,12 @@ impl kernel::Chip for ArtyExx {
 
 Now we need to apply a bit of artistry.
 
-## Tactic: "Type-trivialization" (theme: trivialize content)
+{% marginblock %}
+theme: Trivialize Content
+{% endmarginblock %}
+## Tactic: "Type-trivialization"
+["Type-trivialization"]: #Tactic:..Type-trivialization.
+["type-trivialization"]: #Tactic:..Type-trivialization.
 
 This associated type in `impl kernel::Chip for ArtyExx` is forcing dependency on `rv32i`:
 ```rust
@@ -1192,7 +1441,7 @@ Darn.
 
 You might think: "Lets try removing that field from the `struct`"; but
 note that the `struct Process` lives in the `kernel` crate, and that
-code has not yet been "loopified." So there's a good chance that
+code has not yet been ["loopified."][] So there's a good chance that
 there's existing code that relies on that field being there, and we
 have to get rid of that code first.
 
@@ -1200,7 +1449,10 @@ Well, we did a good job getting `chips/arty_e21` as small as we did.
 Let us take this as a sign that we should keep moving up, to now focus
 on reducing the `kernel` crate.
 
-## Technique: "mod-inlining" and "loopification" via pretty-printer
+{% marginblock %}
+theme: Simplify Workflow
+{% endmarginblock %}
+## Technique: ["mod-inlining"][] and ["loopification"][] via pretty-printer
 
 I want to simplify the kernel crate.
 
@@ -1266,12 +1518,15 @@ tock/kernel/src/mem.rs
 
 I don't want to manually-inline all those modules into `kernel`.
 
-I'm also not too eager to manually "loopify" it (though that would be
-easier if the "mod-inling" were done).
+I'm also not too eager to manually ["loopify"][] it (though that would be
+easier if the ["mod-inlining"][] were done).
 
 Luckily, we can leverage the compiler here.
 
-### "mod-inlining" via pretty-printer
+{% marginblock %}
+theme: Simplify Workflow
+{% endmarginblock %}
+### ["mod-inlining"][] via pretty-printer
 
 As mentioned earlier, we can add `-Z unstable-options --pretty=expanded` to the relevant `rustc` invocation
 (in ths case, the one compiling `kernel/src/lib.rs`)
@@ -1306,11 +1561,17 @@ At least, success if your definition of success is this:
 
 Yikes, 10K lines.
 
-### "loopification" via pretty-printer (aka `-Z everybody_loops`)
+{% marginblock %}
+theme: Simplify Workflow
+{% endmarginblock %}
+### ["loopification"][] via pretty-printer
+{% marginblock %}
+aka `-Z everybody_loops`
+{% endmarginblock %}
 
-Well, that's okay: There are some steps we haven't taken yet. Specifically, we haven't done "loopification."
+Well, that's okay: There are some steps we haven't taken yet. Specifically, we haven't done ["loopification."][]
 
-Now, its not so much fun to try to "loopify" a file like this. The keyboard macro I described above
+Now, its not so much fun to ["loopify"][] a file like this by hand. The keyboard macro I described above
 isn't *tha* robust; it can end up really messing up the code if you apply it blindly.
 
 But luckily, we have another option:
@@ -1328,9 +1589,10 @@ And then we build ... and ... oh. The bug didn't replicate.
 
  * This is okay. It is *not* a disaster.
 
-It in fact motivates another technique: bisecting loopification.
+It in fact motivates another technique: bisecting ["loopification"][].
 
 ### Bisecting the module tree
+[Bisecting the module tree]: #Bisecting.the.module.tree
 
 Warning: this technique may seem... strange. But I love it so.
 
@@ -1360,6 +1622,7 @@ The steps are as follows:
     code readily reverts individual modules back to their prior form:
 
 
+    Change:
     ```rust
     mod child_mod_1 {
         use import::stuff;
@@ -1372,9 +1635,7 @@ The steps are as follows:
         }
     }
     ```
-    
     to:
-    
     ```rust
     mod child_mod_1;
     #[cfg(commented_out_for_bisection)]
@@ -1419,14 +1680,15 @@ we can do bisection over the `fn` items within the (still
 out-of-line) `mod process`.
 
 ## Aside: Reduction via Bisection
+[Reduction via Bisection]: #Aside:.Reduction.via.Bisection
 
 Some thoughts on bisecting sets of items follow.
 
 ### Regroup `fn` items in inherent `impl`s.
 
-Note that it may be much easier to "cfgment"-out whole `impl` items, rather
-"cfgmenting"-out each individual `fn` item in an `impl`. Furthermore,
-you can "split-impls", and then "cfgment" its parts
+Note that it may be much easier to ["cfgment"][]-out whole `impl` items, rather
+["cfgmenting"][]-out each individual `fn` item in an `impl`. Furthermore,
+you can ["split-impls"][], and then ["cfgment"][] its parts
 independently (assuming the relevant bodies are all `loop`ed).
 
 ### Add default methods to trait declarations
@@ -1465,10 +1727,10 @@ bisect to find the "one fn body" that causes the faiure. Instead, I
 had to focus on identifying a minimal subset of bodies that are
 necessary to cause it to *arise*.
 
-That is, starting with N `fn` items, I'd "loopify" N/2 of them, and if
+That is, starting with N `fn` items, I'd ["loopify"][] N/2 of them, and if
 the bug went away on that half, I'd put back in the previous bodies,
 cut that set in in half, and repeat until the bug came back. This
-tended to narrow things down to one `fn` item that, when "loopified",
+tended to narrow things down to one `fn` item that, when ["loopified"][],
 made the bug go away.
 
 Then I'd mark that one `fn` as strictly necessary, and repeat the
@@ -1481,13 +1743,13 @@ side, its still a pretty mechanical process and probably could be
 automated.
 
 Eventually, this led me to identify the three functions in `process.rs`
-whose non-"loopified" definitions are needed to witness the bug:
+whose non-["loopified"][] definitions are needed to witness the bug:
 
  * `load_processes`
  * `<Process as ProcessType>::process_detail_fmt`, and
  * `Process::create`.
 
-With that done, I redid the "mod-inlining" of `mod process` into `kernel`.
+With that done, I redid the ["mod-inlining"][] of `mod process` into `kernel`.
 
 # Popping the stack
 
@@ -1581,7 +1843,8 @@ bound on the associated type that sent us on this path... YES
          fn service_pending_interrupts(&self) { loop  { } }
 ```
 
-So *now* we can pop our stack: We can go back to `chips/arty_e21`, and apply "type-trivializaton":
+So *now* we can pop our stack: We can go back to `chips/arty_e21`,
+and apply ["type-trivializaton"][]:
 
 ```diff
 --- a/tock/chips/arty_e21/src/lib.rs
@@ -1598,7 +1861,7 @@ So *now* we can pop our stack: We can go back to `chips/arty_e21`, and apply "ty
 
 We did it!
 
-With that in place, we can do more "dep-reduction", by removing the `rv32i` dependency from `chips/arty_e21`.
+With that in place, we can do more ["dep-reduction"][], by removing the `rv32i` dependency from `chips/arty_e21`.
 
 At this point, we could continue with the above transformations to further reduce `kernel`.
 
@@ -1633,7 +1896,7 @@ pub unsafe fn reset_handler() {
 It would be nice to figure out which parts of this are actually relevant.
 
 Unfortunately, `kernel::procs::load_processes` was one of the functions
-where we could not apply "loopification" without masking the `rustc` bug.
+where we could not apply ["loopification"][] without masking the `rustc` bug.
 
 Let us see if we can at least simplfify the API of `load_processes` itself.
 
@@ -1681,7 +1944,7 @@ pub fn load_processes<C: Chip>(
 ```
 
 The fact that `Process::create` was *another* function that we could
-not loopify gives us a hint has to how to simplfy this further: can we
+not ["loopify"][] gives us a hint has to how to simplfy this further: can we
 reduce this method body to *just* a `Process::create` call, and see
 if the bug persists?
 
@@ -1725,13 +1988,17 @@ if the bug persists?
 
 And *yes*, the bug still reproduces.
 
-## Tactic: "RHS-inlining" (theme: Simplify Workflow)
+{% marginblock %}
+theme: Simplify Workflow
+{% endmarginblock %}
+## Tactic: "RHS-inlining"
+["RHS-inlining"]: #Tactic:..RHS-inlining.
 
 This is just the classic transformation of taking the right-hand side
 of a `let` or `const` and copying it into the usage sites for the
 variable defined by the `let` or `const`. Once all uses of the
 variable have been replaced, you can try removing the `let` or `const`
-itself (i.e. "unusedification")
+itself (i.e. ["unusedification"][])
 
 In our specific case, we can apply this to `load_processes`:
 
@@ -1764,28 +2031,37 @@ However, this technique on its own does not tend to actually reduce
 the problem at hand, in terms of making it possible for us to remove
 imports or simplify `fn` API signatures.
 
-## Tactic: "Defaultification" aka "Scalars Gotta Scale" (theme: Trivialize Content) -->
+{% marginblock %}
+theme: Trivialize Content
+{% endmarginblock %}
+## Tactic: "Defaultification"
+{% marginblock %}
+aka "Scalars Gotta Scale"
+{% endmarginblock %}
+["Defaultification"]: #Tactic:..Defaultification.
+["defaultification"]: #Tactic:..Defaultification.
 
 If you really want to *simplify*, then you should replace the
 occurences of the variable with some "obvious" value based on its
 type.
 
-(This is the obvious alternative to "loopification" when it comes to simplifying `const fn`.)
+(This is the obvious alternative to ["loopification"][] when it comes to simplifying `const fn`.)
 
 More specifically: frequently, the return type of a `const fn` (or the
 type of a `const` item) is some scalar type (like `u32`, `f64`, or
 `bool`). These all have "obvious" values that you can just plug in
 (respectively `0`, `0.0`, or `false`).
 
+Change:
 ```rust
-const fn cfoo(----) -> u32 { ... }
+const fn cfoo(----) -> u32 { ---- }
 ```
-to
+to:
 ```rust
 const fn cfoo(----) -> u32 { 0 }
 ```
 
-In the case of `load_processes`, "defaultification" yields this:
+In the case of `load_processes`, ["defaultification"][] yields this:
 
 ```diff
 --- INDEX/tock/kernel/src/lib.rs
@@ -1809,17 +2085,27 @@ That means we've gotten rid of the uses of three `fn` parameters in
 the body of `load_processes`. Lets see what that can buy us for
 further reduction.
 
-## "Genertrification", aka "Type Freedom" (theme: Trivialize Content)
+{% marginblock %}
+theme: Trivialize Content
+{% endmarginblock %}
+## Technique: "Genertrification"
+{% marginblock %}
+aka "Type Freedom"
+{% endmarginblock %}
+["Genertrification"]: #Technique:..Genertrification.
+["genertrification"]: #Technique:..Genertrification.
+["genertrify"]: #Technique:..Genertrification.
 
 Once you remove all uses of parameter (which is readily identifiable
 via either lint diagnostics or if the parameter has just
-`_: ParamType` for its declaration), you can "genertrify" it to get rid of the
+`_: ParamType` for its declaration), you can ["genertrify"][] it to get rid of the
 use of `ParamType`.
 
+Change:
 ```rust
 fn foo(_: ParamType, ----) -> ReturnType { loop { } }
 ```
-to
+to:
 ```rust
 fn foo<A>(_: A, ----) -> ReturnType { loop { } }
 ```
@@ -1836,14 +2122,14 @@ there remain uses of `foo` elsewhere in the code.
    We will see an example of this below.
 
 Therefore, I tend to recommend it over
-"param-elimination", described below.
+["param-elimination"][[], described below.
 
 
 However, this transformation does not work if `fn foo` must not carry
 any generic type parameters; e.g., if `fn foo` needs to be
 object-safe, then you cannot add the type parameteter `A`.
 
-In the case of `load_processes`, "genertrification" allows this change:
+In the case of `load_processes`, ["genertrification"][] allows this change:
 
 ```diff
 --- INDEX/tock/kernel/src/lib.rs
@@ -1868,7 +2154,7 @@ In the case of `load_processes`, "genertrification" allows this change:
 
 And once we do *that*, we can revise any calls to `load_processes` and
 pass any value we like for the `impl Sized` arguments. So we've opened
-up new opportunities for "expr-elimination":
+up new opportunities for ["expr-elimination"][]:
 
 ```diff
 --- INDEX/tock/boards/arty-e21/src/main.rs
@@ -1898,12 +2184,12 @@ up new opportunities for "expr-elimination":
 ```
 
 
-We would like to continue simplifying the APIs by applying "genertrification" elsewhere.
+We would like to continue simplifying the APIs by applying ["genertrification"][] elsewhere.
 For example, `load_processes` calls `Process::create`, so it would be useful to simplify
 its API.
 
 The body of `Process::create` is currently over 150 lines of code. But after
-bisection-based expr-elimination, coupled with RHS-inlining, defaultification, and unusedification,
+bisection-based ["expr-elimination"][], coupled with ["RHS-inlining"][], ["defaultification"][], and ["unusedification"][],
 we can get the body down to this far more managable 20 lines:
 
 ```rust
@@ -1942,7 +2228,7 @@ impl<C: 'static + Chip> Process<'a, C> {
 }
 ```
 
-And now we can apply "genertrification":
+And now we can apply ["genertrification"][]:
 
 ```diff
 --- INDEX/tock/kernel/src/lib.rs
@@ -1968,7 +2254,7 @@ And now we can apply "genertrification":
                  &mut *((&mut []).as_mut_ptr() as *mut Process<'static, C>);
 ```
 
-Unfortunately, I was not able to genertrify the `remaining_app_memory`
+Unfortunately, I was not able to ["genertrify"][] the `remaining_app_memory`
 formal parameter, even though it is unused in the function body. Why
 is this? Because the current call-site is *relying* on the type of the
 formal parameter for inference purposes. So in this case, we need to
@@ -1997,7 +2283,7 @@ update the API in tandem with the call site:
          index: impl Sized,
 ```
 
-This allows further "expr-elimination":
+This allows further ["expr-elimination"][]:
 
 ```diff
 --- INDEX/tock/kernel/src/lib.rs
@@ -2063,27 +2349,34 @@ declarations or any "interesting" types on formal parameters.
 So, lets see if we can further reduce the complexity of our example
 by simplifying the APIs of the functions involved.
 
-## "Param-elimination" (theme: Trivialize Content)
+{% marginblock %}
+theme: Trivialize Content
+{% endmarginblock %}
+## Technique: "Param-elimination"
+["Param-elimination"]: #Technique:..Param-elimination.
+["param-elimination"]: #Technique:..Param-elimination.
 
 If you have successfully eliminated all uses of a method `foo`,
 then you can apply this transformation:
 
+Change:
 ```rust
 fn foo(_: ArgType, ----) -> ReturnType { loop { } }
 ```
-to
+to:
 ```rust
 fn foo(----) -> ReturnType { loop { } }
 ```
 
 In some rare cases, the compiler bug will requires a method signature
 to keep the same number of arguments; for that scenario, you can
-instead use "type-trivialization" for the parameter:
+instead use ["type-trivialization"][] for the parameter:
 
+Change:
 ```rust
 fn foo(_: ArgType, ----) -> ReturnType { loop { } }
 ```
-to
+to:
 ```rust
 fn foo(_: (), ----) -> ReturnType { loop { } }
 ```
@@ -2091,12 +2384,12 @@ fn foo(_: (), ----) -> ReturnType { loop { } }
 Either way, these transformations can only be applied if all *uses* of
 `foo` have been eliminated via trivialization of bodies as described
 above (or if you are willing to update them all accordingly). Thus, I
-tend to recommend applying "genertrification" instead: that transformation
+tend to recommend applying ["genertrification"][] instead: that transformation
 can be applied without concern about the usage sites.
 
-Of course, if you have already applied "genertrification" and also updated
+Of course, if you have already applied ["genertrification"][] and also updated
 all call sites to pass something trivial like `()`, then you can readily
-apply either "param-elimination" or "type-trivialization": it really should be
+apply either ["param-elimination"][] or ["type-trivialization"][]: it really should be
 easy to update the call-sites in that scenario.
 
 In our particular case of `Process::create`, we currently have a `fn`-signature that looks
@@ -2150,20 +2443,26 @@ so now we can just remove them entirely:
                  &mut *((&mut []).as_mut_ptr() as *mut Process<'static, C>);
 ```
 
-And compiling still hits the same ICE, so this "param-elimination" was a legitimate reduction
+And compiling still hits the same ICE, so this ["param-elimination"][] was a legitimate reduction
 of the problem.
 
 Next we'll consider a related transformation on the `fn`-signature.
 
-## "Ret-elimination" (theme: Trivialize Content)
+{% marginblock %}
+theme: Trivialize Content
+{% endmarginblock %}
+## Technique: "Ret-elimination"
+["Ret-elimination"]: #Technique:..Ret-elimination.
+["ret-elimination"]: #Technique:..Ret-elimination.
 
 If you have successfully eliminated all uses of the value returned from calls to `foo`,
 then you can apply this transformation:
 
+Change:
 ```rust
 fn foo(----) -> ReturnType { loop { } }
 ```
-to
+to:
 ```rust
 fn foo(----) { loop { } }
 ```
@@ -2171,10 +2470,11 @@ fn foo(----) { loop { } }
 If `fn foo` still has a body, then you can just turn every return point in the body into
 a normal expression:
 
+Change:
 ```rust
 fn foo(----) -> ReturnType { if A { return B; } TailReturn }
 ```
-to
+to:
 ```rust
 fn foo(----) { if A { B; } TailReturn; }
 ```
@@ -2189,7 +2489,7 @@ In our case, the sole call to `Process::create` now looks like this:
         }
 ```
 
-So we can directly apply "ret-elimination" to the definition of `Process::create`:
+So we can directly apply ["ret-elimination"][] to the definition of `Process::create`:
 
 ```diff
 --- INDEX/tock/kernel/src/lib.rs
@@ -2214,7 +2514,7 @@ But... Ah ha! Doing this causes the compilation error to disappear!
 
 What happened?
 
-Well, inspecting the return type, we can see that "ReturnType-elimination" in this
+Well, inspecting the return type, we can see that ["Ret-elimination"][] in this
 case has gotten rid of the type: `(Option<&'static dyn ProcessType>, usize, usize)`.
 Nested within that tuple, we see the type `&'static dyn ProcessType`. 
 So, the attemtpt to return `(Some(process), 0, 0)` is causing the generated
@@ -2275,19 +2575,25 @@ We can simplfy this API by reducing the return type to the core element that mat
 In fact, we can do even better. The initialization expression on the right-hand side
 of `let mut process = ...` is ugly, and its actually completely irrelevant.
 
-In cases like these where we are hitting an ICE, we can use a special kind of "defaultification"
+In cases like these where we are hitting an ICE, we can use a special kind of ["defaultification"][]
 to conjure up types without needing any knowledge of their expression.
 
-## "None-defaulting"
+{% marginblock %}
+theme: Trivialize Content
+{% endmarginblock %}
+## Technique: "None-defaulting"
+["None-defaulting"]: #Technique:..None-defaulting.
+["none-defaulting"]: #Technique:..None-defaulting.
 
-The idea of "none-defaulting" is simple: You need the compiler to think you have a value of type
+The idea of ["none-defaulting"][] is simple: You need the compiler to think you have a value of type
 `T`. But the steps to make an instance of `T` are not relevant to reproducing the bug.
 So just make a `None::<Option<T>>`, and unwrap it.
 
+Change:
 ```rust
-let x: T = ...;
+let x: T = ----;
 ```
-to
+to:
 ```rust
 let x: T = None.unwrap();
 ```
@@ -2333,7 +2639,7 @@ that get their code generated as part of that coercion.
 We already showed `Process::create` is now pretty trivial.
 
 As for `load_processes`,
-after doing some additional "unusedification" and "param-elimination"
+after doing some additional ["unusedification"][] and ["param-elimination"][]
 we can get it down to this:
 
 ```rust
@@ -2357,7 +2663,7 @@ pub fn load_processes<C: Chip>(chip: &'static C) { unsafe { Process::create(chip
 That just leaves `<Process as ProcessType>::process_detail_fmt`, which we have not looked at yet.
 
 As part of the earlier (undocumented) bisection process on the out-of-line `mod process;`, I
-already "simpl-impled" the `ProcessType` trait declaration, so it looks like this:
+already ["simpl-impled"][] the `ProcessType` trait declaration, so it looks like this:
 
 ```rust
 pub trait ProcessType {
@@ -2396,7 +2702,7 @@ surprisingly effective debugging methodology).
 But we still have the body of `fn process_detail_fmt` itself, which is
 about 175 lines of code. So lets try to winnow that down.
 
-Suffix-bisection ends up revealing that the ICE is triggered by this bit of code
+["Suffix-bisection"][] ends up revealing that the ICE is triggered by this bit of code
 in the method.
 
 ```rust
@@ -2405,7 +2711,7 @@ in the method.
         });
 ```
 
-And so we can "expr-eliminate" all the rest, leaving this defintion of the method:
+And so we can ["expr-eliminate"][] all the rest, leaving this defintion of the method:
 
 ```rust
 impl<C: Chip> ProcessType for Process<'a, C> {
@@ -2463,15 +2769,20 @@ So we might need to go and modify code over in `tock-cells` if we want to fully 
 Or we might be able to get away with just copying its definition locally, avoiding the hassle of
 the full process of reducing the `tock-cells` crate itself.
 
-### "Cut-spaghetti-imports" (themes: reduce coupling, identify the unnecessary)
+{% marginblock %}
+themes: Eliminate Coupling, Identify the Unnecessary
+{% endmarginblock %}
+### Tactic: "Cut-spaghetti-imports"
+["cut-spaghetti-imports"]: #Tactic:..Cut-spaghetti-imports.
 
-This is pretty easy: If you've "loopified" most of your code, you can often
+This is pretty easy: If you've ["loopified"][] most of your code, you can often
 do this replacement.
 
+Change:
 ```rust
 use ...::Type;
 ```
-to
+to:
 ```rust
 struct Type;
 ```
@@ -2480,7 +2791,7 @@ or, if applicable:
 type Type = ();
 ```
 
-If you haven't done full "loopification" everywhere (our situation), then you may need
+If you haven't done full ["loopification"][] everywhere (our situation), then you may need
 to do this.
 ```rust
 struct Type { ... } // (adapt definition from elsewhere, potentially via cut-and-paste).
@@ -2489,10 +2800,11 @@ impl Type { ... }
 
 Note: may need to add (potentially artificial) generic parameters, like so:
 
+Change:
 ```rust
 use ...::Type;
 ```
-to
+to:
 ```rust
 struct<'a, T> Type(&'a (), Option<T>);
 ```
@@ -2536,9 +2848,9 @@ its `fn is_some` method after a compilation attempt said that was missing.
 
 With that done, compilation continues to show the ICE.
 
-If you "loopify" the body of `MapCell::map`, the ICE goes away. There is something relevant inside there.
+If you ["loopify"][] the body of `MapCell::map`, the ICE goes away. There is something relevant inside there.
 
-Some intelligent (read: non-mechanical) "expr-elimination" and "none-defaulting"
+Some intelligent (as in, non-mechanical) ["expr-elimination"][] and ["none-defaulting"][]
 gets `MapCell::map` down to this:
 
 ```rust
@@ -2560,15 +2872,25 @@ And yet, this version of `map` does not use `self` at all!
 
 This brings us to another kind of simplification: going from object methods to top-level functions.
 
-## "Unobjectification"
+{% marginblock %}
+themes: Identify the Unnecessary, Trivialize Content
+{% endmarginblock %}
+## Tactic: "Deobjectification"
+["Deobjectification"]: #Tactic:..Deobjectification.
+["deobjectification"]: #Tactic:..Deobjectification.
 
+The goal of "deobjectification" is to replace a method defined in an
+`impl` with a top-level function.
+Moving some necessary component for reproducing the bug out of the `impl`
+can make the `impl` itself unnecessary, and thus removable.
 
+Change:
 ```rust
 impl<X> Type<X> {
     pub fn foo<T>(&self, args: ---) -> ReturnType { --- } // where `---` does not use `Self`/`self`
 }
 ```
-to
+to:
 ```rust
 fn top_foo<X, T>(args: ---) -> ReturnType { --- }
 ```
@@ -2624,7 +2946,7 @@ to add a fourth method (`mapcell_map`) in the process; but that method
 was always there all along as part of the puzzle. Iwt had just been
 waiting for us in the upstream `tock-cells` crate.
 
-Furthermore, we can apply "ret-elimination" to `mapcell_map`, both on the `fn mapcell_map` itself,
+Furthermore, we can apply ["ret-elimination"][] to `mapcell_map`, both on the `fn mapcell_map` itself,
 and on its closure argument:
 
 ```diff
@@ -2689,20 +3011,25 @@ impl<C: 'static + Chip> Process<'a, C> {
 }
 ```
 
-## "Ret-ascription" (theme: Decouple)
+{% marginblock %}
+theme: Eliminate Coupling
+{% endmarginblock %}
+## Technique: "Ret-ascription"
+["Ret-ascription"]: #Technique:..Ret-ascription.
 
 We could further reduce `Process::create a tiny bit: We *can* remove
 its return type, as long as we ensure that the coercion implied by the
 return type still happens in the code.
 
-This is a variant on "ret-elimination": we again want to remove the return type from
+This is a variant on ["ret-elimination"][]: we again want to remove the return type from
 the `fn` signature, but this time we will *also* ensure that any coercions implied
 by the return type still occur:
 
+Change:
 ```rust
 fn foo(----) -> ReturnType { if A { return B; } TailReturn }
 ```
-to
+to:
 ```rust
 fn foo(----) { if A { let _: ReturnType = B; } let _: ReturnType = TailReturn; }
 ```
@@ -2722,8 +3049,8 @@ impl<C: 'static + Chip> Process<'a, C> {
 }
 ```
 
-And furthermore, we can apply "deobjectification" and
-"param-elimination" here; this method doesn't even have a `self`
+And furthermore, we can apply ["deobjectification"][] and
+["param-elimination"][] here; this method doesn't even have a `self`
 parameter.
 
 ```rust
@@ -2770,20 +3097,20 @@ need to do in order to really minimize `kernel` to its core:
     from the crate graph.
 
     For us, we can apply some of the other techniques we have learned about to the leaf
-    crates, such as using "none-defaulting" to create an instance of `arty_e21::chip::ArtyExx`
+    crates, such as using ["none-defaulting"][] to create an instance of `arty_e21::chip::ArtyExx`
     in `board/argy-e21/main.rs`.
 
  2. We have to reducing the coupling within `kernel` itself. It can be maddening
     trying to comment out modules at random. When that madness becomes too much for me,
     I force myself to adopt a more disciplined
-    approach: I use the "cut-spaghetti-imports" trick to replace the existing `use` imports
+    approach: I use the ["cut-spaghetti-imports"][] tactic to replace the existing `use` imports
     with local definitions. (Remember: since most `fn`-items in every module are
-    "loopified", the "cut-spaghetti-imports" trick will work fairly often.
+    ["loopified"][], the ["cut-spaghetti-imports"][] tactic will work fairly often.
 
  3. This goes hand-in-hand with the general point above about reducing coupling within `kernel`:
     We have to finish mimimizing `mod process { ... }` itself within `kernel`.
     All of the interesting functions for reproducing the bug live there, so we know
-    we cannot "cfgment" out that module for now. But if we have to keep `mod process`,
+    we cannot ["cfgment"][] out that module for now. But if we have to keep `mod process`,
     we won't be able to remove the other modules until we remove the dependencies that
     it has on those modules.
 
