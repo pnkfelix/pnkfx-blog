@@ -1298,7 +1298,7 @@ for `chips/arty_e21`:
 
 {% marginblock %}
 Maybe this argues
-for a stratgy where one should attempt targetted ["loopification"][] on
+for a strategy where one should attempt targetted ["loopification"][] on
 your reachable (`pub`) modules in the crate, and then do subsequent
 ["demodulification"][] of the out-of-line modules before jumping into
 ["mod-inlining"][]. I have not tried that workflow too seriously yet,
