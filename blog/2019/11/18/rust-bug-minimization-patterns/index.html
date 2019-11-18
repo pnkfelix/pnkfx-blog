@@ -5,7 +5,7 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>The {pnk}f(eli)x Blog</title>
+  <title>Rust Bug Minimization Patterns - The {pnk}f(eli)x Blog</title>
   <meta name="author" content="Felix S. Klock II">
 
   
@@ -19,7 +19,7 @@ been a blog post for a few months. But now, here we are! While &hellip;">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://blog.pnkfx.org/">
+  <link rel="canonical" href="http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -63,15 +63,12 @@ been a blog post for a few months. But now, here we are! While &hellip;">
 </nav>
   <div id="main">
     <div id="content">
-      <div class="blog-index">
+      <div>
+<article class="hentry" role="article">
   
-  
-  
-    <article>
-      
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2019/11/18/rust-bug-minimization-patterns/">Rust Bug Minimization Patterns</a></h1>
+      <h1 class="entry-title">Rust Bug Minimization Patterns</h1>
     
     
       <p class="meta">
@@ -94,7 +91,7 @@ been a blog post for a few months. But now, here we are! While &hellip;">
   </header>
 
 
-  <div class="entry-content"><p>Hey there again!</p>
+<div class="entry-content"><p>Hey there again!</p>
 
 <p>I have been pretty busy with Rust compiler tasks, so no there has not
 been a blog post for a few months. But now, here we are!</p>
@@ -4390,92 +4387,16 @@ and when I do, I hope to cover all three of the points above.</p>
 technique that you can employ for reducing ICEs and other static
 analysis bugs in <code>rustc</code>.</p>
 </div>
-  
-  
 
 
-    </article>
-  
-  
-    <article>
+  <footer>
+    <p class="meta">
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/">Breaking News: Non-Lexical Lifetimes Arrives for Everyone</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
   
 
+<span class="byline author vcard">Posted by <span class="fn">Felix S. Klock II</span></span>
 
-<time datetime="2019-06-26T12:54:29+02:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
-<em>Update 1 July 2019</em>: fixed bugs in <a href="#Closure.fixes"><code>EscapingWriter</code></a> and
-<a href="#Fixed.leaking.into.Drop"><code>as_reader</code></a> examples.
-<br></br>
-<em>Update 8 July 2019</em>: fixed a new bug in <a href="#Fixed.leaking.into.Drop"><code>as_reader</code></a> example.
-</span></p>
-
-<p>Hey there everyone!</p>
-
-<p>It has been literally years since I last posted to this blog.
-I have been doing a bunch of Rust compiler work.
-One big feature has been deployed: Non-Lexical Lifetimes (hereafter denoted &ldquo;NLL&rdquo;).</p>
-
-<p>The motivation for this blog post: The next version of Rust, 1.36, is
-going to have NLL turned on for the 2015 edition. Going forward,
-all editions of Rust will now use NLL.
-That is a big change.
-It is mostly a change that empowers developers;
-but it also is a change that will cause some existing code to break.</p>
-
-<p>This post is going to talk a little bit about what NLL is and why you
-as a Rust developer should be excited about it as a feature
-(because it enables programmers to express themselves more directly).</p>
-
-<p>However, even though the main feature of NLL is to <em>increase</em>
-the set of programs that Rust accepts,
-the vast majority of this post will focus on cases where the
-switch to NLL has caused the compiler to start
-rejecting<label for='soundness-as-a-feature' class='margin-toggle'> &#8853;</label><input type='checkbox' id='soundness-as-a-feature' class='margin-toggle'/><span class='marginnote'>Rejecting unsound code is also a Rust feature that I value highly; but it often fails to excite developers, especially when it causes their legacy code to stop compiling. </span>
-code that it used to accept erroneously.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/">GC and Rust Part 2: The Roots of the Problem</a></h1>
-    
-    
-      <p class="meta">
-        
 
 
 
@@ -4487,365 +4408,38 @@ code that it used to accept erroneously.</p>
   
 
 
-<time datetime="2016-01-01T00:00:00+01:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>This is the second in a series of posts will discuss why garbage
-collection is hard, especially for Rust, and brainstorm about
-solutions to the problems we face.</p>
-
-<p>The <a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">previous post</a> wrote down some criteria for integration.
-Now I want to delve into why satisfying those criteria is hard,
-at least in Rust as it stands today.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
+<time datetime="2019-11-18T11:19:46+01:00" pubdate data-updated="true"></time>
       
-  <header>
+
+
+    </p>
     
-      <h1 class="entry-title"><a href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Surfaces and Signatures: Component Privacy Versus Dependence</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
+      <div class="sharing">
   
-
-
-<time datetime="2015-12-19T22:30:00+01:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>I have had some thoughts on what <em>privacy</em> is used for in programming
-languages, and how it differs from the notion of <em>dependence</em> between
-modules (or at least compilation units) in a language like Rust.
-And I thought I should share.</p>
-
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/" data-via="pnkfelix" data-counturl="http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/" >Tweet</a>
+  
+  
+  
 </div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Read on &rarr;</a>
-    </footer>
-  
 
-
-    </article>
-  
-  
-    <article>
+    
+    <p class="meta">
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/12/18/fixing-octopress-table-rendering/">Fixing Octopress Table Rendering</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2015-12-18T22:00:00+01:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Learn how I hacked the SCSS for my blog to get tables to look right,
-without breaking everything else (I hope).</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/12/18/fixing-octopress-table-rendering/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
+        <a class="basic-alignment left" href="/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/" title="Previous Post: Breaking News: Non-Lexical Lifetimes arrives for everyone">&laquo; Breaking News: Non-Lexical Lifetimes arrives for everyone</a>
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/11/27/cherrypicking-tuftes-of-hair/">Cherry-picking From the Shoulders of Giants</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2015-11-27T14:00:00+01:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>This post: I describe some changes to my blog&rsquo;s presentation
-format, and how I hacked them in by cherry-picking from the shoulders
-of giants.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/11/27/cherrypicking-tuftes-of-hair/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/11/11/vis-via-snap-js/">Vis-a-vis, Part 2: Visualizing Graphs via snap.svg</a></h1>
-    
-    
-      <p class="meta">
-        
+    </p>
+  </footer>
+</article>
 
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2015-11-11T18:00:00+01:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p><a href="/blog/2015/10/12/viz-a-viz-js/">Previously</a> I discussed visualizing graphs (<code>G = (V,E)</code>)
-specified in DOT syntax (<code>digraph { a -&gt; b; }</code>) via
-<code>viz.js</code>, which is <code>graphviz</code> compiled to Javascript.</p>
-
-<p>However, I have decided that it is too difficult to convince
-graphviz to produce particular layouts. Therefore, I am going
-to try out other tools for working with SVG; in this post, I&rsquo;m
-going to discuss a relative newcomer to the scene, <a href="http://snapsvg.io/">snap.svg</a>.</p>
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
 
 </div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/11/11/vis-via-snap-js/">Read on &rarr;</a>
-    </footer>
-  
 
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">GC and Rust Part 1: Specifying the Problem</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2015-11-10T17:45:00+01:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>This is the first in a series of posts will discuss why garbage
-collection is hard, especially for Rust, and brainstorm about
-solutions to the problems we face.</p>
-
-<p>The relationship between garbage collection (GC) and the Rust
-programming language has been an interesting one.</p>
-
-<p>GC was originally deeply integrated into the language, complete with
-dedicated syntax (good old <code>@T</code> &hellip;). Over time the team found ways to
-lessen the dependency on GC, and then finally remove it from the
-language entirely.</p>
-
-<p>However, we still want to provide support for garbage collection.</p>
-
-<p>To explain why, I need to define the actual problems we seek to solve.
-So let us explore the problem space.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2015-10-27T14:09:00+01:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>This post is a prequel to a series of posts discussing why garbage
-collection is hard, especially for Rust, and brainstorming about
-solutions to the problems we face.</p>
-
-<p>The goal of this post is to provide the background foundational material
-about Garbage Collection that the other posts will then build upon.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, Part 1: Visualizing Graphs via viz.js</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2015-10-12T14:10:00+02:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>This is a post discussing a couple different ways to draw pictures,
-mostly those of graphs (nodes and edges, i.e. circles or boxes, and
-lines between them).</p>
-
-<p>The technology covered by this post is <a href="https://github.com/mdaines/viz.js/">viz.js</a>, a Javascript
-library for rendering graphs specified via the <a href="http://www.graphviz.org/content/dot-language">DOT</a> language.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/10/12/viz-a-viz-js/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  <div class="pagination">
-    
-      <a class="prev" href="2">&larr; Older</a>
-    
-    <a href="/blog/archives">Blog Archives</a>
-    
-  </div>
-</div>
 <aside class="sidebar">
   
     <section>
@@ -4927,6 +4521,7 @@ library for rendering graphs specified via the <a href="http://www.graphviz.org/
   
 </aside>
 
+
     </div>
   </div>
   <footer role="contentinfo"><p>
@@ -4941,7 +4536,10 @@ library for rendering graphs specified via the <a href="http://www.graphviz.org/
       var disqus_shortname = 'pnkfx-blog';
       
         
-        var disqus_script = 'count.js';
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/';
+        var disqus_url = 'http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/';
+        var disqus_script = 'embed.js';
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
