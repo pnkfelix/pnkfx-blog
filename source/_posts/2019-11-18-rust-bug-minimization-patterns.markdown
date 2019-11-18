@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Rust Bug Minimization Patterns"
-date: 2019-10-29 11:19:46 +0100
+date: 2019-11-18 11:19:46 +0100
 comments: true
 categories: 
 ---
