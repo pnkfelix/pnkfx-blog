@@ -1665,7 +1665,7 @@ The three steps are as follows:
    place. (You'll see why in a moment.)
 
 2. Replace all function bodies with
-   `loop { }`{% marginnote 'congrats-same-failure' 'If after doing this, you still get the same failure again, then congratulations: You have a single file (with a potentially huge set `mod` tree) and all of its function bodies are trivial `loop { }`. But of course, in our case of `kernel`, we know that we are not in this scenario.' %}
+   `loop { }`{% marginnote 'congrats-same-failure' 'If after doing this, you still get the same failure again, then congratulations: You have a single file (with a potentially huge module tree) and all of its function bodies are trivial `loop { }`. But of course, in our case of `kernel`, we know that we are not in this scenario.' %}
    (which we just did, again via the pretty-printer).
 
  3. Finally, swap modules in and out via ["cfgmenting"].
