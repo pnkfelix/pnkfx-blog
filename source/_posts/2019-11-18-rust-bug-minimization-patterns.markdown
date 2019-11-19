@@ -247,7 +247,7 @@ theme: Simplify Workflow
 
 Before you do any reduction, move the test case into its own local `git` repository
 (or whatever versioning tool you prefer: SVN, RCS, etc).
-Being back to backtrack through previous reduction steps
+Being able to backtrack through previous reduction steps
 is an incredibly important option when doing this kind of
 of work.
 
