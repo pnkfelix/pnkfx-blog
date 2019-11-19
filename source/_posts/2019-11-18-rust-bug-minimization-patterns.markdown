@@ -165,7 +165,7 @@ go straight to building up a minimal example from scratch. And that's
 However, this post is dedicated to the problem of what you can do when
 you *haven't* hit that level of understanding. When you're looking at
 a set of files that make up over 90,000 lines of code, you want a set
-of semi-mechanical techniques to take that test input and strips it
+of semi-mechanical techniques to take that test input and strip it
 down to its essence.
 
 To be honest, the most effective methodology is going to use a blend
