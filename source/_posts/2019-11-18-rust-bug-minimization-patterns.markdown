@@ -216,7 +216,7 @@ of documenting these transformations, I identified the following
    * Enable Incremental Steps
  * Delete the Unnecessary: Remove items not related to bug!
  * Identify the Unnecessary: Eliminate accidental necessity.
- * Trivialize Content: Turn complex expressions to trival ones.
+ * Trivialize Content: Turn complex expressions to trivial ones.
  * Eliminate Coupling: Break links between items.
 
 
