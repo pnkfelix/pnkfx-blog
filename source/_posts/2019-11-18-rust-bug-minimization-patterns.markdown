@@ -1886,7 +1886,7 @@ And then see about
 ```
 
 So *now* we can pop our stack: We can go back to `chips/arty_e21`,
-and apply ["type-trivializaton"][]:
+and apply ["type-trivialization"][]:
 
 ```diff
 --- a/tock/chips/arty_e21/src/lib.rs
