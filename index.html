@@ -9,8 +9,10 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="Hey there again! I have been pretty busy with Rust compiler tasks, so no there has not
-been a blog post for a few months. But now, here we are! While &hellip;">
+  <meta name="description" content="&#8853;
+Update 19 November 2019: fixed miscellaneous typos and a bug in the
+invariance example pointed out by
+readers both privately and on reddit &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -94,7 +96,16 @@ been a blog post for a few months. But now, here we are! While &hellip;">
   </header>
 
 
-  <div class="entry-content"><p>Hey there again!</p>
+  <div class="entry-content"><p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+<em>Update 19 November 2019</em>: fixed miscellaneous typos and a <a href="https://www.reddit.com/r/rust/comments/dy6nk7/rust_bug_minimization_patterns/f804qsj/">bug</a> in the
+<a href="#L..ADT-reduction.....in.general">invariance example</a> pointed out by
+readers both privately and on <a href="https://www.reddit.com/r/rust/comments/dy6nk7/rust_bug_minimization_patterns/">reddit thread</a>.
+I also added a <a href="#The.Rust.specifics">section</a> near the beginning
+to draw attention to techniques
+that are somewhat Rust-specific and may not be broadly known.
+</span></p>
+
+<p>Hey there again!</p>
 
 <p>I have been pretty busy with Rust compiler tasks, so no there has not
 been a blog post for a few months. But now, here we are!</p>
@@ -121,6 +132,31 @@ like I am rather conveniently picking transformations that always seem
 to work: You&rsquo;re right! I&rsquo;m cheating and not telling you about all the
 false paths I went down during my first minimization odyssey on this bug.</p>
 
+<a name="The.Rust.specifics"></a>
+<h3>The Rust specifics</h3>
+
+<p>Oh, and one other thing: A lot of the ideas here are applicable to
+   many languages, and so its possible readers have already heard about them
+   or discovered them independently.</p>
+
+<p>However, a few of the techniques
+leverage features that are not universal to languages outside of Rust.</p>
+
+<p>Specifically:</p>
+
+<ul>
+<li><p><a href="#Technique:..Cfgments.">&ldquo;cfgmenting&rdquo;</a> makes use of Rust&rsquo;s attribute system to
+remove items in a lightway fashion.</p></li>
+<li><p><a href="#Tactic:..Body.Loopification.">&ldquo;loopification&rdquo;</a> makes use of the fact that the Rust allows
+the divergent expression <code>loop { }</code> to be assigned any type.</p></li>
+<li><p><a href="#L..loopification.....via.pretty-printer">&ldquo;loopification&rdquo; via pretty-printer</a> leverages the compiler&rsquo;s
+(unstable) ability to inject <code>loop { }</code> for all function bodies.</p></li>
+<li><p><a href="#Bisecting.the.module.tree">Bisecting the module tree</a> makes use of Rust&rsquo;s support for
+a mix of inline and out-of-line modules to allow one to quickly
+swap code in and out.</p></li>
+</ul>
+
+
 <p>So, without further ado: here is the odyssey of my minimization of
 <a href="https://github.com/rust-lang/rust/issues/65774">rust-lang/rust#65774</a></p>
 
@@ -135,7 +171,7 @@ false paths I went down during my first minimization odyssey on this bug.</p>
 <a name="What.does..minimal..mean.anyway."></a>
 <h3>What does &ldquo;minimal&rdquo; mean anyway?</h3>
 
-<p>A goal of a &ldquo;minimal&rdquo; test case could mean minimize lines of code; or the number of characters. It
+<p>The objective of a &ldquo;minimal&rdquo; test case could mean minimize lines of code; or the number of characters. It
 is also good to minimize the number of source files: one file,
 cut-and-pastable into <a href="https://play.rust-lang.org/">play.rust-lang.org</a>, is especially desirable.
 <label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
@@ -143,9 +179,13 @@ One could even argue that the number of nodes in the abstract syntax tree
 is a better metric to use than text-oriented metrics when minimizing.
 </span></p>
 
+<p>Minimizing the source test in this way can yield a good candidate
+for a regression test to add to the compiler test suite when
+the bug is (hopefully) eventually fixed.</p>
+
 <p>But those syntactic metrics of minimality overlook something:
-The end goal here is a better
-<em>understanding</em> of the bug: for you, and for other developers who are
+My own end goal when minimizing the code for a bug is a better
+<em>understanding</em> of the bug: a better understanding for myself, and for other developers who are
 reading the test case.</p>
 
 <p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
@@ -254,7 +294,7 @@ all transformations for a given theme would be present together, so that you&rsq
 all the transformations for that theme at once. But as I wrote, it
 became clear over the course of actually <em>doing</em>
 a reduction, then we often bounce around between transformations, and
-it usually does not end up being nicely grouped with all transformatiosn for one theme colocated
+it usually does not end up being nicely grouped with all transformations for one theme colocated
 in time.
 So rather than using that hierarchical presentation, I am instead just
 going to try to <em>mention</em> the grouping by marking each as
@@ -1197,7 +1237,12 @@ the variance of the parameter).</p>
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>If you need an <em>invariant</em> lifetime parameter to reproduce the bug, then you
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+<code>struct S&lt;'a&gt;(Cell&lt;&amp;'a ())</code>
+is another option for encoding invariance,
+note it imports <code>std::cell::Cell</code>.
+</span>
+If you need an <em>invariant</em> lifetime parameter to reproduce the bug, then you
 can do it this way:</p>
 
 <p>Change:</p>
@@ -1210,7 +1255,7 @@ can do it this way:</p>
 <p>to:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">struct</span> <span class="n">S</span><span class="o">&lt;</span><span class="nl">&#39;a</span><span class="o">&gt;</span><span class="p">{</span> <span class="n">_inner</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">&#39;a</span> <span class="k">mut</span> <span class="p">()</span> <span class="p">}</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">struct</span> <span class="n">S</span><span class="o">&lt;</span><span class="nl">&#39;a</span><span class="o">&gt;</span><span class="p">{</span> <span class="n">_inner</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">&#39;a</span> <span class="k">mut</span> <span class="o">&amp;</span><span class="n">&#39;a</span> <span class="p">()</span> <span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
 
@@ -1583,7 +1628,7 @@ theme: Identify the Unnecessary
 about some of these (see <a href="#Tactic:..Unusedification.">&ldquo;unusedification&rdquo;</a>).</p>
 
 <p>But if you want to maximize the set of unused things that the compiler
-will identify for you, you mihght need to help it along the way by
+will identify for you, you might need to help it along the way by
 removing <code>pub</code> annotations, like so:</p>
 
 <p>Change:</p>
@@ -1664,7 +1709,7 @@ for <code>chips/arty_e21</code>:</p>
 
 <p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
 Maybe this argues
-for a stratgy where one should attempt targetted <a href="#Tactic:..Body.Loopification.">&ldquo;loopification&rdquo;</a> on
+for a strategy where one should attempt targetted <a href="#Tactic:..Body.Loopification.">&ldquo;loopification&rdquo;</a> on
 your reachable (<code>pub</code>) modules in the crate, and then do subsequent
 <a href="#Tactic:..Demodulification.">&ldquo;demodulification&rdquo;</a> of the out-of-line modules before jumping into
 <a href="#Technique:..mod-inlining.">&ldquo;mod-inlining&rdquo;</a>. I have not tried that workflow too seriously yet,
@@ -2149,7 +2194,7 @@ over to <code>kernel/src/lib.rs</code>.</p>
 But in particular, <em>leave</em> leave the original source files for the mod tree in
 place. (You&rsquo;ll see why in a moment.)</p></li>
 <li><p>Replace all function bodies with
-<code>loop { }</code><label for='congrats-same-failure' class='margin-toggle'> &#8853;</label><input type='checkbox' id='congrats-same-failure' class='margin-toggle'/><span class='marginnote'>If after doing this, you still get the same failure again, then congratulations: You have a single file (with a potentially huge set <code>mod</code> tree) and all of its function bodies are trivial <code>loop { }</code>. But of course, in our case of <code>kernel</code>, we know that we are not in this scenario. </span>
+<code>loop { }</code><label for='congrats-same-failure' class='margin-toggle'> &#8853;</label><input type='checkbox' id='congrats-same-failure' class='margin-toggle'/><span class='marginnote'>If after doing this, you still get the same failure again, then congratulations: You have a single file (with a potentially huge module tree) and all of its function bodies are trivial <code>loop { }</code>. But of course, in our case of <code>kernel</code>, we know that we are not in this scenario. </span>
 (which we just did, again via the pretty-printer).</p></li>
 <li><p>Finally, swap modules in and out via <a href="#Technique:..Cfgments.">&ldquo;cfgmenting&rdquo;</a>.</p></li>
 </ol>
@@ -2250,7 +2295,7 @@ out-of-line) <code>mod process</code>.</p>
 <h2>Reduction via Bisection</h2>
 
 <p>Sometimes you cannot simply remove all (or all but one) of the method
-bodies. For one reason or antoher (e.g. <code>impl Trait</code> in return position)
+bodies. For one reason or another (e.g. <code>impl Trait</code> in return position)
 you need to preserve the bodies of one or more methods that are not
 directly relevant to the bug at hand.</p>
 
@@ -2453,7 +2498,7 @@ with <a href="https://github.com/pnkfelix/demo-minimization/commit/1e6f3af833a5e
 
 
 <p>So <em>now</em> we can pop our stack: We can go back to <code>chips/arty_e21</code>,
-and apply [&ldquo;type-trivializaton&rdquo;][]:</p>
+and apply <a href="#Tactic:..Type-trivialization.">&ldquo;type-trivialization&rdquo;</a>:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -3521,7 +3566,7 @@ code to coerce the <code>process: &amp;mut Process&lt;C&gt;</code> into a <em>tr
 type <code>&amp;dyn ProcessType</code>. And apparently this is part of generating the bug!</p>
 
 <p>So, do not look at this reduction-failure as a set-back: It in fact may
-serve as a clue as to the root cause fo the bug.</p>
+serve as a clue as to the root cause of the bug.</p>
 
 <a name="Final.reduction.touches.on..code.Process::create..code."></a>
 <h2>Final reduction touches on <code>Process::create</code></h2>
@@ -3857,7 +3902,13 @@ method is not a valid reduction. That is, I tried compiling with this definition
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>That is certainly a <em>similar</em> looking ICE. But if we want to be sure
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+When reduction uncovers a <em>different</em> bug, it is of course
+good practice to record that distinct state of the test source code
+somewhere. E.g. you could make a separate <code>git</code> branch for it, and come back to
+later.
+</span>
+That is certainly a <em>similar</em> looking ICE. But if we want to be sure
 about our reduction, we really need to see the <em>same</em> error: if we
 don&rsquo;t see <code>[FulfillmentError(Obligation(...))]</code>, then we should not be
 satisifed.</p>
@@ -4133,7 +4184,7 @@ since we no longer need it for the now-eliminated <code>mpu_config</code> field.
 
 <p>So now we&rsquo;ve reduced all three methods to pretty simple bodies; we had
 to add a fourth method (<code>mapcell_map</code>) in the process; but that method
-was always there all along as part of the puzzle. Iwt had just been
+was always there all along as part of the puzzle. It had just been
 waiting for us in the upstream <code>tock-cells</code> crate.</p>
 
 <p>Furthermore, we can apply <a href="#Technique:..Ret-elimination.">&ldquo;ret-elimination&rdquo;</a> to <code>mapcell_map</code>, both on the <code>fn mapcell_map</code> itself,
@@ -4262,7 +4313,7 @@ theme: Eliminate Coupling
 <a name="Technique:..Ret-ascription."></a>
 <h2>Technique: &ldquo;Ret-ascription&rdquo;</h2>
 
-<p>We could further reduce `Process::create a tiny bit: We <em>can</em> remove
+<p>We could further reduce <code>Process::create</code> a tiny bit: We <em>can</em> remove
 its return type, as long as we ensure that the coercion implied by the
 return type still happens in the code.</p>
 
