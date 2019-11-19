@@ -158,7 +158,7 @@ all transformations for a given theme would be present together, so that you'd s
 all the transformations for that theme at once. But as I wrote, it
 became clear over the course of actually *doing*
 a reduction, then we often bounce around between transformations, and
-it usually does not end up being nicely grouped with all transformatiosn for one theme colocated
+it usually does not end up being nicely grouped with all transformations for one theme colocated
 in time.
 So rather than using that hierarchical presentation, I am instead just
 going to try to *mention* the grouping by marking each as
@@ -1234,7 +1234,7 @@ As I already mentioned, the compiler is probably already tellling you
 about some of these (see ["unusedification"][]).
 
 But if you want to maximize the set of unused things that the compiler
-will identify for you, you mihght need to help it along the way by
+will identify for you, you might need to help it along the way by
 removing `pub` annotations, like so:
 
 Change:
@@ -1741,7 +1741,7 @@ out-of-line) `mod process`.
 [Reduction via Bisection]: #Reduction.via.Bisection
 
 Sometimes you cannot simply remove all (or all but one) of the method
-bodies. For one reason or antoher (e.g. `impl Trait` in return position)
+bodies. For one reason or another (e.g. `impl Trait` in return position)
 you need to preserve the bodies of one or more methods that are not
 directly relevant to the bug at hand.
 
@@ -2579,7 +2579,7 @@ code to coerce the `process: &mut Process<C>` into a *trait-object* of
 type `&dyn ProcessType`. And apparently this is part of generating the bug!
 
 So, do not look at this reduction-failure as a set-back: It in fact may
-serve as a clue as to the root cause fo the bug.
+serve as a clue as to the root cause of the bug.
 
 ## Final reduction touches on `Process::create`
 
@@ -3013,7 +3013,7 @@ since we no longer need it for the now-eliminated `mpu_config` field.)
 
 So now we've reduced all three methods to pretty simple bodies; we had
 to add a fourth method (`mapcell_map`) in the process; but that method
-was always there all along as part of the puzzle. Iwt had just been
+was always there all along as part of the puzzle. It had just been
 waiting for us in the upstream `tock-cells` crate.
 
 Furthermore, we can apply ["ret-elimination"][] to `mapcell_map`, both on the `fn mapcell_map` itself,
@@ -3087,7 +3087,7 @@ theme: Eliminate Coupling
 ## Technique: "Ret-ascription"
 ["Ret-ascription"]: #Technique:..Ret-ascription.
 
-We could further reduce `Process::create a tiny bit: We *can* remove
+We could further reduce `Process::create` a tiny bit: We *can* remove
 its return type, as long as we ensure that the coercion implied by the
 return type still happens in the code.
 
