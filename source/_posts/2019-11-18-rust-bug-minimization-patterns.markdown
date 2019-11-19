@@ -5,6 +5,18 @@ date: 2019-11-18 11:19:46 +0100
 comments: true
 categories: 
 ---
+{% marginblock %}
+*Update 19 November 2019*: fixed miscellaneous typos and a [bug][invariance bug] in the
+[invariance example] pointed out by
+readers both privately and on [reddit thread][].
+I also added a [section][The Rust specifics] near the beginning
+to draw attention to techniques
+that are somewhat Rust-specific and may not be broadly known.
+{% endmarginblock %}
+
+[reddit thread]: https://www.reddit.com/r/rust/comments/dy6nk7/rust_bug_minimization_patterns/
+[invariance bug]: https://www.reddit.com/r/rust/comments/dy6nk7/rust_bug_minimization_patterns/f804qsj/
+[invariance example]: #L..ADT-reduction.....in.general
 Hey there again!
 
 I have been pretty busy with Rust compiler tasks, so no there has not
@@ -32,6 +44,31 @@ like I am rather conveniently picking transformations that always seem
 to work: You're right! I'm cheating and not telling you about all the
 false paths I went down during my first minimization odyssey on this bug.
 
+### The Rust specifics
+[The Rust specifics]: #The.Rust.specifics
+
+Oh, and one other thing: A lot of the ideas here are applicable to
+   many languages, and so its possible readers have already heard about them
+   or discovered them independently.
+
+However, a few of the techniques
+leverage features that are not universal to languages outside of Rust.
+
+Specifically:
+
+  * ["cfgmenting"][] makes use of Rust's attribute system to
+    remove items in a lightway fashion.
+
+  * ["loopification"][] makes use of the fact that the Rust allows
+    the divergent expression `loop { }` to be assigned any type.
+
+  * ["loopification" via pretty-printer][] leverages the compiler's
+    (unstable) ability to inject `loop { }` for all function bodies.
+
+  * [Bisecting the module tree][] makes use of Rust's support for
+    a mix of inline and out-of-line modules to allow one to quickly
+    swap code in and out.
+
 So, without further ado: here is the odyssey of my minimization of
 [rust-lang/rust#65774][]
 <!-- rust-lang/rust#64872 --> 
@@ -42,7 +79,7 @@ So, without further ado: here is the odyssey of my minimization of
 
 ### What does "minimal" mean anyway?
 
-A goal of a "minimal" test case could mean minimize lines of code; or the number of characters. It
+The objective of a "minimal" test case could mean minimize lines of code; or the number of characters. It
 is also good to minimize the number of source files: one file,
 cut-and-pastable into [play.rust-lang.org][], is especially desirable.
 {% marginblock %}
@@ -52,9 +89,13 @@ is a better metric to use than text-oriented metrics when minimizing.
 
 [play.rust-lang.org]: https://play.rust-lang.org/
 
+Minimizing the source test in this way can yield a good candidate
+for a regression test to add to the compiler test suite when
+the bug is (hopefully) eventually fixed.
+
 But those syntactic metrics of minimality overlook something:
-The end goal here is a better
-*understanding* of the bug: for you, and for other developers who are
+My own end goal when minimizing the code for a bug is a better
+*understanding* of the bug: a better understanding for myself, and for other developers who are
 reading the test case.
 
 {% marginblock %}
@@ -953,6 +994,11 @@ to:
 struct S<'a>{ _inner: &'a () }
 ```
 
+{% marginblock %}
+`struct S<'a>(Cell<&'a ())`
+is another option for encoding invariance,
+note it imports `std::cell::Cell`.
+{% endmarginblock %}
 If you need an *invariant* lifetime parameter to reproduce the bug, then you
 can do it this way:
 
@@ -962,7 +1008,7 @@ struct S<'a>{ ---- }
 ```
 to:
 ```rust
-struct S<'a>{ _inner: &'a mut () }
+struct S<'a>{ _inner: &'a mut &'a () }
 ```
 
 Likewise, type parameters can usually be encoded like so:
@@ -2821,6 +2867,12 @@ and got this ICE:
 error: internal compiler error: src/librustc/traits/codegen/mod.rs:53: Encountered error `Unimplemented` selecting `Binder(<() as core::fmt::Display>)` during codegen
 ```
 
+{% marginblock %}
+When reduction uncovers a *different* bug, it is of course
+good practice to record that distinct state of the test source code
+somewhere. E.g. you could make a separate `git` branch for it, and come back to
+later.
+{% endmarginblock %}
 That is certainly a *similar* looking ICE. But if we want to be sure
 about our reduction, we really need to see the *same* error: if we
 don't see `[FulfillmentError(Obligation(...))]`, then we should not be
