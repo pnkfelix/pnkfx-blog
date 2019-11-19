@@ -268,7 +268,7 @@ attempted reduction.)
 
 Make it easy to do your runs. Use your IDE. I use emacs, so I make a
 `M-x compile` invocation that runs the compiler with the right
-arguments, and hten you can hit `g` in the `*compilation*` buffer to
+arguments, and then you can hit `g` in the `*compilation*` buffer to
 re-run the compile.
 
 ## The test case
