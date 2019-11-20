@@ -408,7 +408,7 @@ Strictly speaking, moving from `mod foo;` to `mod foo { ... }`does not
 reduce the input: You still have all the same content that you started
 with, the compiler has to do the same amount of work, et cetera.
 
-Howver, I still prefer to do it, because I find that it helps with
+However, I still prefer to do it, because I find that it helps with
 later reduction steps if I can do my transformations on a single file.
 
 There two techniques I use for ["mod-inlining"][]:
