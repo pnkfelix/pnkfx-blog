@@ -1431,7 +1431,7 @@ And (I think) you can do it
 pretty much as freely as you like: you should not need to worry about
 changing a trait method to a ["loopified"][] default causing breakage
 elsewhere when compiling the crate graph (unless there is some
-potential interaction with specialization that I have not conidered).
+potential interaction with specialization that I have not considered).
 
 If you apply the transformation repeatedly, it can often result in
 ```rust
