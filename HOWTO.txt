@@ -1,4 +1,4 @@
-* `rake new_post["Title goes here."]`: creates template for a new post
+* `bundle exec rake new_post["Title goes here."]`: creates template for a new post
   in `source/_posts/`.
 
 * `bundle exec rake generate` converts post source into static html pages,
