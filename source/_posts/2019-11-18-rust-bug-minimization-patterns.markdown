@@ -44,6 +44,8 @@ like I am rather conveniently picking transformations that always seem
 to work: You're right! I'm cheating and not telling you about all the
 false paths I went down during my first minimization odyssey on this bug.
 
+<!-- more -->
+
 ### The Rust specifics
 [The Rust specifics]: #The.Rust.specifics
 
