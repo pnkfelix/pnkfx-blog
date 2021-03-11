@@ -1,0 +1,552 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Mentoring rust diagnostics issue 81658 - The {pnk}f(eli)x Blog</title>
+  <meta name="author" content="Felix S. Klock II">
+
+  
+  <meta name="description" content="&#8853;
+This was originally a github comment that, due to my writing style (and
+desire to teach), spun a bit out of control (or at least, didn&rsquo; &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://blog.pnkfx.org/blog/2021/03/11/mentoring-rust-diagnostics-issue-81658/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="The {pnk}f(eli)x Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">The {pnk}f(eli)x Blog</a></h1>
+  
+    <h2>The informal ramblings of an ex-pat PL enthusiast</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:blog.pnkfx.org" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Mentoring Rust Diagnostics Issue 81658</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2021-03-11T14:01:33-05:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+This was originally a <a href="https://github.com/rust-lang/rust/issues/81658#issuecomment-795714938">github comment</a> that, due to my writing style (and
+desire to teach), spun a bit out of control (or at least, didn&rsquo;t match the
+overall style we try to follow for comments on <a href="https://github.com/rust-lang/rust/">rust-lang/rust repository</a>).</p>
+
+<p></span></p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+So now, this is a blog post instead, where I get to do fun things like have
+better control over formatting and whatnot. (Based on what feedback I get on the
+post, maybe I will next work to promote it to a chapter in the <a href="https://rustc-dev-guide.rust-lang.org/">rustc dev guide</a>.)</p>
+
+<p></span></p>
+
+<p><a href="https://github.com/rust-lang/rust/issues/81658">Issue #81658</a>, &ldquo;Invalid `field is never read: ` lint warning&rdquo;, is a
+bug filed against rustc.</p>
+
+<p>These are mentorship instructions for how to go about fixing the bug.
+They are also an overview of some steps I use to get started looking at a
+bug like this.</p>
+
+<!-- more -->
+
+
+<a name="Context"></a>
+<h2>Context</h2>
+
+<p><a href="https://github.com/rust-lang/rust/issues/81658">Issue #81658</a>, &ldquo;Invalid `field is never read: ` lint warning&rdquo;, is a
+bug filed against rustc. It was filed at the beginning of February 2021.</p>
+
+<p>The heart of the problem is that a diagnostic lint was firing, saying a
+particular field was never read, and mentioning the diagnostic resulted due to a
+<code>warn(dead_code)</code> lint setting.
+It was quickly prioritized as a medium priority issue (as lints often are).</p>
+
+<p>The issue reporter was quite <a href="https://github.com/rust-lang/rust/issues/81658#issuecomment-778067614">concerned</a> that the issue reached the <code>rustc</code>
+beta channel without being addressed, because they felt that the diagnostic text
+could be misinterpreted as saying that the field in question <em>is</em> 100% dead
+code, which would imply that it could be removed with no effect to the semantics
+of the program.</p>
+
+<p>The issue reporter asked for the lint to be narrowed in scope to not fire in
+these cases, as they are false positives, and the <code>rustc</code> compiler has a
+principle of eschewing lints that signal false positives.</p>
+
+<p>The observable behavior of lints is under the purview of the Rust language
+design team. the issue was nominated for discussion at one of the team&rsquo;s weekly
+triage meetings.</p>
+
+<p>After some discussion, the conclusion of the language design team was that we
+were not going to revise the lint itself to be more restrictive in when it fires.
+<label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Of course the discussion was a bit more nuanced than what I&rsquo;ve written here.
+There was a bit more discussion about what the lint would do in an ideal world,
+in terms of firing only on &ldquo;truly dead&rdquo; code,
+but the realities of systems programming (as well as the halting problem) mean
+we do not live in that ideal world.
+</span>
+We saw the example code, and the collective reaction was
+&ldquo;the lint is fine here. The right thing for the developer to do in such cases is
+to prepend an underscore to their field or variable name&rdquo;.</p>
+
+<p>But when I was reviewing the issue comment thread after the meeting, something
+resonated with me: The issue reporter pointed out another principle of <code>rustc</code>:</p>
+
+<blockquote><p>If rustc warns about something, it should mention a clear way how to fix the warning.</p></blockquote>
+
+<p>I certainly agree with that. And, importantly: The end consensus of the language
+team (&ldquo;prepend an underscore&rdquo;) is <em>not</em> reflected <strong>anywhere</strong> in the diagnostic text issued
+by <code>rustc</code>.</p>
+
+<p>So, I posted a note saying we should fix the latter aspect of the diagnostic.
+<label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+It is almost always easier to fine-tune the english text of a diagnostic rather than
+revise when the diagnostic fires. (Or, at least, it is less risky to our users,
+in terms of what impact a mistake might have in each of the two cases.)
+</span>
+It will be an easy bug to fix.
+Its a good way for new contributors to get involved, and I&rsquo;ll mentor it.</p>
+
+<p>Thus, these are my mentorship instructions.</p>
+
+<a name="Mentorship.Instructions"></a>
+<h1>Mentorship Instructions</h1>
+
+<p>Our goal is to improve the diagnostic in this case to inform the user of their
+options: If the field is truly unused, they can remove it. If the field is used
+in some implicit way, then they can silence the lint itself, or they can prepend
+its name with an underscore (which serves as a signal that the field has some
+purpose, despite it not being read by expressions visible in the control flow of
+the program).</p>
+
+<a name="Test.driven.development"></a>
+<h2>Test driven development</h2>
+
+<p>There are a number of example usages of these &ldquo;unread fields&rdquo; given in the
+comment thread.</p>
+
+<p>It would be a good idea to start by writing simple test cases based on those
+examples. The main ones I see discussed in this thread and thus might deserve
+specific focus (both in test cases and in potentially variations in the
+diagnostic output) are these two:</p>
+
+<ol>
+<li><p>Values whose types implement <code>Drop</code>, and where that drop has some
+ side-effect beyond the value itself (e.g. mutexes that unlock on drop).</p></li>
+<li><p>Unsafe code accesses, including (as a very important case), fields that end
+up being referenced by foreign code that we reach via the foreign function
+interface (FFI).</p></li>
+</ol>
+
+
+<a name="Hacking.on.the.diagnostic"></a>
+<h2>Hacking on the diagnostic</h2>
+
+<p>Now that you have made tests, you should be able to run the compiler on them and
+observe the current (sub-par) diagnostic output, which will say something like:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>warning: field is never read: `s`</span></code></pre></td></tr></table></div></figure>
+
+
+<p>and</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>= note: `#[warn(dead_code)]` on by default</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There are different strategies for tracking down where to look in the rustc
+source for where these diagnostics are emitted.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I do hold a special spot in my own heart for running <code>rustc</code>
+under the <a href="https://rr-project.org/"><code>rr</code> reversible debugger</a>, a spot that is probably meme-worthy at
+this point&hellip;
+</span>
+Some bad initial ideas include:</p>
+
+<ol>
+<li>fire up <code>rustc</code> under a debugger and step through its behavior, or</li>
+<li>make a local build of <code>rustc</code> with debug logging <a href="https://github.com/rust-lang/rust/blob/a4d9624242df6bfe6c0a298867dd2bd527263424/config.toml.example#L406">turned on</a> and then use
+<code>RUSTC_LOG=debug</code> to observe <em>all</em> of that logging output.</li>
+</ol>
+
+
+<p>The two options above are both bad ideas because they will take forever to wade
+through.</p>
+
+<p>Here&rsquo;s a better idea, though primitive: search the source code for the
+diagnostic.
+<label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+preferably with a fast tool like <a href="https://blog.burntsushi.net/ripgrep/"><code>rg</code></a>
+that has better defaults, like automatically recursing through subdirectories of the source tree
+without needing to pass an extra option asking for that behavior.
+</span>
+Two immediate guesses for
+patterns we can derive from the diagnostic are &ldquo;dead_code&rdquo; (the name of the
+lint) and the text &ldquo;field is never read:&rdquo;</p>
+
+<p>You&rsquo;ll quickly discover that grepping for the string &ldquo;dead_code&rdquo; yields a lot of
+false-positives (because the lint is <code>#![allow]</code>&lsquo;ed heavily in the Rust source
+tree). You can filter many of those out with a regexp pattern like:
+<code>[^\(]dead_code</code>. But even then, its a lot to sift through.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+At least, I saw
+something on the order of 56 matches, and I think we can do better.
+</span></p>
+
+<p>We could try to refine the pattern further, but before we try that, lets try the
+other pattern that we saw.</p>
+
+<p>The second pattern, &ldquo;field is never read&rdquo;, has far fewer false-positives:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rg "field is never read"
+</span><span class='line'>
+</span><span class='line'>Grep finished with no matches found at Wed Mar 10 11:34:47</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The problem now is that we don&rsquo;t have <em>any</em> positives. What happened?</p>
+
+<p>Well, the diagnostic strings are constructed dynamically (so that they can
+include information about the source code, like field names). And as part of
+that construction, they are often abstracted in other ways, e.g. to treat the
+word &ldquo;field&rdquo;/&ldquo;variable&rdquo; as just another parameter.</p>
+
+<p>So, in this scenario, I recommend making the search pattern less specific: drop
+the word &ldquo;field&rdquo;:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rg "is never read"
+</span><span class='line'>rustc_passes/src/liveness.rs
+</span><span class='line'>1451:                                lint.build(&format!("value captured by `{}` is never read", name))
+</span><span class='line'>1480:                        format!("value passed to `{}` is never read", name)
+</span><span class='line'>1619:                format!("value assigned to `{}` is never read", name)
+</span><span class='line'>
+</span><span class='line'>rustc_resolve/src/late.rs
+</span><span class='line'>2261:                    // Since this res is a label, it is never read.
+</span><span class='line'>
+</span><span class='line'>Grep finished with matches found at Wed Mar 10 11:38:59</span></code></pre></td></tr></table></div></figure>
+
+
+<p>More promising, but if you look carefully, none of these strings could actually
+yield the diagnostic we&rsquo;re seeking. So our pattern is <em>still</em> too specific.</p>
+
+<p>Searching for &ldquo;is never&rdquo; will work, but it ends up yielding 53 matches (and 53&asymp;56, which I
+rejected above as being too many to wade through).</p>
+
+<p>So here&rsquo;s the trick: Include the Rust formatting curly braces in the search string:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rg "\} is never \{"
+</span><span class='line'>rustc_passes/src/dead.rs
+</span><span class='line'>580:                lint.build(&format!("{} is never {}: `{}`", descr, participle, name)).emit()
+</span><span class='line'>
+</span><span class='line'>Grep finished with matches found at Wed Mar 10 11:41:54</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we have found what is almost certainly the exact place where we need to edit
+the code to improve the diagnostic in question.</p>
+
+<a name="What.kind.of.code.to.write"></a>
+<h2>What kind of code to write</h2>
+
+<p>Here is my short-term advice:</p>
+
+<p>It would be good to focus first on a simple patch that is easy to backport to
+beta.
+<label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+It <a href="https://zulip-archive.rust-lang.org/238009tcompilermeetings/27332weeklymeeting2021031154818.html#229869685">turns out</a>
+that we are almost certainly going to revert <a href="https://github.com/rust-lang/rust/pull/81473">PR #81473</a> rather than backport other fixes to beta, but the advice about making the first version here simple still holds.
+</span>
+I.e. all the bells and whistles about inspecting <code>Drop</code> do not need to be in beta.</p>
+
+<p>A simple general change to the diagnostic text is all I would want (and I would
+expect the team to balk at approving a larger beta backport).</p>
+
+<a name="After.the.code.is.written"></a>
+<h2>After the code is written</h2>
+
+<p>You need to run your tests. You&rsquo;ll probably discover that even if the tests you
+added pass (which is pretty unlikely, unless you are <em>very</em> good at predicting
+how the diagnostic you added will actually get emitted), a whole bunch of other
+tests are going to fail.</p>
+
+<p>Review them. Most of them are going to be failing because the diagnostic output you added is not
+expected by the test.</p>
+
+<p>You could try to update all those tests by hand. But that is not a good use of developer effort.
+Instead, use <a href="https://rustc-dev-guide.rust-lang.org/tests/running.html#editing-and-updating-the-reference-files"><code>x.py test --bless</code></a> to automatically generate the new expected output, and then
+manually review the output of <code>git diff</code> to double-check that the changes to the expected output
+all make sense.</p>
+
+<a name="What.next."></a>
+<h2>What next?</h2>
+
+<p>Ping me on Zulip if you want to help with this, and I&rsquo;ll be happy to provide
+guidance (either here on github, or directly via text chat).</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Felix S. Klock II</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2021-03-11T14:01:33-05:00" pubdate data-updated="true"></time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://blog.pnkfx.org/blog/2021/03/11/mentoring-rust-diagnostics-issue-81658/" data-via="pnkfelix" data-counturl="http://blog.pnkfx.org/blog/2021/03/11/mentoring-rust-diagnostics-issue-81658/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/11/18/rust-bug-minimization-patterns/" title="Previous Post: Rust Bug Minimization Patterns">&laquo; Rust Bug Minimization Patterns</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2021/03/11/mentoring-rust-diagnostics-issue-81658/">Mentoring rust diagnostics issue 81658</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/11/18/rust-bug-minimization-patterns/">Rust Bug Minimization Patterns</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/">Breaking News: Non-Lexical Lifetimes arrives for everyone</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/">GC and Rust Part 2: The Roots of the Problem</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Surfaces and Signatures: Component Privacy versus Dependence</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/pnkfelix">@pnkfelix</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'pnkfelix',
+            count: 4,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>On Delicious</h1>
+  <div id="delicious"></div>
+  <script type="text/javascript" src="http://feeds.delicious.com/v2/json/pnkfelix?count=3&amp;sort=date&amp;callback=renderDeliciousLinks"></script>
+  <p><a href="http://delicious.com/pnkfelix">My Delicious Bookmarks &raquo;</a></p>
+</section>
+
+
+<section class="googleplus">
+  <h1>
+    <a href="https://plus.google.com/pnkfelix?rel=author">
+      <img src="http://www.google.com/images/icons/ui/gprofile_button-32.png" width="32" height="32">
+      Google+
+    </a>
+  </h1>
+</section>
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2021 - Felix S. Klock II -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'pnkfx-blog';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://blog.pnkfx.org/blog/2021/03/11/mentoring-rust-diagnostics-issue-81658/';
+        var disqus_url = 'http://blog.pnkfx.org/blog/2021/03/11/mentoring-rust-diagnostics-issue-81658/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

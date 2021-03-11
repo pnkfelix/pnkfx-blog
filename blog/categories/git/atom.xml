@@ -4,7 +4,7 @@
   <title><![CDATA[Category: git | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/git/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2019-11-19T11:02:44+01:00</updated>
+  <updated>2021-03-11T15:00:36-05:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Better command completion in bash on OS X]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy/"/>
-    <updated>2013-04-12T07:57:00+02:00</updated>
+    <updated>2013-04-12T07:57:00-04:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy</id>
     <content type="html"><![CDATA[<p>(This post started as a personal e-mail to Niko, and then I figured it
 was blog worthy.)</p>
@@ -110,7 +110,7 @@ the github repo</a>).</p>
   <entry>
     <title type="html"><![CDATA[Resurrected (Hello Again World)]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world/"/>
-    <updated>2013-01-08T00:55:00+01:00</updated>
+    <updated>2013-01-08T00:55:00-05:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world</id>
     <content type="html"><![CDATA[<a name="It.s.Clobbering.Time"></a>
 <h2>It&rsquo;s Clobbering Time</h2>

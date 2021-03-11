@@ -4,7 +4,7 @@
   <title><![CDATA[Category: bash | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/bash/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2019-11-19T11:02:44+01:00</updated>
+  <updated>2021-03-11T15:00:36-05:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Better command completion in bash on OS X]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy/"/>
-    <updated>2013-04-12T07:57:00+02:00</updated>
+    <updated>2013-04-12T07:57:00-04:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy</id>
     <content type="html"><![CDATA[<p>(This post started as a personal e-mail to Niko, and then I figured it
 was blog worthy.)</p>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: proglang | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/proglang/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2019-11-19T11:02:44+01:00</updated>
+  <updated>2021-03-11T15:00:36-05:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -552,7 +552,7 @@ catches API mistakes.</p></li>
   <entry>
     <title type="html"><![CDATA[An insight regarding DST grammar for Rust]]></title>
     <link href="http://blog.pnkfx.org/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/"/>
-    <updated>2014-03-13T07:04:00+01:00</updated>
+    <updated>2014-03-13T07:04:00-04:00</updated>
     <id>http://blog.pnkfx.org/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust</id>
     <content type="html"><![CDATA[<p>Executive summary: <code>type</code> = <code>unsized</code> ⊎ <code>sized</code>, so we should use
 <code>type</code> as our generalization marker, not <code>unsized</code>.</p>
@@ -833,7 +833,7 @@ being that of a type to being some value within a type.)</p>
   <entry>
     <title type="html"><![CDATA[Detective Work on Rust Closures]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/06/07/detective-work-on-rust-closures/"/>
-    <updated>2013-06-07T10:17:00+02:00</updated>
+    <updated>2013-06-07T10:17:00-04:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/06/07/detective-work-on-rust-closures</id>
     <content type="html"><![CDATA[<ul>
 <li><a href="#background_fns">Background: Closures (recurring and otherwise)</a></li>
@@ -2088,7 +2088,7 @@ combinator:
 </span><span class='line'>  <span class="o">&lt;</span><span class="n">entry</span><span class="o">&gt;</span>
 </span><span class='line'>    <span class="o">&lt;</span><span class="n">title</span> <span class="k">type</span><span class="o">=</span><span class="s">&quot;html&quot;</span><span class="o">&gt;&lt;!</span><span class="p">[</span><span class="n">CDATA</span><span class="p">[</span><span class="n">Designing</span> <span class="n">syntax</span> <span class="k">for</span> <span class="n">associated</span> <span class="n">items</span> <span class="k">in</span> <span class="n">Rust</span><span class="p">]]</span><span class="o">&gt;&lt;/</span><span class="n">title</span><span class="o">&gt;</span>
 </span><span class='line'>    <span class="o">&lt;</span><span class="n">link</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;http://blog.pnkfx.org/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/&quot;</span><span class="o">/&gt;</span>
-</span><span class='line'>    <span class="o">&lt;</span><span class="n">updated</span><span class="o">&gt;</span><span class="mi">2013</span><span class="o">-</span><span class="mi">04</span><span class="o">-</span><span class="mi">22</span><span class="n">T14</span><span class="o">:</span><span class="mi">37</span><span class="o">:</span><span class="mi">00</span><span class="o">+</span><span class="mi">02</span><span class="o">:</span><span class="mi">00</span><span class="o">&lt;/</span><span class="n">updated</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="o">&lt;</span><span class="n">updated</span><span class="o">&gt;</span><span class="mi">2013</span><span class="o">-</span><span class="mi">04</span><span class="o">-</span><span class="mi">22</span><span class="n">T14</span><span class="o">:</span><span class="mi">37</span><span class="o">:</span><span class="mi">00</span><span class="o">-</span><span class="mi">04</span><span class="o">:</span><span class="mi">00</span><span class="o">&lt;/</span><span class="n">updated</span><span class="o">&gt;</span>
 </span><span class='line'>    <span class="o">&lt;</span><span class="n">id</span><span class="o">&gt;</span><span class="n">http</span><span class="o">:</span><span class="c1">//blog.pnkfx.org/blog/2013/04/22/designing-syntax-for-associated-items-in-rust&lt;/id&gt;</span>
 </span><span class='line'>    <span class="o">&lt;</span><span class="n">content</span> <span class="k">type</span><span class="o">=</span><span class="s">&quot;html&quot;</span><span class="o">&gt;&lt;!</span><span class="p">[</span><span class="n">CDATA</span><span class="p">[</span><span class="o">&lt;</span><span class="n">ul</span><span class="o">&gt;</span>
 </span><span class='line'><span class="o">&lt;</span><span class="n">li</span><span class="o">&gt;&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s">&quot;#background&quot;</span><span class="o">&gt;</span><span class="n">Background</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>

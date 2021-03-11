@@ -4,7 +4,7 @@
   <title><![CDATA[Category: gc | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/gc/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2019-11-19T11:02:44+01:00</updated>
+  <updated>2021-03-11T15:00:36-05:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[GC and Rust Part 2: The Roots of the Problem]]></title>
     <link href="http://blog.pnkfx.org/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/"/>
-    <updated>2016-01-01T00:00:00+01:00</updated>
+    <updated>2016-01-01T00:00:00-05:00</updated>
     <id>http://blog.pnkfx.org/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem</id>
     <content type="html"><![CDATA[<p>This is the second in a series of posts will discuss why garbage
 collection is hard, especially for Rust, and brainstorm about
@@ -953,7 +953,7 @@ Hope that you copied over all your live objects from 2015!</p>
   <entry>
     <title type="html"><![CDATA[GC and Rust Part 1: Specifying the Problem]]></title>
     <link href="http://blog.pnkfx.org/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/"/>
-    <updated>2015-11-10T17:45:00+01:00</updated>
+    <updated>2015-11-10T17:45:00-05:00</updated>
     <id>http://blog.pnkfx.org/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem</id>
     <content type="html"><![CDATA[<p>This is the first in a series of posts will discuss why garbage
 collection is hard, especially for Rust, and brainstorm about
@@ -1839,7 +1839,7 @@ like GC-integration with Rust to satisfy.</p>
   <entry>
     <title type="html"><![CDATA[GC and Rust Part 0: Garbage Collection Background]]></title>
     <link href="http://blog.pnkfx.org/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/"/>
-    <updated>2015-10-27T14:09:00+01:00</updated>
+    <updated>2015-10-27T14:09:00-04:00</updated>
     <id>http://blog.pnkfx.org/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work</id>
     <content type="html"><![CDATA[<p>This post is a prequel to a series of posts discussing why garbage
 collection is hard, especially for Rust, and brainstorming about

@@ -129,6 +129,9 @@ like I am rather conveniently picking transformations that always seem
 to work: You&rsquo;re right! I&rsquo;m cheating and not telling you about all the
 false paths I went down during my first minimization odyssey on this bug.</p>
 
+<!-- more -->
+
+
 <a name="The.Rust.specifics"></a>
 <h3>The Rust specifics</h3>
 
@@ -157,10 +160,8 @@ swap code in and out.</p></li>
 <p>So, without further ado: here is the odyssey of my minimization of
 <a href="https://github.com/rust-lang/rust/issues/65774">rust-lang/rust#65774</a></p>
 
-<!-- rust-lang/rust#64872 -->
+<!-- rust-lang/rust#64872 --> 
 
-
-<p></p>
 
 <a name="Philosophical.meandering"></a>
 <h2>Philosophical meandering</h2>
@@ -256,7 +257,7 @@ go straight to building up a minimal example from scratch. And that&rsquo;s
 <p>However, this post is dedicated to the problem of what you can do when
 you <em>haven&rsquo;t</em> hit that level of understanding. When you&rsquo;re looking at
 a set of files that make up over 90,000 lines of code, you want a set
-of semi-mechanical techniques to take that test input and strips it
+of semi-mechanical techniques to take that test input and strip it
 down to its essence.</p>
 
 <p>To be honest, the most effective methodology is going to use a blend
@@ -313,7 +314,7 @@ of documenting these transformations, I identified the following
 </li>
 <li>Delete the Unnecessary: Remove items not related to bug!</li>
 <li>Identify the Unnecessary: Eliminate accidental necessity.</li>
-<li>Trivialize Content: Turn complex expressions to trival ones.</li>
+<li>Trivialize Content: Turn complex expressions to trivial ones.</li>
 <li>Eliminate Coupling: Break links between items.</li>
 </ul>
 
@@ -347,7 +348,7 @@ theme: Simplify Workflow
 
 <p>Before you do any reduction, move the test case into its own local <code>git</code> repository
 (or whatever versioning tool you prefer: SVN, RCS, etc).
-Being back to backtrack through previous reduction steps
+Being able to backtrack through previous reduction steps
 is an incredibly important option when doing this kind of
 of work.</p>
 
@@ -370,7 +371,7 @@ attempted reduction.)</p>
 
 <p>Make it easy to do your runs. Use your IDE. I use emacs, so I make a
 <code>M-x compile</code> invocation that runs the compiler with the right
-arguments, and hten you can hit <code>g</code> in the <code>*compilation*</code> buffer to
+arguments, and then you can hit <code>g</code> in the <code>*compilation*</code> buffer to
 re-run the compile.</p>
 
 <a name="The.test.case"></a>
@@ -547,7 +548,7 @@ cut-and-pasted into an inline <code>mod</code> item.</p>
 reduce the input: You still have all the same content that you started
 with, the compiler has to do the same amount of work, et cetera.</p>
 
-<p>Howver, I still prefer to do it, because I find that it helps with
+<p>However, I still prefer to do it, because I find that it helps with
 later reduction steps if I can do my transformations on a single file.</p>
 
 <p>There two techniques I use for <a href="#Technique:..mod-inlining.">&ldquo;mod-inlining&rdquo;</a>:</p>
@@ -1801,7 +1802,7 @@ the whole trait definition, as you like.</p>
 pretty much as freely as you like: you should not need to worry about
 changing a trait method to a <a href="#Tactic:..Body.Loopification.">&ldquo;loopified&rdquo;</a> default causing breakage
 elsewhere when compiling the crate graph (unless there is some
-potential interaction with specialization that I have not conidered).</p>
+potential interaction with specialization that I have not considered).</p>
 
 <p>If you apply the transformation repeatedly, it can often result in</p>
 
@@ -4479,6 +4480,8 @@ analysis bugs in <code>rustc</code>.</p>
         <a class="basic-alignment left" href="/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/" title="Previous Post: Breaking News: Non-Lexical Lifetimes arrives for everyone">&laquo; Breaking News: Non-Lexical Lifetimes arrives for everyone</a>
       
       
+        <a class="basic-alignment right" href="/blog/2021/03/11/mentoring-rust-diagnostics-issue-81658/" title="Next Post: Mentoring rust diagnostics issue 81658">Mentoring rust diagnostics issue 81658 &raquo;</a>
+      
     </p>
   </footer>
 </article>
@@ -4498,6 +4501,10 @@ analysis bugs in <code>rustc</code>.</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2021/03/11/mentoring-rust-diagnostics-issue-81658/">Mentoring rust diagnostics issue 81658</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2019/11/18/rust-bug-minimization-patterns/">Rust Bug Minimization Patterns</a>
       </li>
     
@@ -4511,10 +4518,6 @@ analysis bugs in <code>rustc</code>.</p>
     
       <li class="post">
         <a href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Surfaces and Signatures: Component Privacy versus Dependence</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/12/18/fixing-octopress-table-rendering/">Fixing Octopress Table Rendering</a>
       </li>
     
   </ul>
@@ -4576,7 +4579,7 @@ analysis bugs in <code>rustc</code>.</p>
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2019 - Felix S. Klock II -
+  Copyright &copy; 2021 - Felix S. Klock II -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

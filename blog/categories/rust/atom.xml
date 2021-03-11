@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2019-11-19T11:02:44+01:00</updated>
+  <updated>2021-03-11T15:00:36-05:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[GC and Rust Part 2: The Roots of the Problem]]></title>
     <link href="http://blog.pnkfx.org/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/"/>
-    <updated>2016-01-01T00:00:00+01:00</updated>
+    <updated>2016-01-01T00:00:00-05:00</updated>
     <id>http://blog.pnkfx.org/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem</id>
     <content type="html"><![CDATA[<p>This is the second in a series of posts will discuss why garbage
 collection is hard, especially for Rust, and brainstorm about
@@ -1489,7 +1489,7 @@ catches API mistakes.</p></li>
   <entry>
     <title type="html"><![CDATA[GC and Rust Part 1: Specifying the Problem]]></title>
     <link href="http://blog.pnkfx.org/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/"/>
-    <updated>2015-11-10T17:45:00+01:00</updated>
+    <updated>2015-11-10T17:45:00-05:00</updated>
     <id>http://blog.pnkfx.org/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem</id>
     <content type="html"><![CDATA[<p>This is the first in a series of posts will discuss why garbage
 collection is hard, especially for Rust, and brainstorm about
@@ -2375,7 +2375,7 @@ like GC-integration with Rust to satisfy.</p>
   <entry>
     <title type="html"><![CDATA[An insight regarding DST grammar for Rust]]></title>
     <link href="http://blog.pnkfx.org/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/"/>
-    <updated>2014-03-13T07:04:00+01:00</updated>
+    <updated>2014-03-13T07:04:00-04:00</updated>
     <id>http://blog.pnkfx.org/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust</id>
     <content type="html"><![CDATA[<p>Executive summary: <code>type</code> = <code>unsized</code> ⊎ <code>sized</code>, so we should use
 <code>type</code> as our generalization marker, not <code>unsized</code>.</p>
@@ -2656,7 +2656,7 @@ being that of a type to being some value within a type.)</p>
   <entry>
     <title type="html"><![CDATA[Detective Work on Rust Closures]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/06/07/detective-work-on-rust-closures/"/>
-    <updated>2013-06-07T10:17:00+02:00</updated>
+    <updated>2013-06-07T10:17:00-04:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/06/07/detective-work-on-rust-closures</id>
     <content type="html"><![CDATA[<ul>
 <li><a href="#background_fns">Background: Closures (recurring and otherwise)</a></li>

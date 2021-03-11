@@ -1,154 +1,151 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/</loc>
-    <lastmod>2019-11-18T11:19:46+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/</loc>
-    <lastmod>2019-06-26T12:54:29+02:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/</loc>
-    <lastmod>2016-01-01T00:00:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/</loc>
-    <lastmod>2015-12-19T22:30:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2015/12/18/fixing-octopress-table-rendering/</loc>
-    <lastmod>2015-12-18T22:00:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2015/11/27/cherrypicking-tuftes-of-hair/</loc>
-    <lastmod>2015-11-27T14:00:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2015/11/11/vis-via-snap-js/</loc>
-    <lastmod>2015-11-11T18:00:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/</loc>
-    <lastmod>2015-11-10T17:45:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/</loc>
-    <lastmod>2015-10-27T14:09:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2015/10/12/viz-a-viz-js/</loc>
-    <lastmod>2015-10-12T14:10:00+02:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/</loc>
-    <lastmod>2014-03-13T07:04:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2014/03/13/meta-updating-octopress-post-mavericks-upgrade/</loc>
-    <lastmod>2014-03-13T06:18:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2013/06/07/detective-work-on-rust-closures/</loc>
-    <lastmod>2013-06-07T10:17:00+02:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/</loc>
-    <lastmod>2013-04-22T14:37:00+02:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy/</loc>
-    <lastmod>2013-04-12T07:57:00+02:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2013/03/26/rusty-chain-puzzle-1/</loc>
-    <lastmod>2013-03-26T10:28:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2013/01/29/implicit-versus-explicit-finalization/</loc>
-    <lastmod>2013-01-29T22:47:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world/</loc>
-    <lastmod>2013-01-08T00:55:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2013/01/02/osx-tiled-window-management/</loc>
-    <lastmod>2013-01-02T22:34:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/2012/12/31/hello-world/</loc>
-    <lastmod>2012-12-31T14:34:00+01:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/archives/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/octopress/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/sysadmin/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/macosx/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/wm/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/github/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/git/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/rust/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/gc/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/finalizers/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/rust/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/osx/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/bash/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/super-user/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/zsh-envy/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/proglang/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/syntax/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/gc/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/blog/categories/css/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/posts/2/</loc>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/linked/lub-graphs.html</loc>
-    <lastmod>2019-06-28T02:46:54+02:00</lastmod>
-  </url>
-  <url>
-    <loc>http://blog.pnkfx.org/linked/graphs.html</loc>
-    <lastmod>2019-06-28T02:46:54+02:00</lastmod>
-  </url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2021/03/11/mentoring-rust-diagnostics-issue-81658/</loc>
+<lastmod>2021-03-11T14:01:33-05:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/</loc>
+<lastmod>2019-11-18T11:19:46+01:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/</loc>
+<lastmod>2019-06-26T12:54:29+02:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/</loc>
+<lastmod>2016-01-01T00:00:00-05:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/</loc>
+<lastmod>2015-12-19T22:30:00+01:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2015/12/18/fixing-octopress-table-rendering/</loc>
+<lastmod>2015-12-18T22:00:00-05:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2015/11/27/cherrypicking-tuftes-of-hair/</loc>
+<lastmod>2015-11-27T14:00:00-05:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/</loc>
+<lastmod>2015-11-10T17:45:00-05:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/</loc>
+<lastmod>2015-10-27T14:09:00-04:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2015/10/12/viz-a-viz-js/</loc>
+<lastmod>2015-10-12T14:10:00-04:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/</loc>
+<lastmod>2014-03-13T07:04:00-04:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2014/03/13/meta-updating-octopress-post-mavericks-upgrade/</loc>
+<lastmod>2014-03-13T06:18:00-04:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2013/06/07/detective-work-on-rust-closures/</loc>
+<lastmod>2013-06-07T10:17:00-04:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/</loc>
+<lastmod>2013-04-22T14:37:00-04:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2013/04/12/better-command-completion-in-bash-aka-resolving-zsh-envy/</loc>
+<lastmod>2013-04-12T07:57:00-04:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2013/03/26/rusty-chain-puzzle-1/</loc>
+<lastmod>2013-03-26T10:28:00-04:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2013/01/29/implicit-versus-explicit-finalization/</loc>
+<lastmod>2013-01-29T22:47:00-05:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2013/01/08/resurrected-hello-again-world/</loc>
+<lastmod>2013-01-08T00:55:00-05:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2013/01/02/osx-tiled-window-management/</loc>
+<lastmod>2013-01-02T22:34:00-05:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2012/12/31/hello-world/</loc>
+<lastmod>2012-12-31T14:34:00-05:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/archives/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/octopress/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/sysadmin/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/macosx/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/wm/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/github/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/git/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/rust/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/gc/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/finalizers/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/rust/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/osx/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/bash/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/super-user/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/zsh-envy/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/proglang/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/syntax/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/gc/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/categories/css/</loc>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/linked/lub-graphs.html</loc>
+<lastmod>2021-03-11T13:50:26-05:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/linked/graphs.html</loc>
+<lastmod>2021-03-11T13:50:26-05:00</lastmod>
+</url>
 </urlset>

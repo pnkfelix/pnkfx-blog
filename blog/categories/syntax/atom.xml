@@ -4,7 +4,7 @@
   <title><![CDATA[Category: syntax | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/syntax/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2019-11-19T11:02:44+01:00</updated>
+  <updated>2021-03-11T15:00:36-05:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Designing syntax for associated items in Rust]]></title>
     <link href="http://blog.pnkfx.org/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/"/>
-    <updated>2013-04-22T14:37:00+02:00</updated>
+    <updated>2013-04-22T14:37:00-04:00</updated>
     <id>http://blog.pnkfx.org/blog/2013/04/22/designing-syntax-for-associated-items-in-rust</id>
     <content type="html"><![CDATA[<ul>
 <li><a href="#background">Background</a>
