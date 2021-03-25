@@ -3,7 +3,7 @@ layout: post
 title: "How to dismantle an Atomic bomb"
 date: 2021-03-25 15:22:22 -0400
 comments: true
-categories: rust
+categories:
 ---
 
 # The problem
