@@ -497,6 +497,8 @@ And at some point after that, I realized this document was too long for the lang
 
 So it became a blog post.
 
+It deliberately does not have a conclusion, at this point. I thought I would come to one over the course of writing it, but all I've determined so far is that I need to come up with a more succinct write-up of the problem.
+
 ### Appendix
 
 
