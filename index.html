@@ -9,9 +9,7 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="&#8853;
-This was originally a github comment that, due to my writing style (and
-desire to teach), spun a bit out of control (or at least, didn&rsquo; &hellip;">
+  <meta name="description" content="The problem Driving deallocation of state via ref-counting under our current atomic API means that you cannot avoid having a &amp;AtomicUsize &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -66,6 +64,61 @@ desire to teach), spun a bit out of control (or at least, didn&rsquo; &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2021/03/25/how-to-dismantle-an-atomic-bomb/">How to Dismantle an Atomic Bomb</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2021-03-25T15:22:22-04:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><a name="The.problem"></a>
+<h1>The problem</h1>
+
+<p>Driving deallocation of state via ref-counting under our current atomic API means that you cannot avoid having a <code>&amp;AtomicUsize</code> variable at the same time that you are deallocating the block of memory that contains the referenced atomic usize state.</p>
+
+<a name="The.proposal"></a>
+<h1>The proposal</h1>
+
+<p>The idea is simple.</p>
+
+<p>Experienced Rustaceans know that in the general case, <code>&amp;T</code> doesn&rsquo;t actually mean immutable; it merely signals that unsynchronized mutation through aliases is disallowed. Interior mutability is still an option, via <code>Cell</code> or <code>AtomicUsize</code>.</p>
+
+<p>All such sources of interior mutability <em>are</em> tracked in the type system. Namely, they all have an <code>UnsafeCell&lt;U&gt;</code> somewhere in the structure layout that tells the compiler that such mutation is permitted on the <code>U</code> inside the unsafe cell. Thus the compiler knows it cannot make optimizations that rely on that <code>U</code> remaining invariant.</p>
+
+<p>So, here&rsquo;s the suggested change: if code needs to allow for concurrent actors (or even aliasing accesses on the current thread) to mutate some state, that same code must allow that those accesses might <em>deallocate</em> that state.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2021/03/25/how-to-dismantle-an-atomic-bomb/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -550,52 +603,6 @@ about Garbage Collection that the other posts will then build upon.</p>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/10/12/viz-a-viz-js/">Vis-a-vis, Part 1: Visualizing Graphs via viz.js</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2015-10-12T14:10:00-04:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>This is a post discussing a couple different ways to draw pictures,
-mostly those of graphs (nodes and edges, i.e. circles or boxes, and
-lines between them).</p>
-
-<p>The technology covered by this post is <a href="https://github.com/mdaines/viz.js/">viz.js</a>, a Javascript
-library for rendering graphs specified via the <a href="http://www.graphviz.org/content/dot-language">DOT</a> language.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/10/12/viz-a-viz-js/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="2">&larr; Older</a>
@@ -611,6 +618,10 @@ library for rendering graphs specified via the <a href="http://www.graphviz.org/
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2021/03/25/how-to-dismantle-an-atomic-bomb/">How to dismantle an Atomic bomb</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2021/03/11/mentoring-rust-diagnostics-issue-81658/">Mentoring rust diagnostics issue 81658</a>
       </li>
     
@@ -624,10 +635,6 @@ library for rendering graphs specified via the <a href="http://www.graphviz.org/
     
       <li class="post">
         <a href="/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/">GC and Rust Part 2: The Roots of the Problem</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/">Surfaces and Signatures: Component Privacy versus Dependence</a>
       </li>
     
   </ul>

@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2021-03-11T15:00:36-05:00</updated>
+  <updated>2021-03-25T15:43:14-04:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,6 +12,770 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[How to dismantle an Atomic bomb]]></title>
+    <link href="http://blog.pnkfx.org/blog/2021/03/25/how-to-dismantle-an-atomic-bomb/"/>
+    <updated>2021-03-25T15:22:22-04:00</updated>
+    <id>http://blog.pnkfx.org/blog/2021/03/25/how-to-dismantle-an-atomic-bomb</id>
+    <content type="html"><![CDATA[<a name="The.problem"></a>
+<h1>The problem</h1>
+
+<p>Driving deallocation of state via ref-counting under our current atomic API means that you cannot avoid having a <code>&amp;AtomicUsize</code> variable at the same time that you are deallocating the block of memory that contains the referenced atomic usize state.</p>
+
+<a name="The.proposal"></a>
+<h1>The proposal</h1>
+
+<p>The idea is simple.</p>
+
+<p>Experienced Rustaceans know that in the general case, <code>&amp;T</code> doesn&rsquo;t actually mean immutable; it merely signals that unsynchronized mutation through aliases is disallowed. Interior mutability is still an option, via <code>Cell</code> or <code>AtomicUsize</code>.</p>
+
+<p>All such sources of interior mutability <em>are</em> tracked in the type system. Namely, they all have an <code>UnsafeCell&lt;U&gt;</code> somewhere in the structure layout that tells the compiler that such mutation is permitted on the <code>U</code> inside the unsafe cell. Thus the compiler knows it cannot make optimizations that rely on that <code>U</code> remaining invariant.</p>
+
+<p>So, here&rsquo;s the suggested change: if code needs to allow for concurrent actors (or even aliasing accesses on the current thread) to mutate some state, that same code must allow that those accesses might <em>deallocate</em> that state.</p>
+
+<!-- more -->
+
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+That is, &ldquo;may be modified or deallocated&rdquo; unless (of course) the compiler/author has some extra proof or established invariant that the memory M cannot be deallocated. Such invariants are the very basis of ref-counting, for example.
+</span>
+In other words: in addition to saying that the content of an <code>&amp;UnsafeCell&lt;U&gt;</code> might be modified via an alias, we also say that the memory holding the unsafe cell may even be outright <em>deallocated</em>, despite any extant <code>&amp;</code>-references to that unsafe cell.</p>
+
+<p>These statements about &ldquo;what may happen&rdquo; are talking about what reasoning you can employ locally, based on the type declarations.</p>
+
+<a name="L.Background..The.Issue:.Side-effects.of.atomic.operations"></a>
+<h1>(Background) The Issue: Side-effects of atomic operations</h1>
+
+<p>The status quo: I will present a strawman atomic-reference counted type (analogous to <code>std::rc::Arc</code>).</p>
+
+<p>It needs a heap-allocated payload, along with the reference count.</p>
+
+<p>As an added part of this strawman presentation, I&rsquo;m going to have the ref-counted object also carry a single-character label. The label will be used to illustrate potential program transformations (i.e. compiler optimizations) as we progress. (Furthermore, I will try to catch
+use-after-free bugs resulting from these transformations by reallocating memory and scribbling on it before the label accesses.)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="kn">use</span> <span class="n">std</span><span class="o">::</span><span class="n">sync</span><span class="o">::</span><span class="n">atomic</span><span class="o">::</span><span class="p">{</span><span class="bp">self</span><span class="p">,</span> <span class="n">AtomicUsize</span><span class="p">,</span> <span class="nb">Ordering</span><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">type</span> <span class="n">Data</span> <span class="o">=</span> <span class="p">[</span><span class="kt">u8</span><span class="p">;</span> <span class="mi">128</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">LabelledPayload</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">label</span><span class="o">:</span> <span class="n">char</span><span class="p">,</span>
+</span><span class='line'>    <span class="cp">#[allow(dead_code)]</span>
+</span><span class='line'>    <span class="n">data</span><span class="o">:</span> <span class="n">Data</span><span class="p">,</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">Inner</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">ref_count</span><span class="o">:</span> <span class="n">AtomicUsize</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">payload</span><span class="o">:</span> <span class="n">LabelledPayload</span><span class="p">,</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>fn dealloc</code> is a small shim around Box-based deallocation to keep the examples cleaner; <code>fn scribble</code> is a routine that tries to catch us if we have a use-after-free.  by making a fresh allocation and overwriting its state.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">unsafe</span> <span class="k">fn</span> <span class="n">dealloc</span><span class="p">(</span><span class="n">ptr</span><span class="o">:</span> <span class="o">*</span><span class="kr">const</span> <span class="n">Inner</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nb">drop</span><span class="p">(</span><span class="n">Box</span><span class="o">::</span><span class="n">from_raw</span><span class="p">(</span><span class="n">ptr</span> <span class="k">as</span> <span class="o">*</span><span class="k">mut</span> <span class="n">Inner</span><span class="p">));</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">scribble</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">Box</span><span class="o">::</span><span class="n">new</span><span class="p">(</span><span class="n">Inner</span> <span class="p">{</span> <span class="n">ref_count</span><span class="o">:</span> <span class="n">AtomicUsize</span><span class="o">::</span><span class="n">new</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">payload</span><span class="o">:</span> <span class="n">LabelledPayload</span> <span class="p">{</span> <span class="n">label</span><span class="o">:</span> <span class="sc">&#39;X&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">;</span> <span class="mi">128</span><span class="p">],</span> <span class="p">}</span> <span class="p">});</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="n">macro_rules</span><span class="o">!</span> <span class="n">scribble_then_println</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">(</span><span class="err">$</span><span class="n">template</span><span class="o">:</span> <span class="n">expr</span><span class="p">,</span> <span class="err">$</span><span class="n">label</span><span class="o">:</span><span class="n">expr</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">scribble</span><span class="p">();</span>
+</span><span class='line'>        <span class="nb">println</span><span class="o">!</span><span class="p">(</span><span class="err">$</span><span class="n">template</span><span class="p">,</span> <span class="err">$</span><span class="n">label</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>(In reality the <code>Payload</code> type would usually a generic type <code>T</code>, but this is detail we can side-step for this discussion.  The same issues with atomics still arise, and side-stepping generics simplifies the presentation in various ways with respect to issues of variance, <code>PhantomData</code> and <code>?Sized</code>.)</p>
+
+<p>You will also need the handles that have (fractional) ownership of each heap-allocated <code>Inner</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">struct</span> <span class="n">Handle</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">ptr</span><span class="o">:</span> <span class="o">*</span><span class="kr">const</span> <span class="n">Inner</span><span class="p">,</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>(In practice the type of the <code>ptr</code> field would actually be <code>core::ptr::NonNull&lt;Inner&gt;</code>, but that is a niche optimization we can sidestep in this presentation.)</p>
+
+<p>The allocation code and ref-count maintenance code would look
+something like this</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">impl</span> <span class="n">Handle</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">pub</span> <span class="k">fn</span> <span class="n">new</span><span class="p">(</span><span class="n">label</span><span class="o">:</span> <span class="n">char</span><span class="p">,</span> <span class="n">data</span><span class="o">:</span> <span class="n">Data</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Handle</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kd">let</span> <span class="n">x</span> <span class="o">=</span> <span class="n">Box</span><span class="o">::</span><span class="n">new</span><span class="p">(</span><span class="n">Inner</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">ref_count</span><span class="o">:</span> <span class="n">atomic</span><span class="o">::</span><span class="n">AtomicUsize</span><span class="o">::</span><span class="n">new</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+</span><span class='line'>            <span class="n">payload</span><span class="o">:</span> <span class="n">LabelledPayload</span> <span class="p">{</span> <span class="n">label</span><span class="p">,</span> <span class="n">data</span> <span class="p">},</span>
+</span><span class='line'>        <span class="p">});</span>
+</span><span class='line'>        <span class="n">Self</span> <span class="p">{</span> <span class="n">ptr</span><span class="o">:</span> <span class="n">Box</span><span class="o">::</span><span class="n">leak</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">as</span> <span class="o">*</span><span class="kr">const</span> <span class="n">Inner</span> <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">impl</span> <span class="nb">Clone</span> <span class="k">for</span> <span class="n">Handle</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="n">clone</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Handle</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">unsafe</span> <span class="p">{</span> <span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">).</span><span class="n">ref_count</span><span class="p">.</span><span class="n">fetch_add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">Ordering</span><span class="o">::</span><span class="n">Relaxed</span><span class="p">);</span> <span class="p">}</span>
+</span><span class='line'>        <span class="c1">// (we&#39;ll skip preventing overflow; see Arc code for those details.)</span>
+</span><span class='line'>        <span class="n">Handle</span> <span class="p">{</span> <span class="n">ptr</span><span class="o">:</span> <span class="bp">self</span><span class="p">.</span><span class="n">ptr</span> <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The troubles arrive with the destructor code that decrements the ref count and deallocates the heap-allocated value if the resulting ref-count is zero.</p>
+
+<a name="Version.1:..inner-ref.handled.inline."></a>
+<h2>Version 1: &ldquo;inner-ref handled inline&rdquo;</h2>
+
+<p>One &ldquo;obvious way&rdquo; to do it is with something like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="cp">#[cfg(feature = </span><span class="s">&quot;version1&quot;</span><span class="cp">)]</span>
+</span><span class='line'><span class="k">impl</span> <span class="nb">Drop</span> <span class="k">for</span> <span class="n">Handle</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="nb">drop</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="bp">self</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kd">let</span> <span class="n">inner</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">Inner</span> <span class="o">=</span> <span class="k">unsafe</span> <span class="p">{</span> <span class="o">&amp;</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">)</span> <span class="p">};</span>
+</span><span class='line'>        <span class="kd">let</span> <span class="n">label</span><span class="o">:</span> <span class="n">char</span> <span class="o">=</span> <span class="n">inner</span><span class="p">.</span><span class="n">payload</span><span class="p">.</span><span class="n">label</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// reminder: concurrent actors may also be running drop, decrementing the ref-count...</span>
+</span><span class='line'>        <span class="kd">let</span> <span class="n">pre_decr</span> <span class="o">=</span> <span class="n">inner</span><span class="p">.</span><span class="n">ref_count</span><span class="p">.</span><span class="n">fetch_sub</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">Ordering</span><span class="o">::</span><span class="n">Release</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// ... so at this point in control flow, if `pre_decr &gt; 1`,</span>
+</span><span class='line'>        <span class="c1">// then someone else might be freeing `*inner` (or have</span>
+</span><span class='line'>        <span class="c1">// already freed it). Now the only time it is safe to</span>
+</span><span class='line'>        <span class="c1">// access `*inner` is if we can prove we are sole remaining</span>
+</span><span class='line'>        <span class="c1">// owner (i.e. that `pre_decr == 1`).</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span> <span class="n">pre_decr</span> <span class="o">==</span> <span class="mi">1</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">unsafe</span> <span class="p">{</span> <span class="n">dealloc</span><span class="p">(</span><span class="n">inner</span> <span class="k">as</span> <span class="o">*</span><span class="kr">const</span> <span class="n">Inner</span><span class="p">);</span> <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">scribble_then_println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;version1 dropped handle to {}&quot;</span><span class="p">,</span> <span class="n">label</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This code is designed to deallocate the heap-allocated <code>Inner</code> on some paths. But at the same it does that, the local variable <code>inner: &amp;Inner</code> is still in (lexical) scope.</p>
+
+<p>Is <em>this</em> okay?</p>
+
+<p>In general within this document, when I write &ldquo;is <em>this</em> okay&rdquo;, it is meant as a rough short-hand for the following more elaborate text:</p>
+
+<p>Does allowing a deallocation like <em>this</em> break any of:</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+(Of course items (b.) and (c.) should in principle be derived from (a.); but we do not have a specification on hand, while we do have concrete examples of compiler optimizations and unsafe code that people write in practice, so that is why I try to spell them out as explicit concerns to keep in mind.)
+</span>
+(a.) the memory model we hope to have for the language itself,
+(b.) compiler optimizations today or tomorrow, or
+(c.) <code>unsafe</code> code people write in practice today or tomorrow?</p>
+
+<p>What is an example of a code transformation one might consider (for either compiler optimization or unsafe code authors)? Well: in version 1, we have code that looks like:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kd">let</span> <span class="n">inner</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">Inner</span> <span class="o">=</span> <span class="p">[...];</span>
+</span><span class='line'>  <span class="kd">let</span> <span class="n">label</span><span class="o">:</span> <span class="n">char</span> <span class="o">=</span> <span class="n">inner</span><span class="p">.</span><span class="n">payload</span><span class="p">.</span><span class="n">label</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">[...]</span>
+</span><span class='line'>  <span class="nb">println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;dropped handle to {}&quot;</span><span class="p">,</span> <span class="n">label</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A reasonable person might say &ldquo;clearly <code>*inner</code> has to be valid and immutable for its whole scope, and that <code>label</code> has only one use. So we should be able to transform it to this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kd">let</span> <span class="n">inner</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">Inner</span> <span class="o">=</span> <span class="p">[...];</span>
+</span><span class='line'>  <span class="p">[...]</span>
+</span><span class='line'>  <span class="nb">println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;dropped handle to {}&quot;</span><span class="p">,</span> <span class="n">inner</span><span class="p">.</span><span class="n">payload</span><span class="p">.</span><span class="n">label</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I tried to use a semi-novel name, specific to the example, because I don&rsquo;t want to get bogged down debating what optimization we&rsquo;re discussing, where it lives, and how it justifies its actions. So instead I&rsquo;m choosing something relatively self-contained, easy-to-explain, and potentially incorrect.
+</span>
+Let&rsquo;s call this the &ldquo;Label Code Motion&rdquo; transformation.</p>
+
+<p>If version 1 of the <code>impl Drop for Handle</code> code is okay, then Label Code Motion cannot be applied here. Is <em>that</em> expected?</p>
+
+<p>(Perhaps so; perhaps such code motion must be justified with deeper analysis of the other code I&rsquo;ve elided here, rather than be justifed
+by the types alone.)</p>
+
+<p>(As you might have guessed, the whole reason I put in the <code>scribble_then_println!</code> macro was to illustrate that things <em>do</em> go
+wrong if you apply the Label Code Motion transformation to version 1.
+So <em>something</em> is wrong; later we will try to establish whether version 1 itself is to blame or the Label Code Motion transformation.)</p>
+
+<p>Nonetheless, let us assume that version 1 is okay, at least going into the
+discussion of version 2.</p>
+
+<p>(We will revisit the question of the correctness of each variant at
+the end of the document.)</p>
+
+<a name="Version.2:..inner-ref.handled.out-of-line."></a>
+<h2>Version 2: &ldquo;inner-ref handled out-of-line&rdquo;</h2>
+
+<p>Consider this different factoring of the code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="cp">#[cfg(feature = </span><span class="s">&quot;version2&quot;</span><span class="cp">)]</span>
+</span><span class='line'><span class="k">unsafe</span> <span class="k">fn</span> <span class="n">may_drop_inner</span><span class="o">&lt;</span><span class="nl">&#39;a</span><span class="o">&gt;</span><span class="p">(</span><span class="n">inner</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">&#39;a</span> <span class="n">Inner</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">pre_decr</span> <span class="o">=</span> <span class="n">inner</span><span class="p">.</span><span class="n">ref_count</span><span class="p">.</span><span class="n">fetch_sub</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">Ordering</span><span class="o">::</span><span class="n">Release</span><span class="p">);</span>
+</span><span class='line'>    <span class="c1">// (at this point, `pre_decr &gt; 1` ==&gt; someone else might be freeing `*inner`)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">pre_decr</span> <span class="o">==</span> <span class="mi">1</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">unsafe</span> <span class="p">{</span> <span class="n">dealloc</span><span class="p">(</span><span class="n">inner</span> <span class="k">as</span> <span class="o">*</span><span class="kr">const</span> <span class="n">Inner</span><span class="p">);</span> <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#[cfg(feature = </span><span class="s">&quot;version2&quot;</span><span class="cp">)]</span>
+</span><span class='line'><span class="k">impl</span> <span class="nb">Drop</span> <span class="k">for</span> <span class="n">Handle</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="nb">drop</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="bp">self</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">unsafe</span> <span class="p">{</span>
+</span><span class='line'>            <span class="kd">let</span> <span class="n">inner</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">Inner</span> <span class="o">=</span> <span class="o">&amp;*</span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">;</span>
+</span><span class='line'>            <span class="kd">let</span> <span class="n">label</span><span class="o">:</span> <span class="n">char</span> <span class="o">=</span> <span class="n">inner</span><span class="p">.</span><span class="n">payload</span><span class="p">.</span><span class="n">label</span><span class="p">;</span>
+</span><span class='line'>            <span class="n">may_drop_inner</span><span class="p">(</span><span class="n">inner</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">scribble_then_println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;version2 dropped handle to {}&quot;</span><span class="p">,</span> <span class="n">label</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we have <code>fn may_drop_inner</code> which takes a <code>&amp;'a Inner</code> as a function parameter.</p>
+
+<p>My own intuition about function arguments in such cases is that &ldquo;obviously&rdquo;
+the value <code>*inner</code> has to live as long as the lifetime <code>'a</code>, and that lifetime &ldquo;obviously&rdquo; has to be longer than the invocation of <code>may_drop_inner(inner)</code>, right?</p>
+
+<p>The intuition in the previous paragraph implies that Version 2 (&ldquo;inner-ref handled out-of-line&rdquo;) is <em>not</em> correct.</p>
+
+<p>So: Is my intuition wrong? (Maybe; we&rsquo;ll revisit that in a moment.)</p>
+
+<p>If my intuition is right (and thus version 2 is not okay), then: Is the refactoring transformation from version 1 to version 2 wrong? Or does non-okay-ness for version 2 imply that version 1 is also not okay?</p>
+
+<a name="Version.3:..atomic-ref.handled.inline."></a>
+<h2>Version 3: &ldquo;atomic-ref handled inline&rdquo;</h2>
+
+<p>Let us consider this variant on version 1.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="cp">#[cfg(feature = </span><span class="s">&quot;version3&quot;</span><span class="cp">)]</span>
+</span><span class='line'><span class="k">impl</span> <span class="nb">Drop</span> <span class="k">for</span> <span class="n">Handle</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="nb">drop</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="bp">self</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kd">let</span> <span class="n">ref_count</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">AtomicUsize</span> <span class="o">=</span> <span class="k">unsafe</span> <span class="p">{</span> <span class="o">&amp;</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">).</span><span class="n">ref_count</span> <span class="p">};</span>
+</span><span class='line'>        <span class="kd">let</span> <span class="n">label</span><span class="o">:</span> <span class="n">char</span> <span class="o">=</span> <span class="k">unsafe</span> <span class="p">{</span> <span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">).</span><span class="n">payload</span><span class="p">.</span><span class="n">label</span> <span class="p">};</span>
+</span><span class='line'>        <span class="kd">let</span> <span class="n">pre_decr</span> <span class="o">=</span> <span class="n">ref_count</span><span class="p">.</span><span class="n">fetch_sub</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">Ordering</span><span class="o">::</span><span class="n">Release</span><span class="p">);</span>
+</span><span class='line'>        <span class="c1">// (at this point, `pre_decr &gt; 1` ==&gt; someone else might be freeing `*self.ptr`)</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">pre_decr</span> <span class="o">==</span> <span class="mi">1</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">unsafe</span> <span class="p">{</span> <span class="n">dealloc</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">);</span> <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="n">scribble_then_println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;version3 dropped handle to {}&quot;</span><span class="p">,</span> <span class="n">label</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, instead of holding a whole <code>&amp;Inner</code> reference, we are holding &ldquo;just&rdquo; an <code>&amp;AtomicUsize</code> reference. It still is a pointer to storage that is deallocated on some control-flow paths, but we again are careful to never dereference it after the decrement (because after the decrement, concurrent actors could deallocate <code>*self.ptr</code>).</p>
+
+<p>Clearly if version 1 is okay, then version 3 should be too, right?</p>
+
+<p>But what about the other direction: can version 3 be okay even if version 1 is not okay?  Well, notably, now one cannot apply the Label Code Motion optimization: at the point where <code>println!</code> is called, there is no <code>&amp;Inner</code> in lexical scope to pull the label out of. So that may be evidence in favor of permitting version 3 while disallowing versions 1 and 2.</p>
+
+<p>We have one more variant to consider in our matrix.</p>
+
+<a name="Version.4:..atomic-ref.handled.out-of-line."></a>
+<h2>Version 4: &ldquo;atomic-ref handled out-of-line&rdquo;</h2>
+
+<p>Now let us take the refactoring we saw when we made version 2, and apply that refactoring to version 3.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="cp">#[cfg(feature = </span><span class="s">&quot;version4&quot;</span><span class="cp">)]</span>
+</span><span class='line'><span class="k">unsafe</span> <span class="k">fn</span> <span class="n">may_drop_owner</span><span class="o">&lt;</span><span class="nl">&#39;a</span><span class="o">&gt;</span><span class="p">(</span><span class="n">ref_count</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">&#39;a</span> <span class="n">AtomicUsize</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">usize</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">pre_decr</span> <span class="o">=</span> <span class="n">ref_count</span><span class="p">.</span><span class="n">fetch_sub</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">Ordering</span><span class="o">::</span><span class="n">Release</span><span class="p">);</span>
+</span><span class='line'>    <span class="c1">// (at this point, `pre_decr &gt; 1` ==&gt; someone else might be freeing owner of `*ref_count`)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">pre_decr</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#[cfg(feature = </span><span class="s">&quot;version4&quot;</span><span class="cp">)]</span>
+</span><span class='line'><span class="k">impl</span> <span class="nb">Drop</span> <span class="k">for</span> <span class="n">Handle</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="nb">drop</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="bp">self</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kd">let</span> <span class="n">label</span><span class="o">:</span> <span class="n">char</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">unsafe</span> <span class="p">{</span>
+</span><span class='line'>            <span class="kd">let</span> <span class="n">ref_count</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">AtomicUsize</span> <span class="o">=</span> <span class="o">&amp;</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">).</span><span class="n">ref_count</span><span class="p">;</span>
+</span><span class='line'>            <span class="n">label</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">).</span><span class="n">payload</span><span class="p">.</span><span class="n">label</span><span class="p">;</span>
+</span><span class='line'>            <span class="kd">let</span> <span class="n">pre_decr</span> <span class="o">=</span> <span class="n">may_drop_owner</span><span class="p">(</span><span class="n">ref_count</span><span class="p">);</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">pre_decr</span> <span class="o">==</span> <span class="mi">1</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">dealloc</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">);</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="n">scribble_then_println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;version4 dropped handle to {}&quot;</span><span class="p">,</span> <span class="n">label</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In short, we took the ref-count decrement and moved it into its own local function.</p>
+
+<p>And we might take the same intuition about function arguments from version 2 and apply it to <code>fn may_drop_owner</code> in version 4: &ldquo;doesn&rsquo;t <code>*ref_count</code> have to outlive the lifetime <code>'a</code>? How can we allow a concurrent actor to free <code>*ref_count</code> here?&rdquo;</p>
+
+<p>An important insight about version 4: the <code>fn may_drop_owner</code> is nearly a trivial wrapper around <code>AtomicUsize::fetch_sub</code>. So if <code>fn may_drop_owner</code> ends up classified as &ldquo;not okay&rdquo;, then under what mental model is <code>AtomicUsize::fetch_sub</code> &ldquo;okay&rdquo;? (In other words, how can one write any helper functions if something this simple is not okay.)</p>
+
+<a name="Version.5:..out-of-band.ref-count."></a>
+<h2>Version 5: &ldquo;out-of-band ref-count&rdquo;</h2>
+
+<p>In the discussion on <a href="https://github.com/rust-lang/unsafe-code-guidelines/issues/252">UCG#252</a>, Ralf pointed out other corner cases
+one might consider. In particular, so far the cases I&rsquo;ve shown here
+have ref-count on the allocated memory block itself. But one can also imagine
+scenarios where the ref-count is stored elsewhere.</p>
+
+<p>However: I argue that an out-of-band ref-count does not hit the particular
+problem I am concerned with. Since the ref-count is not stored with the heap-allocated
+block, we are simply not going to encouter the issue described here.</p>
+
+<p>(Such a system may encounter similar problems when it designs its
+system for deallocating the out-of-band ref-counts themselves, but
+without more concrete details about the proposal, it is hard to make
+suggestions about how to handle it.)</p>
+
+<p>See also: <a href="https://github.com/rust-lang/unsafe-code-guidelines/issues/88">https://github.com/rust-lang/unsafe-code-guidelines/issues/88</a></p>
+
+<a name="Summary.of.versions"></a>
+<h2>Summary of versions</h2>
+
+<p>Here&rsquo;s a matrix summarizing the first four variants I posted above.</p>
+
+<table>
+<thead>
+<tr>
+<th>             </th>
+<th>   in-line   </th>
+<th> out-of-line </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>  <code>&amp;Inner</code>   </td>
+<td> (version 1) </td>
+<td> (version 2) </td>
+</tr>
+<tr>
+<td> <code>&amp;AtomicX</code>  </td>
+<td> (version 3) </td>
+<td> (version 4) </td>
+</tr>
+</tbody>
+</table>
+
+
+<a name="What.options.might.we.consider"></a>
+<h2>What options might we consider</h2>
+
+<a name="Option.1..Outlaw.them.all"></a>
+<h3>Option 1. Outlaw them all</h3>
+
+<p>Preface: This space held my preferred solution when I first started seriously looking at this months ago (but don&rsquo;t worry, I end up arguing against these &ldquo;outlaw them all&rdquo; variants).</p>
+
+<p>When I first looked at this problem, I thought the right answer would be to outlaw all four versions. That is, I thought my intuition about function arguments should extend to all lexical scopes for all <code>&amp;T</code>, and therefore it was simply always wrong to let the ref-count decrement on something else in a <code>&amp;T</code> (whether <code>T</code> is <code>Inner</code> or <code>AtomicUsize</code>) drive the deallocations shown above.</p>
+
+<p>At that time, the &ldquo;clear&rdquo; answer to my point of view was that all four cases should instead have been manipulating either a <code>*const Inner</code> or a <code>*const AtomicUsize</code> at all times. (This would trivially disallow the Label Code Motion transformation, since no <code>&amp;Inner</code> would be in scope at the point where <code>label</code> is printed.)</p>
+
+<p>A critical problem with this point of view is that we don&rsquo;t offer any way for someone to decrement an atomic direectly on a <code>*const AtomicX</code> pointer.  Our atomics API for e.g. <code>AtomicUsize::fetch_sub</code> <em>forces</em> the developer to pass in a <code>&amp;AtomicX</code>.</p>
+
+<p>So we have to refine this option in some way. Here are two variants I considered.</p>
+
+<a name="L1a..Outlaw.them.all.and.stick.with.current.atomic.API"></a>
+<h4>1a. Outlaw them all and stick with current atomic API</h4>
+
+<p>Since the API forces the developer to pass an <code>&amp;AtomicUsize</code> to <code>fetch_sub</code>: Maybe the developer handles <code>*const AtomicX</code> in their code, but casts it via <code>as</code> back to <code>&amp;AtomicX</code> at the <code>fetch_sub</code> calls? But then can the developer similarly cast the <code>*const Inner</code> to a <code>&amp;Inner</code> and trust that the lifetimes will work out in their favor? (No, that doesn&rsquo;t work; one ends up in the same morass again.)</p>
+
+<p>In short, I don&rsquo;t think this option is reasonable. Even if we could come up with a semantics for what people are supposed to do, I think it will be too confusing for people to understand what the ref-to-ptr and ptr-to-ref casts in each spot convey.</p>
+
+<a name="L1b..Outlaw.them.all.and.put.in.alternative.atomic.API"></a>
+<h4>1b. Outlaw them all and put in alternative atomic API</h4>
+
+<p>Why not have variants of <code>AtomicUsize::fetch_sub</code> and similar atomic methods that take a <code>*const AtomicUsize</code> as their formal parameter? If the standard library provided that, then the developer could be advised to only manipulate <code>*const Inner</code> or <code>*const AtomicUsize</code> in code like this, and they would be able to pass <code>*const AtomicUsize</code> to the relevant methods.</p>
+
+<p>There&rsquo;s a host of answers as to why we wouldn&rsquo;t want to do this:</p>
+
+<ul>
+<li><code>*const</code>-pointers are hard to work with (e.g. we don&rsquo;t support <code>*const
+self</code>-methods);</li>
+<li>it would force us to duplicate a large portion of the API surface and maintain it,</li>
+<li>we would have to bikeshed whether these methods take <code>*const</code> or <code>*mut</code>, and</li>
+<li>perhaps most importantly, it would be a ongoing source for  confusion with users as to when they should use the <code>&amp;AtomicX</code> methods versus when they should use the <code>*const AtomicX</code> methods,   (note in particular that we almost certainly wouldn&rsquo;t want to deprecate the <code>&amp;AtomicX</code> variants in favor of the <code>*const AtomicX</code> variants).</li>
+</ul>
+
+
+<p>So: Let us at least consider other options.</p>
+
+<a name="Option.2..Allow.them.all"></a>
+<h3>Option 2. Allow them all</h3>
+
+<p>I wasn&rsquo;t going to talk about this option when I started writing, but after taking the time to develop the matrix of variants, I figure its worth at least talking about it.</p>
+
+<p>If we were to allow all four variants, then the my own mental model about <code>&amp;T</code> would be incorrect.  The Label Code Motion optimization could not be applied via type-based reasoning; thus, people (or compilers) who used such reasoning to justify such transformations would be performing an incorrect transformation.</p>
+
+<p>When I first started writing this section, I wanted to include this assertion:</p>
+
+<blockquote><p>I suspect very little Rust code used in production today would actually fall into that category of &ldquo;unsound because incorrect reasoning was used to justify this code&rdquo;</p></blockquote>
+
+<p>But I don&rsquo;t know if I believe that assertion anymore. Use-after-free bugs happen.  Code like the below (the result from applying Label Code Motion) is going to happen (and, as you might guess, you get a scribbled label due to the use-after-free here). But there&rsquo;s nothing in the <em>type structure</em> of how <code>Inner</code> holds its label field that would give you a hint that <code>inner.payload.label</code> could be invalid there.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="cp">#[cfg(feature = </span><span class="s">&quot;locomotion&quot;</span><span class="cp">)]</span>
+</span><span class='line'><span class="k">impl</span> <span class="nb">Drop</span> <span class="k">for</span> <span class="n">Handle</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="nb">drop</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="bp">self</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kd">let</span> <span class="n">inner</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">Inner</span> <span class="o">=</span> <span class="k">unsafe</span> <span class="p">{</span> <span class="o">&amp;</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">)</span> <span class="p">};</span>
+</span><span class='line'>        <span class="kd">let</span> <span class="n">pre_decr</span> <span class="o">=</span> <span class="n">inner</span><span class="p">.</span><span class="n">ref_count</span><span class="p">.</span><span class="n">fetch_sub</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">Ordering</span><span class="o">::</span><span class="n">Release</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">pre_decr</span> <span class="o">==</span> <span class="mi">1</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">unsafe</span> <span class="p">{</span> <span class="n">dealloc</span><span class="p">(</span><span class="n">inner</span> <span class="k">as</span> <span class="o">*</span><span class="kr">const</span> <span class="n">Inner</span><span class="p">);</span> <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="n">scribble_then_println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;locomotion dropped handle to {}&quot;</span><span class="p">,</span> <span class="n">inner</span><span class="p">.</span><span class="n">payload</span><span class="p">.</span><span class="n">label</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I do assert that the mental model for what <code>&amp;T</code> <strong>means</strong> becomes &ldquo;quite subtle&rdquo; (at best) if we allow all four variants.</p>
+
+<p>I would like to do better.</p>
+
+<a name="Option.3..Function.boundaries.are.special"></a>
+<h3>Option 3. Function boundaries are special</h3>
+
+<p>I put this in here because I figured there was some reason that <a href="https://github.com/rust-lang/unsafe-code-guidelines/issues/252">UCG#252</a> was focused on function arguments in particular. That is also why I have the in-line vs out-of-line distiction.</p>
+
+<p>I think the heart of this would be something saying that <code>&amp;'a T</code> where <code>'a</code> is a lifetime parameter to the function (or any lifetime that outlives the function, really) gets treated specially: The compiler gets to assume that in such cases, the <code>T</code> will not be deallocated via an alias.</p>
+
+<p>For the matrix, here&rsquo;s the outcome of this option</p>
+
+<table>
+<thead>
+<tr>
+<th>             </th>
+<th>   in-line          </th>
+<th> out-of-line        </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>  <code>&amp;Inner</code>   </td>
+<td> version1: okay     </td>
+<td> version2: not okay </td>
+</tr>
+<tr>
+<td> <code>&amp;AtomicX</code>  </td>
+<td> version3: okay     </td>
+<td> version4: not okay </td>
+</tr>
+</tbody>
+</table>
+
+
+<p>This isn&rsquo;t really satisfying, because it isn&rsquo;t actually coherent.</p>
+
+<p>As discussed in the text below the presentation of version 4, we need to have some way to <em>at least</em> designate version4 as &ldquo;okay&rdquo;, even if its via some opt-in attribute or special casing in the compiler. If we cannot do that, then we might as well go back to option 1 (outlawing them all).</p>
+
+<p>In short: There&rsquo;s a reason <a href="https://github.com/rust-lang/unsafe-code-guidelines/issues/252">UCG#252</a> is not trivial to resolve: in practice, we just cannot rule out all of the out-of-line column.</p>
+
+<a name="Option.4..Put.deallocation.on.same.footing.as.mutation"></a>
+<h3>Option 4. Put deallocation on same footing as mutation</h3>
+
+<p>This option comes from a <a href="https://github.com/rust-lang/unsafe-code-guidelines/issues/252#issuecomment-709035408">UCG#252 comment</a>. As RalfJung put it:</p>
+
+<blockquote><p>this is the key new property that unsafe code would get with your
+proposal: if you are allowed to use a pointer for writes to some
+memory, you are also allowed to deallocate that memory.</p></blockquote>
+
+<p>This is the proposal I put at the outset of this document.</p>
+
+<p>But what does it imply for our examples?</p>
+
+<a name="interpretation.4A:.focus.on.Atomics.alone"></a>
+<h4>interpretation 4A: focus on Atomics alone</h4>
+
+<p>The proposal might be interpreted to mean:</p>
+
+<blockquote><p>if you hold a <code>&amp;A</code>, where <code>A</code> is <code>UnsafeCell&lt;U&gt;</code> or some simple (e.g. <code>#[repr(transparent)]</code>) wrapper
+around <code>UnsafeCell&lt;U&gt;</code> that merely adds alignment constraints (like <code>AtomicUsize</code>) then you must assume
+that aliasing accesses could deallocate the <code>UnsafeCell&lt;U&gt;</code>.</p></blockquote>
+
+<p>The main goal of this interpretation is to allow people to usually use their existing mental model of <code>&amp;T</code>: if you have a <code>&amp;T</code>, then in almost all cases you know its dereferencable for the entirety of its lexical scope. The only exception is when <code>T</code> itself is, in spirit, itself an <code>UnsafeCell</code>. Such cases are already a warning flag for developers: &ldquo;here be dragons&rdquo;, and we would just be adding a new wrinkle to the dragon&rsquo;s scaly skin.</p>
+
+<p>For the matrix, here&rsquo;s the outcome of this interpetation</p>
+
+<table>
+<thead>
+<tr>
+<th>             </th>
+<th>   in-line          </th>
+<th> out-of-line        </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>  <code>&amp;Inner</code>   </td>
+<td> version1: not okay </td>
+<td> version2: not okay </td>
+</tr>
+<tr>
+<td> <code>&amp;AtomicX</code>  </td>
+<td> version3: okay     </td>
+<td> version4: okay     </td>
+</tr>
+</tbody>
+</table>
+
+
+<p>(again, &ldquo;not okay&rdquo; means it is unsound to write deallocation code in this manner.)</p>
+
+<a name="interpretation.4B:.Blast.radius.includes.Buddy.fields"></a>
+<h4>interpretation 4B: Blast radius includes Buddy fields</h4>
+
+<p>The proposal might be interpreted to mean:</p>
+
+<blockquote><p>if you hold an <code>&amp;T</code> where <code>T</code> has <em>any</em> <code>UnsafeCell&lt;U&gt;</code> within it,
+then you must assume that aliasing accesses could deallocate the
+whole <code>T</code>.</p></blockquote>
+
+<p>In other words, sibling fields like <code>.label</code> in our example above would be deemed as potential casualties of a potential deallocation, and thus the Label Code Motion optimization</p>
+
+<p>I think this ends up meaning the same thing as &ldquo;Option 2: Allow them all&rdquo;, except that we could at least say that my naive mental model about <code>&amp;T</code> is applicable when <code>T</code> holds no <code>UnsafeCode&lt;U&gt;</code></p>
+
+<p>For the matrix, here&rsquo;s the outcome of this interpetation</p>
+
+<table>
+<thead>
+<tr>
+<th>             </th>
+<th>   in-line      </th>
+<th> out-of-line    </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>  <code>&amp;Inner</code>   </td>
+<td> version1: okay </td>
+<td> version2: okay </td>
+</tr>
+<tr>
+<td> <code>&amp;AtomicX</code>  </td>
+<td> version3: okay </td>
+<td> version4: okay </td>
+</tr>
+</tbody>
+</table>
+
+
+<p>(This wouldn&rsquo;t be the end of the world, and in fact, it might be our only real choice, depending on how much code in the wild we might expect to be broken by interpretation A (&ldquo;focus on Atomics&rdquo;). In particular, Interpretation 4B would classify the <code>Arc</code> code in the standard library as &ldquo;okay&rdquo;.)</p>
+
+<a name="Option.5..Add.marker.to.indicate.that.struct.may.be.deallocated.in.a.volatile.manner."></a>
+<h3>Option 5. Add marker to indicate that struct may be deallocated in a volatile manner.</h3>
+
+<p>This is a refinement of option 4.</p>
+
+<p>Essentially: If there is too much fallout from following option 4 (variants 4A or 4B, either applies), then we could narrow the focus of the change by having type definitions <em>declare</em> that they have this behavior.</p>
+
+<p>Under this option, a developer of our ref-counted type would be expected to state that this type is deallocated via a protocol that can fire at times unpredictable to the compiler.</p>
+
+<p>This opt-in could take the form of an attribute on the <code>struct Inner</code> definition. Or perhaps it would be a trait that <code>Inner</code> implements.
+Or maybe its a wrapper type, similar to <code>UnsafeCell&lt;T&gt;</code>, that would wrap around the <code>AtomicUsize</code>.</p>
+
+<p>In any case, that would then be used as a marker telling the compiler whether the &ldquo;Label Code Motion&rdquo; optimization applies.</p>
+
+<p>(Another way of seeing this: instead of inferring from the presence of <code>UnsafeCell</code> that such deallocation might happen, we would be adding an alternative marker that developers would have to know about and use correctly if they are implementing a memory-management scheme like this.)</p>
+
+<a name="Conclusion"></a>
+<h3>Conclusion</h3>
+
+<p>This is all a bunch of notes I wrote down to prepare for a language team meeting.
+And at some point I wanted them to have executable code. (I use a literate programming system, tango, to write blog posts like this.)</p>
+
+<p>And at some point after that, I realized this document was too long for the language team meeting.</p>
+
+<p>So it became a blog post.</p>
+
+<p>It deliberately does not have a conclusion, at this point. I thought I would come to one over the course of writing it, but all I&rsquo;ve determined so far is that I need to come up with a more succinct write-up of the problem.</p>
+
+<a name="Appendix"></a>
+<h3>Appendix</h3>
+
+<p>Below is some code to just try driving the above things, to test them out.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">payload</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="k">u8</span><span class="p">;</span> <span class="mi">128</span><span class="p">];</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">source</span> <span class="o">=</span> <span class="s">&quot;Hello World&quot;</span><span class="p">.</span><span class="n">as_bytes</span><span class="p">();</span>
+</span><span class='line'>    <span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="n">payload</span><span class="p">[..</span><span class="n">source</span><span class="p">.</span><span class="n">len</span><span class="p">()]).</span><span class="n">copy_from_slice</span><span class="p">(</span><span class="n">source</span><span class="p">);</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">h1</span> <span class="o">=</span> <span class="n">Handle</span><span class="o">::</span><span class="n">new</span><span class="p">(</span><span class="sc">&#39;h&#39;</span><span class="p">,</span> <span class="n">payload</span><span class="p">);</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">_h2</span> <span class="o">=</span> <span class="n">h1</span><span class="p">.</span><span class="n">clone</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">scribble_then_println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;h1 ref_count: {}&quot;</span><span class="p">,</span> <span class="k">unsafe</span> <span class="p">{</span> <span class="p">(</span><span class="o">*</span><span class="n">h1</span><span class="p">.</span><span class="n">ptr</span><span class="p">).</span><span class="n">ref_count</span><span class="p">.</span><span class="n">load</span><span class="p">(</span><span class="nb">Ordering</span><span class="o">::</span><span class="n">SeqCst</span><span class="p">)</span> <span class="p">});</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<!--
+
+FYI here's how to run the thing on my local box:
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">(</span><span class="n">source</span> <span class="o">~/</span><span class="p">.</span><span class="n">cargo</span><span class="o">/</span><span class="n">env</span>  <span class="o">&amp;&amp;</span> <span class="n">cd</span> <span class="p">..</span> <span class="o">&amp;&amp;</span> <span class="k">for</span> <span class="n">F</span> <span class="k">in</span> <span class="n">version</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">}</span> <span class="p">;</span> <span class="k">do</span> <span class="n">cargo</span> <span class="o">+</span><span class="n">nightly</span> <span class="n">run</span> <span class="o">--</span><span class="n">features</span> <span class="err">$</span><span class="n">F</span>  <span class="p">;</span> <span class="n">done</span> <span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+-->
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Mentoring rust diagnostics issue 81658]]></title>
@@ -13643,121 +14407,6 @@ config windowHintsShowIcons true
 <p>You can see this and other custimzations I have made for myself
 in my own <code>.slate</code> file, which I keep with my other dotfiles in
 <a href="https://github.com/pnkfelix/DotFiles/blob/master/slate" title="Felix's DotFiles github repo">my public repository</a>.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Hello World]]></title>
-    <link href="http://blog.pnkfx.org/blog/2012/12/31/hello-world/"/>
-    <updated>2012-12-31T14:34:00-05:00</updated>
-    <id>http://blog.pnkfx.org/blog/2012/12/31/hello-world</id>
-    <content type="html"><![CDATA[<!---
-Apparently Markdown syntax does not have any shorthand for comments
--->
-
-
-
-
-<!---
-First 7 lines of this file were generated by command invocation:
-  % rake new_post["Hello World"]
--->
-
-
-<p>First post!
-I am attempting to move my blog to GitHub Pages.</p>
-
-<p>After seeing the results of others, I figure I will start with Octopress
-and see how that goes.</p>
-
-<!-- more -->
-
-
-<p>Just so I can remind myself of the Octopress basics in the immediate future:</p>
-
-<ul>
-<li><p>Much of the page generation is controlled by configuration file <code>_config.yml</code></p></li>
-<li><p>The content is all stored in <code>source/_posts/</code></p></li>
-<li><p>This particular entry corresponds to the file <code>2012-12-31-hello-world.markdown</code></p></li>
-<li><p>The first 7 lines of that file were originally generated via the
-<code>rake</code> command invocation:</p>
-
-<pre><code>% rake new_post["Hello World"]
-</code></pre></li>
-<li><p>The command <code>rake generate</code> will convert the source into static html pages.</p></li>
-<li><p>After generating the file (and during subsequent editting), one can preview
-the state locally in a local Ruby webserver via:</p>
-
-<pre><code>% rake preview
-</code></pre>
-
-<p>and then <a href="http://localhost:4000/">browsing localhost port 4000</a>.
-The <code>rake preview</code> invocation will continuously monitor your post
-source files so that you can keep working on your post and then
-reload in your web browser without rerunning <code>rake</code> itself.</p></li>
-<li><p>The command <code>rake deploy</code> is supposed to deploy the content into its intended
-live location.  I have been having difficulty using this command,
-in part because I think it is written assuming you have your ssh-key
-already set up and integrated with github (or something similar) so that
-there would be no password prompts.</p>
-
-<ul>
-<li><p>But of course I have not done this yet.</p></li>
-<li><p>One important detail about <code>rake deploy</code> with github pages is that
-the <code>_deploy/</code> subdirectory is itself a clone of the targetted
-github repository, with the <code>gh-pages</code> branch checked out.
-This can be confusing if your main source tree (the parent
-directory of <code>_deploy/</code>) is itself the same repository as the
-targetted github repository.</p></li>
-</ul>
-</li>
-<li><p>Update: <code>rake deploy</code> just worked fine for me, password prompts and all.
-I think my earlier difficulty was an artifact of some previous bad
-state, one of either:</p>
-
-<ul>
-<li><p>I had put in a malformatted url for the target repository</p></li>
-<li><p>My target repository already had a <code>gh-pages</code> branch (from earlier
-testing) that needed to be pulled-and-merged (or discarded in some
-fashion, which was what my merge amounted to).</p></li>
-</ul>
-</li>
-<li><p>Update (26 march 2012): there are still some hiccups with <code>rake deploy</code>;
-you need to be careful about what you store in the <code>source/</code> directory.
-In particular, I was working on a draft post and threw various
-source files that I was hacking on in the same directory, along with
-some <code>.gitignore</code> files so that <code>git</code> would ignore build products
-generated when I compiled the source (to binaries or jars or fasls&hellip;).</p>
-
-<p>The headache came when I did <code>rake deploy</code>, and hit this error:</p>
-
-<pre><code class="bash">% rake deploy
-cp -r source/_posts/.gitignore public/_posts/.gitignore
-rake aborted!
-No such file or directory - public/_posts/.gitignore
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:230:in `block (2 levels) in &lt;top (required)&gt;'
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:229:in `block in &lt;top (required)&gt;'
-/Users/pnkfelix/Dev/Sites/pnkfx-blog/Rakefile:219:in `block in &lt;top (required)&gt;'
-Tasks: TOP =&gt; copydot
-(See full trace by running task with --trace)
-%
-</code></pre>
-
-<p>The problem here, as far as I can tell, is that octopress
-is aggressively trying to copy over all dotfiles it can find
-(<a href="https://github.com/imathis/octopress/issues/104">Octopress Issue 104</a>)
-and that code was not written to create any subdirectories as
-necessary.</p>
-
-<p>My Ruby development knowledge is sufficiently under-developed that I
-am not going to try to fix this myself.  Instead I have simply
-moved all of the source code I was hacking <em>out</em> of the <code>source/</code>
-directory and into a separate <code>hacks/</code> directory.
-This seems to have addressed the problem; I have also filed
-<a href="https://github.com/imathis/octopress/issues/1151">an issue</a>
-for this with Octopress.</p></li>
-</ul>
-
 ]]></content>
   </entry>
   
