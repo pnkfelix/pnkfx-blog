@@ -9,7 +9,7 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="The problem Driving deallocation of state via ref-counting under our current atomic API means that you cannot avoid having a &amp;AtomicUsize &hellip;">
+  <meta name="description" content="This is a post about some recent history. I want to tell the world about a project I am leading at Amazon Web Services, called &ldquo;TurboWish.& &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,49 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2021/04/26/road-to-turbowish-part-1-goals/">Road to TurboWish; Part 1: Goals</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2021-04-26T12:51:35-04:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>This is a post about some recent history. I want to tell the world about a project I am leading at Amazon Web Services, called &ldquo;TurboWish.&rdquo;</p>
+
+<p>TurboWish, in a nutshell, is our umbrella term for a planned suite of tools for understanding your Rust program&rsquo;s dynamic behavior. We want the tools to especially focus on providing insights into the <em>performance</em> characteristics of your program.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2021/04/26/road-to-turbowish-part-1-goals/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -506,7 +549,7 @@ of giants.</p>
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">GC and Rust Part 1: Specifying the Problem</a></h1>
+      <h1 class="entry-title"><a href="/blog/2015/11/11/vis-via-snap-js/">Vis-a-vis, Part 2: Visualizing Graphs via snap.svg</a></h1>
     
     
       <p class="meta">
@@ -522,81 +565,27 @@ of giants.</p>
   
 
 
-<time datetime="2015-11-10T17:45:00-05:00" pubdate data-updated="true"></time>
+<time datetime="2015-11-11T18:00:00-05:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>This is the first in a series of posts will discuss why garbage
-collection is hard, especially for Rust, and brainstorm about
-solutions to the problems we face.</p>
+  <div class="entry-content"><p><a href="/blog/2015/10/12/viz-a-viz-js/">Previously</a> I discussed visualizing graphs (<code>G = (V,E)</code>)
+specified in DOT syntax (<code>digraph { a -&gt; b; }</code>) via
+<code>viz.js</code>, which is <code>graphviz</code> compiled to Javascript.</p>
 
-<p>The relationship between garbage collection (GC) and the Rust
-programming language has been an interesting one.</p>
-
-<p>GC was originally deeply integrated into the language, complete with
-dedicated syntax (good old <code>@T</code> &hellip;). Over time the team found ways to
-lessen the dependency on GC, and then finally remove it from the
-language entirely.</p>
-
-<p>However, we still want to provide support for garbage collection.</p>
-
-<p>To explain why, I need to define the actual problems we seek to solve.
-So let us explore the problem space.</p>
+<p>However, I have decided that it is too difficult to convince
+graphviz to produce particular layouts. Therefore, I am going
+to try out other tools for working with SVG; in this post, I&rsquo;m
+going to discuss a relative newcomer to the scene, <a href="http://snapsvg.io/">snap.svg</a>.</p>
 
 </div>
   
   
     <footer>
-      <a rel="full-article" href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">GC and Rust Part 0: Garbage Collection Background</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2015-10-27T14:09:00-04:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>This post is a prequel to a series of posts discussing why garbage
-collection is hard, especially for Rust, and brainstorming about
-solutions to the problems we face.</p>
-
-<p>The goal of this post is to provide the background foundational material
-about Garbage Collection that the other posts will then build upon.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/10/27/gc-and-rust-part-0-how-does-gc-work/">Read on &rarr;</a>
+      <a rel="full-article" href="/blog/2015/11/11/vis-via-snap-js/">Read on &rarr;</a>
     </footer>
   
 
@@ -618,6 +607,10 @@ about Garbage Collection that the other posts will then build upon.</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2021/04/26/road-to-turbowish-part-1-goals/">Road to TurboWish; Part 1: Goals</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2021/03/25/how-to-dismantle-an-atomic-bomb/">How to dismantle an Atomic bomb</a>
       </li>
     
@@ -631,10 +624,6 @@ about Garbage Collection that the other posts will then build upon.</p>
     
       <li class="post">
         <a href="/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/">Breaking News: Non-Lexical Lifetimes arrives for everyone</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/">GC and Rust Part 2: The Roots of the Problem</a>
       </li>
     
   </ul>

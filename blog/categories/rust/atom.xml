@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2021-03-25T15:43:14-04:00</updated>
+  <updated>2021-04-26T17:13:09-04:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,6 +12,221 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Road to TurboWish; Part 1: Goals]]></title>
+    <link href="http://blog.pnkfx.org/blog/2021/04/26/road-to-turbowish-part-1-goals/"/>
+    <updated>2021-04-26T12:51:35-04:00</updated>
+    <id>http://blog.pnkfx.org/blog/2021/04/26/road-to-turbowish-part-1-goals</id>
+    <content type="html"><![CDATA[<p>This is a post about some recent history. I want to tell the world about a project I am leading at Amazon Web Services, called &ldquo;TurboWish.&rdquo;</p>
+
+<p>TurboWish, in a nutshell, is our umbrella term for a planned suite of tools for understanding your Rust program&rsquo;s dynamic behavior. We want the tools to especially focus on providing insights into the <em>performance</em> characteristics of your program.</p>
+
+<!-- more -->
+
+
+<p>Let me take a moment to tell you what has happened so far: How did I get here?</p>
+
+<p>(if you want skip the history/motivations and jump <a href="#doc:.Opening.Line">straight to the doc</a>, you can follow that link; you may find yourself
+in another part of the world.)</p>
+
+<a name="Into.the.blue.again"></a>
+<h2>Into the blue again</h2>
+
+<p>About six months ago, I left Mozilla and joined Amazon Web Services (AWS). I am now part of a new team: the AWS Rust team.</p>
+
+<p>Our team charter is simple: &ldquo;The AWS Rust team works to make Rust performant, reliable, and productive for all its users.&rdquo;</p>
+
+<p>Details of what that means are spelled out via <a href="https://aws.amazon.com/blogs/opensource/how-our-aws-rust-team-will-contribute-to-rusts-future-successes/">our team&rsquo;s tenets</a>.
+One of those tenets, one that is incredibly important to me, is that &ldquo;we work in the open.&rdquo; This blog post is itself my own attempt to follow through on that promise: I want to be more open about what I&rsquo;ve been writing down and circulating amongst a relatively small group of people, and try to be better about putting my draft ideas out into the open from the start going forward.</p>
+
+<a name="Same.as.it.ever.was"></a>
+<h2>Same as it ever was</h2>
+
+<p>From my perspective, I still have the same personal career goals: make the Rust programming language an awesome option for developers, by improving the code of the Rust compiler, the design of the Rust language, and the organization of the Rust community.<label for='&lsquo;not-improve-community&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;not-improve-community&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Our </span></p>
+
+<p>Those were my goals when I was at Mozilla, and they are still my goals now.</p>
+
+<a name="You.may.ask.yourself"></a>
+<h2>You may ask yourself</h2>
+
+<p>What do performance tools have to do with those goals?</p>
+
+<p>Our team&rsquo;s inspiration for this focus was based on a few observations.</p>
+
+<p>Part of Rust&rsquo;s promise, the reason people are trying Rust out at all, is that it says it can give you the kind of high-performance that in the past was normally the realm of low-level languages like C or C++.<label for='&lsquo;or-fortran&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;or-fortran&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Or </span></p>
+
+<p>At a customer-obsessed company like Amazon, that promise raises an important question.
+Are our team&rsquo;s customers,<label for='&lsquo;on-customer-term&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;on-customer-term&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Some </span>
+the developers using Rust, actually seeing such performance wins in practice?</p>
+
+<a name="There.is.water.at.the.bottom.of.the.ocean"></a>
+<h2>There is water at the bottom of the ocean</h2>
+
+<p>Based on some discussions and informal interviews with fellow Rust developers, I saw three groups of people with differing answers to that question.</p>
+
+<p>The first group says &ldquo;Rust is great! Once I got it compiling and my unit tests passing, the code works and meets my performance expectations.&rdquo; These customers always made me happy; they are usually happy to then point out what pet features they want to see in the future.</p>
+
+<p>The second group says: &ldquo;I got it compiling, but its not actually as fast as I had hoped. <strong>What should I do now?</strong>&rdquo;</p>
+
+<p>Okay, to be fair, I&rsquo;m making a massive over-generalization there. The second group doesn&rsquo;t always say that. Some of them do <a href="https://blog.mozilla.org/nnethercote/2019/10/11/how-to-speed-up-the-rust-compiler-some-more-in-2019/">extensive analysis</a> to identify awesome ways to make things faster. Some also document exactly what they did and <a href="http://likebike.com/posts/How_To_Write_Fast_Rust_Code.html">how you can do it too</a>.</p>
+
+<p>But the point remains: If Rust <em>isn&rsquo;t</em> meeting your performance goals, its not always obvious what to do. Some people with a lot of in-depth experience with compilers or systems analysis have tools in their utility belt that work well for C/C++ and &hellip; they sort of work for Rust.</p>
+
+<p>But those tools do not work as well as I would like, and I&rsquo;m not sure they are the right answer for the bulk of our community.
+I said five years ago that I want Rust to be <a href="https://www.infoq.com/presentations/rust/">Systems Programming for Everybody</a>, and part of that story is that we need tools that everybody can use and understand.</p>
+
+<a name="How.do.I.work.this."></a>
+<h2>How do I work this?</h2>
+
+<p>The third group says: &ldquo;I struggle to figure out what design to use. I struggle to get my service compiling. You are asking me what I think about performance, but  I&rsquo;m debugging deadlocks from my <code>async</code> code.&rdquo;</p>
+
+<p>This third group raises an entirely different line of thinking when it comes to tooling. When I first starting thinking about performance monitoring tools, I was thinking solely in terms of gathering and presenting metrics, such as CPU cycles, memory utilization. But this third group represents a broad set of customers for whom such focus is premature: They are hitting road blocks that prevent their project from ever leaving the prototype phase. One big source of problems was <code>async</code> code; there&rsquo;s a good chance that <code>async</code>-specific tooling will provide the biggest return on investment here.</p>
+
+<p>The concerns of the second and third groups what led us to the TurboWish project: tools that will help our customers make Rust deliver on its promises: <a href="https://www.rust-lang.org/">performant, reliable, productive</a>.</p>
+
+<a name="Letting.the.days.go.by"></a>
+<h2>Letting the days go by</h2>
+
+<p>After performing a set of informal interviews with various customers both within and outside of AWS, I felt confident that there <strong>are</strong> real problems here to solve. We want Rust developers to have good tools<label for='&lsquo;lang-feats&rsquo;' class='margin-toggle'> &#8853;</label><input type='checkbox' id='&lsquo;lang-feats&rsquo;' class='margin-toggle'/><span class='marginnote'>&lsquo;Ideally, </span>
+on hand that will answer their questions.</p>
+
+<p>So, I jumped into writing a goals document, so that our team could explain to other teams at AWS, and ourselves, what we want to make. I shared it with the rest of the AWS Rust team in the middle of February 2021; they had lots of feedback, but I am not including that here (mostly to avoid having to coordinate authorship of this blog post).</p>
+
+<p>I am ending this blog post with that goals document, warts and all, along with meta-commentary in the right-hand margin notes.
+In follow-on blog posts this week, I will share some of the next steps that followed after I wrote this.</p>
+
+<a name="doc:.Opening.Line"></a>
+<h3>doc: Opening Line</h3>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+You can see in the opening line itself the focus on <code>async</code>/<code>await</code>, for better or for worse.
+</span>
+TurboWish is a framework for profiling Rust programs, focused on illuminating the performance and resource usage of task-oriented code written with async/await.</p>
+
+<a name="doc:.Goals"></a>
+<h3>doc: Goals</h3>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I played a bit of a semantic shell game here, with my use of the term &ldquo;production code.&rdquo; That term could be interpreted as &ldquo;code deployed as a live service.&rdquo; Or it could be interpreted as &ldquo;code compiled in release mode, but still running on development boxes.&rdquo; I plan to talk more about this distinction in later posts, but the short version is: I think we can provide great value today to developers working on their development boxes, without trying to concern ourselves with making a tool that is sufficiently low-overhead and security risk-free that it could be part of a deployed system.
+</span>
+<em>Profile Production Code</em>: Incorporating the TurboWish Framework is low-overhead: it can be incorporated into production code without producing an undue maintenance burden and without incurring significant performance overhead.</p>
+
+<p><em>Domain-specific Feedback</em>: Frameworks and applications can provide data for specialized metrics, specific to their internal architecture.</p>
+
+<p><em>Understand Hidden Costs and Connections</em>: Frameworks like tokio ease writing asynchronous code because they hide a number of details behind abstractions (such as generator code produced by the Rust compiler, or task queues managed by the tokio runtime). TurboWish exposes those hidden details, allowing developers to correlate them with other program events. It also exposes connections that humans usually have to reconstruct by hand (such as future to resource to future chains that can yield deadlock), allowing one to directly see from Rust’s ownership model how resources are being held in the object graph.</p>
+
+<p><em>Framework Agnostic</em>: Many of Rust’s customers use tokio, but not all of them. async-std  and fuschia_async are other frameworks for asynchronous programming. TurboWish can provide value to any such framework (though it may also provide framework-specific functionality when warranted). For our initial releases, we can focus on tokio alone, but expect integration with others if tokio proves successful.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I included this goal specifically because I had done a bunch of investigation into using <a href="https://rr-project.org/"><code>rr</code></a>, and discovered during that time that some of the cloud development machines hosted on <a href="https://aws.amazon.com/ec2/">EC2</a> do not support the performance counters that you need for <code>rr</code> to function.
+</span>
+<em>EC2 Instance Type Agnostic</em>: If we make use of any OS specific features (e.g. dtrace probes), they will be available on all EC2 AL2 instances, regardless of instance-type. (Specifically, we cannot require access to CPU performance counters.)</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+It was an interesting exercise writing this schedule. There are a number of constraints that I was trying to meet that are not represented in this table.
+The biggest one was that the Rust release schedule itself follows a six-week cadence; if TurboWish needs any support from <code>rustc</code> itself, and we want it to be available in the stable version of the compiler at the end of October, then that means any such support needs to land in the nightly version of <code>rustc</code> before July 29th.
+</span></p>
+
+<a name="doc:.Milestones"></a>
+<h3>doc: Milestones</h3>
+
+<table>
+<thead>
+<tr>
+<th>Milestone</th>
+<th>Deadline</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3 to 5 User Stories identified for core focus</td>
+<td>26 Feb 2021</td>
+</tr>
+<tr>
+<td>Development Tracks identified</td>
+<td>26 Mar 2021</td>
+</tr>
+<tr>
+<td>PR/FAQ published</td>
+<td>2 Apr 2021</td>
+</tr>
+<tr>
+<td>3 Launch Partners established</td>
+<td>30 Apr 2021</td>
+</tr>
+<tr>
+<td>alpha prototype</td>
+<td>2 Jul 2021</td>
+</tr>
+<tr>
+<td>feedback gathered from demo of alpha to Launch Partners</td>
+<td>16 Jul 2021</td>
+</tr>
+<tr>
+<td>beta release</td>
+<td>20 Aug 2021</td>
+</tr>
+<tr>
+<td>beta integrated with Launch Partner code bases</td>
+<td>17 Sep 2021</td>
+</tr>
+<tr>
+<td>Evaluation Report of beta (interviews with Launch Partners)</td>
+<td>24 Sep 2021</td>
+</tr>
+<tr>
+<td>1.0 release</td>
+<td>29 Oct 2021</td>
+</tr>
+</tbody>
+</table>
+
+
+<a name="doc:.Milestone.explanation"></a>
+<h3>doc: Milestone explanation</h3>
+
+<p><em>Development Tracks</em>: Some features of TurboWish will provide the most value to customers if they are developed in concert with additions to other components of the Rust ecosystem, such as the Rust compiler. However, we are not the sole owners of the Rust ecosystem nor those components. We need to identify target components of interest early (and I am assuming that part of that identification will require actual prototyping, which is why I am allocating a month for such prototyping in parallel with drafting the PR/FAQ<label for='&lsquo;pr-faq&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;pr-faq&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;I </span>), so that we can properly prioritize such development. In each case where we do not own the component, we must also establish the backup plan if our desired changes will not land in time for use in the product this year.</p>
+
+<p><em>Launch Partners</em>: Customers within Amazon are willing to evaluate pre-release versions of the product. We should strategically select three such customers to partner with us; these are the Launch Partners. We will give each such launch partner 1.) demonstrations of the alpha proof of concept, 2.) access to the beta minimum viable product, and 3.) dedicated engineering time for integrating the beta into their service. In exchange, the launch partner will give us feedback on the alpha and beta versions of the product (which will inform each subsequent development sprint).</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+For some reason I was especially proud of the distinction being drawn in this paragraph. I have a somewhat superficial understanding of project management and Agile development methods, so I was not really thinking about whether demo&rsquo;s are common products of a sprint. (And a <a href="https://www.jrothman.com/mpd/2007/10/release-able-vs-demo-able/">post by Johanna Rothman</a> makes the great point that even a product that is &ldquo;only&rdquo; demo-able has still demonstrated <em>integration amongst the team</em>.)
+From my perspective, the demo/release distinction had an entirely different motivation: I simply did not see time in the schedule for the year for two full release plus integration plus customer-feedback cycles.
+</span>
+<em>Alpha Demo</em> versus <em>Beta Release</em>: We want to move quickly, develop a minimum viable product and then iterate on it until we have something that delights our customers. We also want to work with a set of dedicated launch partners to evaluate an early version of the product (the beta). However, a product like this is unlikely to be a tool that can be trivially integrated: we expect there to be some amount of development effort associated with linking TurboWish into a given code base. Therefore, we do not expect our launch partners to be able to participate in multiple iterations of evaluating the product, simply due to the amount of development effort each integration is likely to take. So, we propose using different evaluation methodologies for different iteration cycles: For the alpha version, we will integrate TurboWish into code bases that we choose ourselves, give demos of the integrated result to our Launch Partners, and use their feedback in subsequent development of the alpha. For the beta version, we will work with our Launch Partners to integrate TurboWish into their code bases, and then at the end of the integration period, we will use the feedback they provide to make the final changes to the product.</p>
+
+<a name="doc:.Risks..Mitigations"></a>
+<h3>doc: Risks, Mitigations</h3>
+
+<blockquote><p>Risk: Time from “development tracks identified” to “PR/FAQ published” is only a week.<label for='&lsquo;dev-track-to-pr-faq&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;dev-track-to-pr-faq&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;This </span></p></blockquote>
+
+<p>Mitigation: We need to develop the PR/FAQ in parallel with doing the feasibility studies that identify the development tracks. (But I do not want to make them independent milestones; I want to be confident that the features in the PR/FAQ can be constructed before I try to enlist Launch Partners.)</p>
+
+<blockquote><p>Risk: Rust compiler leadership/maintenance will distract pnkfelix.<label for='&lsquo;compiler-work&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;compiler-work&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Another </span></p></blockquote>
+
+<p>Mitigation 1. Get buy-in from others and spread development effort</p>
+
+<p>Mitigation 2. Compiler Team focus for 2021 is rustc contributor experience, especially w.r.t. performance. Hopefully synergies will emerge from that.</p>
+
+<blockquote><p>Risk: Not much time remaining in February to establish user stories. Felix’s personal focus for short term are memory usage issues, and so he has been contributing stories related to that. But many customers express concern related to async/await, especially about understanding why their tasks fail to progress (i.e. sources of deadlock).</p></blockquote>
+
+<p><em>(No mitigation documented.)</em><label for='&lsquo;no-mitigation&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;no-mitigation&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;I </span></p>
+
+<blockquote><p>Risk: Some features may depend on some amount of GC style tracing, potentially starting from local owned variables on the stack as roots, and in any case traversing values on the heap. (For example, automatically dissecting ownership chains between futures and resources in order to identify causes of deadlock could make use of such tracing.) pnkFelix has experience in this area and believes it to be a solvable problem (especially given the profiling goal, as opposed to correct integration with arbitrary 3rd party GC tech), but it is not a settled problem.</p></blockquote>
+
+<p>Mitigation: Leverage ownership of relevant frameworks where possible. E.g. you don’t need to trace the local stack if you know your “root set” of interest is the set of tokio tasks. And you don’t need to make an general-purpose value-tracing system when a make-shift trait and associated derive will suffice for the specific problem at hand.</p>
+
+<a name="Time.isn.t.holding.us...Time.isn.t.after.us"></a>
+<h2>Time isn&rsquo;t holding us / Time isn&rsquo;t after us</h2>
+
+<p>And that&rsquo;s the goals doc, as it stood in mid-February</p>
+
+<p>Like I said above, there was a bit of a journey to get to this point. And even with this document in hand, we do not have enough to start making code: I wouldn&rsquo;t be able to hand this to a programmer and say &ldquo;do this.&rdquo;</p>
+
+<p>But I had goals. And I had a schedule. What was next on the schedule? <em>User Stories.</em> (Those will be the subject of the next blog post.)</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[GC and Rust Part 2: The Roots of the Problem]]></title>
@@ -2650,456 +2865,6 @@ being that of a type to being some value within a type.)</p>
 </span></code></pre></td></tr></table></div></figure></p>
 
 <p>(I think I need a wider variety of examples, but this is good enough for now.)</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Detective Work on Rust Closures]]></title>
-    <link href="http://blog.pnkfx.org/blog/2013/06/07/detective-work-on-rust-closures/"/>
-    <updated>2013-06-07T10:17:00-04:00</updated>
-    <id>http://blog.pnkfx.org/blog/2013/06/07/detective-work-on-rust-closures</id>
-    <content type="html"><![CDATA[<ul>
-<li><a href="#background_fns">Background: Closures (recurring and otherwise)</a></li>
-<li><a href="#background_dst">Background: DST</a></li>
-<li><a href="#the_problem">The Problem: DST and Closures</a>
-
-<ul>
-<li><a href="#is_fn_too_ugly">Is fn~ too ugly?</a></li>
-<li><a href="#leveraging_proc">Leveraging a proc keyword/expression</a></li>
-<li><a href="#other_ways_to_proc">Other ways to express proc</a>
-
-<ul>
-<li><a href="#digression_on_macros">A Personal Digression on Macros</a></li>
-</ul>
-</li>
-<li><a href="#more_followup_on_procs_and_fns">More followups on procs and fns</a></li>
-</ul>
-</li>
-<li><a href="#where_are_we">So where are we?</a></li>
-</ul>
-
-
-<p>I have recently been trying to keep myself abreast of a flurry of
-discussion about reforming the design of Rust closures.  Niko has a
-series of blog posts (<a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">1</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">2</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/recurring-closures-and-dynamically-sized-types/">3</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">4</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">5</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">6</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">7</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">8</a>); the
-content of some of those posts were further discussed at Rust team
-meetings (<a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-04-30">11</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-07">12</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-14">13</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-21">14</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-28">15</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-06-04">16</a>), and there have been some
-more formalized proposals with their own set of discussions: (<a href="https://github.com/mozilla/rust/wiki/Proposal-for-closure-reform">9</a>,
-<a href="https://github.com/mozilla/rust/wiki/Proposal-for-closure-reform-%28specific%29">10</a>).</p>
-
-<p>There are also associated github issues (<a href="https://github.com/mozilla/rust/issues/2202">17</a>, <a href="https://github.com/mozilla/rust/issues/3569">18</a>, <a href="https://github.com/mozilla/rust/issues/6308">19</a>), though
-without sufficient context the discussion in the github issues may not
-always be intelligible.</p>
-
-<p>Some of the links above are more about &ldquo;Dynamically Sized Types&rdquo;
-(DST), a related topic, as we shall see.</p>
-
-<p>This post is my attempt to condense all of this information down into
-something where I can see all the pieces at once, and discard the
-red herrings along the way.</p>
-
-<!-- more -->
-
-
-<a name="L.a.id..background_fns..Background:.Closures..recurring.and.otherwise...a."></a>
-<h2><a id="background_fns">Background: Closures (recurring and otherwise)</a></h2>
-
-<p>In Rust circa version 0.6, closures have three categories according to
-the type system (<code>&amp;fn</code>, <code>@fn</code>, and <code>~fn</code>), but <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">as Niko describes</a>,
-they can be divided into two kinds: by-reference closures and copying
-closures.  By-reference closures are also referred to as
-stack-allocated closures or sometimes &ldquo;stack closure.&rdquo;
-(There is also a orthogonal division of <code>once</code> closures, versus
-closures that can be invoked more than once; some of these things are,
-to my knowledge, only part of planned future implementation.  Niko
-discusses them in the blog posts but I&rsquo;m mostly sidestep them here.)</p>
-
-<p>As Niko states in the first paragraph of <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">1</a>, a stack closure is
-allocated on the stack, and can refer to and manipulate the local
-variables of the enclosing stack frame (by reference).</p>
-
-<p>In Rust (as of version 0.6), one creates a stack-allocated closure by
-writing an expression <code>|x ...| { ... }</code> within an expression context
-dictating that it wants a closure of <code>&amp;fn</code> type.  Analogously, a
-closure allocated on the exchange-heap is expressed by putting the
-expression into a context of <code>~fn</code> type, et cetera.  Since a
-stack-allocated closure is currently expressed solely by use of <code>&amp;fn</code>
-type, Niko often uses the term <code>&amp;fn</code> closure synonymously with
-stack-allocated closure.</p>
-
-<p>(However, Niko also points out (first section of
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&ldquo;Procedures, Continued&rdquo;</a>) that one can borrow a <code>@fn</code> or <code>~fn</code> to
-a <code>&amp;fn</code>, so the type does <em>not</em> tell you whether you actually have a
-by-reference or a copying-closure.)</p>
-
-<p>Here is the example of an unsound function that Niko described in
-his <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">Case of the Recurring Closure</a> post from 2013-04-30,
-making use of higher-order functions to express a fixed-point
-combinator:
-```rust
-struct R&lt;&lsquo;self> {
-    // This struct is needed to create the
-    // otherwise infinite type of a fn that
-    // accepts itself as argument:
-    c: &amp;'self fn(&amp;R)
-}</p>
-
-<p>fn innocent_looking_victim() {
-    let mut vec = ~[1, 2, 3];
-    conspirator(|f| {
-        if vec.len() &lt; 100 {
-            vec.push(4);
-            for vec.each |i| {
-                f.c(&amp;f)
-            }
-        }
-    })
-}</p>
-
-<p>fn conspirator(f: &amp;fn(&amp;R)) {
-    let r = R {c: f};
-    f(&amp;r)
-}</p>
-
-<pre><code>
-As Niko explains, the vector `vec` is mutated while being traversed by
-an iterator; this is illegal.  The closure `|f| { ... }` captures
-a reference to `vec`, and Rust's borrow checker is not treating the argument
-`f` as a potential source of aliases to `vec`, even though it does alias
-`vec` because `f` ends up being bound to the closure `|f| { ... }`.
-
-An important detail here is that the closure in question is
-a stack-allocated closure.
-
-Niko has described his solution to this problem in [1]; it would
-entail adding some new rules about how `&amp;fn` closures are invoked
-and passed as parameters.  One of the main changes imposed by his
-solution was that `&amp;fn` closures would become non-aliasable;
-this would ensure that one could not express the Y-combinator.
-The restriction to ensure `&amp;fn` closures are unaliasable interacts
-with other proposals, as we shall see.
-(Note that Rust does have a way of expressing a non-aliasable pointer
-to `T` for any `T`: `&amp;mut T`.)
-
-## &lt;a id="background_dst"&gt;Background: DST&lt;/a&gt;
-
-The heart of the Dynamically Sized Types proposal is the discrepancy
-described in Niko's [DST, Revisited][2] post from 2013-04-30
-(published contemporaneously with [Case of the Recurring Closure][1]).
-Niko has been wrestling with the idea for a while, as one can see on
-his posts from [2012-04-23][20] and [2012-04-27][21].
-
-In Rust, vectors (and strings, which we will treat as a special case
-of vectors) come in the following forms:
-
-* dynamic-length: heap-allocated, carries its length N as part of its
-  record structure.  Consists of some amount of meta-data, including
-  the length word, followed by the inline-allocated array of N
-  elements.  Expressed as `~[T]` and `@[T]` in Rust.
-* slice: represents a substring of a vector; consists of two words: a
-  pointer to the payload, and a length bound.  Expressed as `&amp;[T]` in Rust.
-* fixed-length: represents exactly N elements, where N is statically
-  tracked at compile-time.  Consists of just the array of elements,
-  `T[N]`, and nothing more.  Expressed as `[T, ..N]` in Rust.
-
-Niko points out that a slice's two-word representation is quite
-different from the representations of the other variants.  His
-proposal is to unify the first two representations, by laying out
-`~[T]` and `@[T]` as pairs of words (a pointer to the boxed elements
-array, and a length).
-(Niko claimed that this makes a `~[T]` and `@[T]` valid slices, "apart
-from the box header"; it seems to me like the box header is quite
-relevant here, unless the idea is that when you coerce a `@[T]` to a
-slice, you increment the pointer value accordingly...)
-
-Then, Niko classifies the types of Rust into two categories: Sized and
-Unsized; i.e., size is statically known, versus size is tracked at
-runtime (maybe the letters S and R would have been more appropriate
-than S and U...).  The "unsized types" cannot themselves be assigned
-as types of local variables, and you cannot have vectors of elements
-of unsized type; this all stems from the fact that "unsized types" do
-not have a static size.
-(The "unsized types" are arguably not actually types; we might be
-well-served by referring to them as "pretypes" or something).
-But pointers to unsized types are valid types.  Such pointers are the
-pairs of words discussed above, aka "fat pointers": `(payload, meta)`,
-where `payload` is the pointer to the data, and `meta` is the
-descriptor that includes some way to determine the size of the payload
-(to support runtime bounds checks).
-
-The fact that "unsized types" need to be treated specially leads to a
-complication, discussed further in the post; how to differentiate
-between type-parameterized code that works on both kinds of types,
-versus typed-parameterized code that solely operates on sized types.
-The method proposed in the post is to express the distinction via a
-trait bound: the `Sized` bound would restrict the type parameter to
-one of statically-known size; you would not be able to express
-types like `[X, ..3]` (a fixed-length vector of 3 X'es), unless you
-include the bound `X:Sized`.  (There is more on this restriction
-and ways to ease it further down.)
-
-One of the benefits of DST that Niko proposes early on is that
-Traits and closures are other instances of unsized types, so that
-Rust's type hierarchy could be presented uniformly like so:
-</code></pre>
-
-<p>T = S            // sized types
-  | U            // unsized types
-S = &amp;&lsquo;r T        // region ptr
-  | @T           // managed ptr
-  | ~T           // unique ptr
-  | [S, ..N]     // fixed-length array
-  | uint         // scalars
-  | &hellip;
-U = [S]          // vectors
-  | str          // string
-  | Trait        // existential (&ldquo;exists S:Trait.S&rdquo;)
-  | fn(S*) -> S
-<code>``
-(Note that the actual types assigned to expressions would be instances
-of</code>S` according to this grammar.)</p>
-
-<a name="L.a.id..the_problem..The.Problem:.DST.and.Closures..a."></a>
-<h2><a id="the_problem">The Problem: DST and Closures</a></h2>
-
-<p>So, from the &ldquo;Case of the Recurring Closure&rdquo;, we saw that
-<code>&amp;fn</code> closures were to become non-copyable.
-But under the DST proposal, generic code should be able to treat <code>&amp;T</code>
-the same for all <code>T</code>, <em>including</em> when <code>T</code> is some <code>fn(S*) -&gt; S</code>.
-These two criteria are not compatible; Niko has lots more explanation
-in his corresponding post:
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/recurring-closures-and-dynamically-sized-types/">&ldquo;Recurring Closures and Dynamically Sized Types&rdquo;</a>,
-from 2013-05-13.</p>
-
-<p>Niko&rsquo;s immediate proposals to resolve this were either:</p>
-
-<ul>
-<li>we write <code>&amp;mut fn</code> instead of <code>&amp;fn</code>.  <code>&amp;mut T</code> for all <code>T</code>
-(including <code>fn (S ...) -&gt; S</code>) is forced to be unaliasable by the
-borrow-checker, and so the hole goes away, or,</li>
-<li>we change notation, and move the sigils for closures <em>after</em> the fn,
-side-stepping the special treatment of <code>&amp;fn</code> versus <code>&amp;T</code> by getting
-rid of <code>&amp;fn</code> and replacing it with <code>fn&amp;</code>.</li>
-</ul>
-
-
-<a name="L.a.id..is_fn_too_ugly..Is.fn..too.ugly...a."></a>
-<h3><a id="is_fn_too_ugly">Is fn~ too ugly?</a></h3>
-
-<p>Niko at first favored the latter, then he wrote a second post,
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">&ldquo;Mutable Fn Alternatives&rdquo;</a> on 2013-05-13,
-which reconsidered whether <code>fn~</code> is too ugly, and included
-new survey of the options:</p>
-
-<ul>
-<li>Maybe <code>&amp;mut fn</code> is not that bad, or</li>
-<li>Maybe make <em>all</em> closures borrowed (i.e. stack-allocated), removing
-the need for any sigil, or</li>
-<li>Make <code>fn</code> denote stack-allocated closures,
-and replace <code>fn~</code> with a new keyword, like <code>proc</code>.  (This is a variation
-on the previous bullet.)</li>
-</ul>
-
-
-<p>For the second and third bullets, the main point is: If you need to
-capture state in a manner that cannot be expressed via the available
-options (stack-allocated closure, or a <code>proc</code>, if present), then you
-have to use an trait instead (i.e. an object or a record).
-(I personally am not thrilled about losing the option of using
-closures to express combinator libraries, a use case for <code>fn@</code>.)</p>
-
-<a name="L.a.id..leveraging_proc..Leveraging.a.proc.keyword.expression..a."></a>
-<h3><a id="leveraging_proc">Leveraging a proc keyword/expression</a></h3>
-
-<p>Then a third post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">&ldquo;Procedures, Continued&rdquo;</a> from
-2013-05-15, refined the <code>proc</code> proposal a bit further.  As stated in
-the background on closures, Rust has by-reference closures and copying
-closures; the choice of which variant to construct is based on the
-type expected by the context of the <code>|x ...| { ... }</code> expression.
-In this post, Niko proposed that the distinction here deserves a
-starker line between the two forms.  (In that post, he proposed both a
-revision to English jargon and also to the Rust syntax; I&rsquo;m going to
-focus solely on the Rust syntax changes, and let those guide the
-changes to my own jargon here.)</p>
-
-<p>So Niko proposes distinguishing a by-reference closure from a copying
-closure via keywords.  A stack-allocated closure would be constructed
-solely via <code>fn</code>, and a copying closure would be constructed solely via
-<code>proc</code>.  While discussing this proposal henceforth, I will refer to a
-by-reference closure as an <code>fn</code>-closure and a copying closure as a
-<code>proc</code>-closure.</p>
-
-<p>The type hierarchy that Niko then provides for this is:
-<code>
-T = S               // sized types
-  | U               // unsized types
-S = fn(S*) -&gt; S     // closures (*)
-  | &amp;'r T           // region ptr
-  | @T              // managed ptr
-  | ~T              // unique ptr
-  | [S, ..N]        // fixed-length array
-  | uint            // scalars
-  | ...
-U = [S]             // vectors
-  | str             // string
-  | Trait           // existential ("exists S:Trait.S")
-  | proc(S*) -&gt; S   // procedures (*)
-</code></p>
-
-<p>Now, <code>fn</code>-closures are considered <em>sized types</em>, because they are
-always represented by two words: a (borrowed) environment pointer (to
-the stack in Niko&rsquo;s proposal, though perhaps it could be generalized
-to point elsewhere) and a function pointer.  <code>proc</code>-closures are
-<em>unsized types</em>, because their copied lexical environment is of some
-dynamically-determined size that they must carry in their record
-structure.</p>
-
-<p>In this version of the proposal, <code>proc</code> can now be allocated to either
-the exchange heap (<code>~proc</code>) or the task heap (<code>@proc</code>).  So this
-brings back the ability to express combinator libraries.</p>
-
-<p>Niko&rsquo;s post provides further detail, such as dissection of the <code>fn</code>
-and <code>proc</code> closure types (which include important details like the
-lifetime and trait <em>bounds</em> for the closed-over variables; this is
-important since with a separate keyword, it is now reasonable for
-different defaults to be chosen for two cases; useful for making the
-common case succinct).  He also describes a couple variations on the
-theme, including modeling <code>proc</code> closures via traits (i.e. boxed
-traits are objects carrying virtual method dispatch tables), and then
-expressing them via a <code>proc!</code> macro (which means they could be left
-out of the core language).</p>
-
-<a name="L.a.id..other_ways_to_proc..Other.ways.to.express.proc..a."></a>
-<h3><a id="other_ways_to_proc">Other ways to express proc</a></h3>
-
-<p>In his next post, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">&ldquo;Removing Procs&rdquo;</a>, Niko elaborates further
-on the idea that <code>proc</code> need not be supported in the language at all.
-Stack-allocated <code>fn</code>-closures would remain, expressed via <code>fn(S ...) -&gt; T</code>,
-and the language already supports raw (environment-less) function
-pointers via <code>extern "ABI" fn(S ...) -&gt; T</code>.
-Niko points out two ways to re-express copying closures:</p>
-
-<ol>
-<li>One could pass around function pointers along with
-records that carry the captured environment; this is basically
-<a href="http://matt.might.net/articles/closure-conversion/">lambda-lifting</a> (the variant that turns the free variables
-into fields of a single environment structure, rather than passing each
-variable as a separate parameter), or</li>
-<li>As stated earlier, (boxed) traits can used to express copying
-closures.</li>
-</ol>
-
-
-<p>Niko surveyed how these patterns would look in his post, by considered
-existing use cases of <code>@fn</code> and <code>~fn</code> in the standard libraries,
-namely task spawning and futures.  Without more language support, the
-lambda-lifting transformation requires that one list the captures
-variables (at least once, though further repetitions can be avoided
-via appropriate macro definitions).  I am personally hesistant to
-approve of removing non stack-allocated closures wholesale, though
-<em>if</em> it turns out that capture clauses are essentially unavoidable (or
-if understanding behavior without them is unworkable), then my main
-problem with the <code>proc!</code> macros (the explicit list of free variables)
-would go away.</p>
-
-<p>Alternatively, if the macro system were somehow extended to allow a
-macro to query an expression for its free variables, then that might
-help.</p>
-
-<a name="L.a.id..digression_on_macros..A.Personal.Digression.on.Macros..a."></a>
-<h4><a id="digression_on_macros">A Personal Digression on Macros</a></h4>
-
-<p>Actually, this latter idea brings up a problem with the explicit list
-of captured variables that I had not thought of before: some macros
-may intentionally inject references to free variables, where the
-injected free variables are not meant to be part of the public
-interface of the macro (i.e., the macro is enforcing some protocol of
-usage, and the variable is meant to be otherwise private to the module
-where the macro is defined).  I know we do not currently have macros
-exported from modules, but I thought it was supposed to be part of the
-long term plans for Rust.</p>
-
-<ul>
-<li><p>Do we intend to disallow the use of such macros within copying closures?</p></li>
-<li><p>Will we require the modules to expose those variable names, solely
-so that they can be included on the lists of free variables?</p></li>
-<li><p>Or, if a macro could query an expression for its free variables
-(where even module-private identifiers might be included on such
-a list), that might help impose a usage discipline that would
-support a <code>proc!</code> macro,</p></li>
-<li><p>Or, this whole example might serve as an argument for keeping
-copying closures as a primitive linguistic construct.</p></li>
-</ul>
-
-
-<p>Okay, end of digression.</p>
-
-<a name="L.a.id..more_followup_on_procs_and_fns..More.followups.on.procs.and.fns..a."></a>
-<h3><a id="more_followup_on_procs_and_fns">More followups on procs and fns</a></h3>
-
-<p>A few days passed, then Niko had a fourth post,
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">&ldquo;More on Fns&rdquo;</a>, from 2013-06-03.
-This proposal renamed of a proposed <code>Task</code> trait to <code>Thunk</code>, since
-Niko felt that the concept at hand (an encapsulated function and the
-parameters it needs) is better reflected by that name.</p>
-
-<p>More importantly, given the immediately preceding digression, the form
-<code>thunk { ... }</code> would automatically determine the captured variables
-instead of requiring an explicit list; this sidesteps the whole question
-of how to handle macros that inject new free variable references.</p>
-
-<p>There is then much discussion of whether or not to support <code>once fn</code>s,
-which I won&rsquo;t summarize here.  The important detail of the post is
-that we do not necessarily have to list the captured variables
-explicitly.</p>
-
-<p>After a few more days, Niko had a followup on the related topic of
-dynamically sized types (DST), <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">&ldquo;Reducing DST Annotation&rdquo;</a>, from
-2013-06-06.  It took into account an <a href="https://github.com/mozilla/rust/issues/6308#issuecomment-18880575">investigation</a> by Ben Blum
-on the implications of a <code>Sized</code> trait bound.  This led to Niko
-exploring some alternatives to adopting DST with a <code>Sized</code> bound:</p>
-
-<ul>
-<li>Abandon DST altogether: Niko summarizes what DST still buys us, but
-also points out where it does not live up to its original promises.</li>
-<li>Make type parameters default to <code>Sized</code>, and adopt a different
-syntactic mechanism to distinguish <code>Sized</code> from <code>Unsized</code> (such as
-a keyword).</li>
-<li>Use some sort of inference: the type-checker can use properties
-of a function&rsquo;s parameter list to provide feedback
-on whether the type parameter has an implicit <code>Sized</code> bound.
-(Niko wonders if this approach is too clever; I am inclined to
- affirm that it is.)</li>
-</ul>
-
-
-<a name="L.a.id..where_are_we..So.where.are.we...a."></a>
-<h2><a id="where_are_we">So where are we?</a></h2>
-
-<p>The above summarizes the series of blog posts from Niko.  I had hoped
-to get through the actual proposals (and maybe also the team meeting
-notes), but at this point, it is late enough in the day and this post
-is long enough that I think I will stop here.</p>
-
-<p>The language is young, and I am a Rust novice.  So, grains of salt
-for everyone:</p>
-
-<ul>
-<li>My intuition is that we should leave in copying closures in some form.</li>
-<li>The <code>thunk { ... }</code> expression might suffice, but &hellip; I am not yet
-convinced that I would be satisfied using boxed traits
-to express the cases that need input arguments (like combinator
-libraries).</li>
-<li>I am not thrilled by the idea of writing out lists of free
-variables.  Of course, this is a systems programming language,
-and such a list may simply be the simplest way to accomplish
-certain goals (e.g. to indicate whether a referenced value
-is moved or copied).</li>
-<li>If we do require a list of free variables in our copying
-<code>proc</code>/<code>thunk</code>/etc, please ensure that the question of free
-variables injected by macro invocations is addressed.</li>
-</ul>
-
 ]]></content>
   </entry>
   

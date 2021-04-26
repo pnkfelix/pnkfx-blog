@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: performance | The {pnk}f(eli)x Blog]]></title>
+  <link href="http://blog.pnkfx.org/blog/categories/performance/atom.xml" rel="self"/>
+  <link href="http://blog.pnkfx.org/"/>
+  <updated>2021-04-26T17:13:09-04:00</updated>
+  <id>http://blog.pnkfx.org/</id>
+  <author>
+    <name><![CDATA[Felix S. Klock II]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Road to TurboWish; Part 1: Goals]]></title>
+    <link href="http://blog.pnkfx.org/blog/2021/04/26/road-to-turbowish-part-1-goals/"/>
+    <updated>2021-04-26T12:51:35-04:00</updated>
+    <id>http://blog.pnkfx.org/blog/2021/04/26/road-to-turbowish-part-1-goals</id>
+    <content type="html"><![CDATA[<p>This is a post about some recent history. I want to tell the world about a project I am leading at Amazon Web Services, called &ldquo;TurboWish.&rdquo;</p>
+
+<p>TurboWish, in a nutshell, is our umbrella term for a planned suite of tools for understanding your Rust program&rsquo;s dynamic behavior. We want the tools to especially focus on providing insights into the <em>performance</em> characteristics of your program.</p>
+
+<!-- more -->
+
+
+<p>Let me take a moment to tell you what has happened so far: How did I get here?</p>
+
+<p>(if you want skip the history/motivations and jump <a href="#doc:.Opening.Line">straight to the doc</a>, you can follow that link; you may find yourself
+in another part of the world.)</p>
+
+<a name="Into.the.blue.again"></a>
+<h2>Into the blue again</h2>
+
+<p>About six months ago, I left Mozilla and joined Amazon Web Services (AWS). I am now part of a new team: the AWS Rust team.</p>
+
+<p>Our team charter is simple: &ldquo;The AWS Rust team works to make Rust performant, reliable, and productive for all its users.&rdquo;</p>
+
+<p>Details of what that means are spelled out via <a href="https://aws.amazon.com/blogs/opensource/how-our-aws-rust-team-will-contribute-to-rusts-future-successes/">our team&rsquo;s tenets</a>.
+One of those tenets, one that is incredibly important to me, is that &ldquo;we work in the open.&rdquo; This blog post is itself my own attempt to follow through on that promise: I want to be more open about what I&rsquo;ve been writing down and circulating amongst a relatively small group of people, and try to be better about putting my draft ideas out into the open from the start going forward.</p>
+
+<a name="Same.as.it.ever.was"></a>
+<h2>Same as it ever was</h2>
+
+<p>From my perspective, I still have the same personal career goals: make the Rust programming language an awesome option for developers, by improving the code of the Rust compiler, the design of the Rust language, and the organization of the Rust community.<label for='&lsquo;not-improve-community&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;not-improve-community&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Our </span></p>
+
+<p>Those were my goals when I was at Mozilla, and they are still my goals now.</p>
+
+<a name="You.may.ask.yourself"></a>
+<h2>You may ask yourself</h2>
+
+<p>What do performance tools have to do with those goals?</p>
+
+<p>Our team&rsquo;s inspiration for this focus was based on a few observations.</p>
+
+<p>Part of Rust&rsquo;s promise, the reason people are trying Rust out at all, is that it says it can give you the kind of high-performance that in the past was normally the realm of low-level languages like C or C++.<label for='&lsquo;or-fortran&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;or-fortran&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Or </span></p>
+
+<p>At a customer-obsessed company like Amazon, that promise raises an important question.
+Are our team&rsquo;s customers,<label for='&lsquo;on-customer-term&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;on-customer-term&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Some </span>
+the developers using Rust, actually seeing such performance wins in practice?</p>
+
+<a name="There.is.water.at.the.bottom.of.the.ocean"></a>
+<h2>There is water at the bottom of the ocean</h2>
+
+<p>Based on some discussions and informal interviews with fellow Rust developers, I saw three groups of people with differing answers to that question.</p>
+
+<p>The first group says &ldquo;Rust is great! Once I got it compiling and my unit tests passing, the code works and meets my performance expectations.&rdquo; These customers always made me happy; they are usually happy to then point out what pet features they want to see in the future.</p>
+
+<p>The second group says: &ldquo;I got it compiling, but its not actually as fast as I had hoped. <strong>What should I do now?</strong>&rdquo;</p>
+
+<p>Okay, to be fair, I&rsquo;m making a massive over-generalization there. The second group doesn&rsquo;t always say that. Some of them do <a href="https://blog.mozilla.org/nnethercote/2019/10/11/how-to-speed-up-the-rust-compiler-some-more-in-2019/">extensive analysis</a> to identify awesome ways to make things faster. Some also document exactly what they did and <a href="http://likebike.com/posts/How_To_Write_Fast_Rust_Code.html">how you can do it too</a>.</p>
+
+<p>But the point remains: If Rust <em>isn&rsquo;t</em> meeting your performance goals, its not always obvious what to do. Some people with a lot of in-depth experience with compilers or systems analysis have tools in their utility belt that work well for C/C++ and &hellip; they sort of work for Rust.</p>
+
+<p>But those tools do not work as well as I would like, and I&rsquo;m not sure they are the right answer for the bulk of our community.
+I said five years ago that I want Rust to be <a href="https://www.infoq.com/presentations/rust/">Systems Programming for Everybody</a>, and part of that story is that we need tools that everybody can use and understand.</p>
+
+<a name="How.do.I.work.this."></a>
+<h2>How do I work this?</h2>
+
+<p>The third group says: &ldquo;I struggle to figure out what design to use. I struggle to get my service compiling. You are asking me what I think about performance, but  I&rsquo;m debugging deadlocks from my <code>async</code> code.&rdquo;</p>
+
+<p>This third group raises an entirely different line of thinking when it comes to tooling. When I first starting thinking about performance monitoring tools, I was thinking solely in terms of gathering and presenting metrics, such as CPU cycles, memory utilization. But this third group represents a broad set of customers for whom such focus is premature: They are hitting road blocks that prevent their project from ever leaving the prototype phase. One big source of problems was <code>async</code> code; there&rsquo;s a good chance that <code>async</code>-specific tooling will provide the biggest return on investment here.</p>
+
+<p>The concerns of the second and third groups what led us to the TurboWish project: tools that will help our customers make Rust deliver on its promises: <a href="https://www.rust-lang.org/">performant, reliable, productive</a>.</p>
+
+<a name="Letting.the.days.go.by"></a>
+<h2>Letting the days go by</h2>
+
+<p>After performing a set of informal interviews with various customers both within and outside of AWS, I felt confident that there <strong>are</strong> real problems here to solve. We want Rust developers to have good tools<label for='&lsquo;lang-feats&rsquo;' class='margin-toggle'> &#8853;</label><input type='checkbox' id='&lsquo;lang-feats&rsquo;' class='margin-toggle'/><span class='marginnote'>&lsquo;Ideally, </span>
+on hand that will answer their questions.</p>
+
+<p>So, I jumped into writing a goals document, so that our team could explain to other teams at AWS, and ourselves, what we want to make. I shared it with the rest of the AWS Rust team in the middle of February 2021; they had lots of feedback, but I am not including that here (mostly to avoid having to coordinate authorship of this blog post).</p>
+
+<p>I am ending this blog post with that goals document, warts and all, along with meta-commentary in the right-hand margin notes.
+In follow-on blog posts this week, I will share some of the next steps that followed after I wrote this.</p>
+
+<a name="doc:.Opening.Line"></a>
+<h3>doc: Opening Line</h3>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+You can see in the opening line itself the focus on <code>async</code>/<code>await</code>, for better or for worse.
+</span>
+TurboWish is a framework for profiling Rust programs, focused on illuminating the performance and resource usage of task-oriented code written with async/await.</p>
+
+<a name="doc:.Goals"></a>
+<h3>doc: Goals</h3>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I played a bit of a semantic shell game here, with my use of the term &ldquo;production code.&rdquo; That term could be interpreted as &ldquo;code deployed as a live service.&rdquo; Or it could be interpreted as &ldquo;code compiled in release mode, but still running on development boxes.&rdquo; I plan to talk more about this distinction in later posts, but the short version is: I think we can provide great value today to developers working on their development boxes, without trying to concern ourselves with making a tool that is sufficiently low-overhead and security risk-free that it could be part of a deployed system.
+</span>
+<em>Profile Production Code</em>: Incorporating the TurboWish Framework is low-overhead: it can be incorporated into production code without producing an undue maintenance burden and without incurring significant performance overhead.</p>
+
+<p><em>Domain-specific Feedback</em>: Frameworks and applications can provide data for specialized metrics, specific to their internal architecture.</p>
+
+<p><em>Understand Hidden Costs and Connections</em>: Frameworks like tokio ease writing asynchronous code because they hide a number of details behind abstractions (such as generator code produced by the Rust compiler, or task queues managed by the tokio runtime). TurboWish exposes those hidden details, allowing developers to correlate them with other program events. It also exposes connections that humans usually have to reconstruct by hand (such as future to resource to future chains that can yield deadlock), allowing one to directly see from Rust’s ownership model how resources are being held in the object graph.</p>
+
+<p><em>Framework Agnostic</em>: Many of Rust’s customers use tokio, but not all of them. async-std  and fuschia_async are other frameworks for asynchronous programming. TurboWish can provide value to any such framework (though it may also provide framework-specific functionality when warranted). For our initial releases, we can focus on tokio alone, but expect integration with others if tokio proves successful.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I included this goal specifically because I had done a bunch of investigation into using <a href="https://rr-project.org/"><code>rr</code></a>, and discovered during that time that some of the cloud development machines hosted on <a href="https://aws.amazon.com/ec2/">EC2</a> do not support the performance counters that you need for <code>rr</code> to function.
+</span>
+<em>EC2 Instance Type Agnostic</em>: If we make use of any OS specific features (e.g. dtrace probes), they will be available on all EC2 AL2 instances, regardless of instance-type. (Specifically, we cannot require access to CPU performance counters.)</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+It was an interesting exercise writing this schedule. There are a number of constraints that I was trying to meet that are not represented in this table.
+The biggest one was that the Rust release schedule itself follows a six-week cadence; if TurboWish needs any support from <code>rustc</code> itself, and we want it to be available in the stable version of the compiler at the end of October, then that means any such support needs to land in the nightly version of <code>rustc</code> before July 29th.
+</span></p>
+
+<a name="doc:.Milestones"></a>
+<h3>doc: Milestones</h3>
+
+<table>
+<thead>
+<tr>
+<th>Milestone</th>
+<th>Deadline</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3 to 5 User Stories identified for core focus</td>
+<td>26 Feb 2021</td>
+</tr>
+<tr>
+<td>Development Tracks identified</td>
+<td>26 Mar 2021</td>
+</tr>
+<tr>
+<td>PR/FAQ published</td>
+<td>2 Apr 2021</td>
+</tr>
+<tr>
+<td>3 Launch Partners established</td>
+<td>30 Apr 2021</td>
+</tr>
+<tr>
+<td>alpha prototype</td>
+<td>2 Jul 2021</td>
+</tr>
+<tr>
+<td>feedback gathered from demo of alpha to Launch Partners</td>
+<td>16 Jul 2021</td>
+</tr>
+<tr>
+<td>beta release</td>
+<td>20 Aug 2021</td>
+</tr>
+<tr>
+<td>beta integrated with Launch Partner code bases</td>
+<td>17 Sep 2021</td>
+</tr>
+<tr>
+<td>Evaluation Report of beta (interviews with Launch Partners)</td>
+<td>24 Sep 2021</td>
+</tr>
+<tr>
+<td>1.0 release</td>
+<td>29 Oct 2021</td>
+</tr>
+</tbody>
+</table>
+
+
+<a name="doc:.Milestone.explanation"></a>
+<h3>doc: Milestone explanation</h3>
+
+<p><em>Development Tracks</em>: Some features of TurboWish will provide the most value to customers if they are developed in concert with additions to other components of the Rust ecosystem, such as the Rust compiler. However, we are not the sole owners of the Rust ecosystem nor those components. We need to identify target components of interest early (and I am assuming that part of that identification will require actual prototyping, which is why I am allocating a month for such prototyping in parallel with drafting the PR/FAQ<label for='&lsquo;pr-faq&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;pr-faq&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;I </span>), so that we can properly prioritize such development. In each case where we do not own the component, we must also establish the backup plan if our desired changes will not land in time for use in the product this year.</p>
+
+<p><em>Launch Partners</em>: Customers within Amazon are willing to evaluate pre-release versions of the product. We should strategically select three such customers to partner with us; these are the Launch Partners. We will give each such launch partner 1.) demonstrations of the alpha proof of concept, 2.) access to the beta minimum viable product, and 3.) dedicated engineering time for integrating the beta into their service. In exchange, the launch partner will give us feedback on the alpha and beta versions of the product (which will inform each subsequent development sprint).</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+For some reason I was especially proud of the distinction being drawn in this paragraph. I have a somewhat superficial understanding of project management and Agile development methods, so I was not really thinking about whether demo&rsquo;s are common products of a sprint. (And a <a href="https://www.jrothman.com/mpd/2007/10/release-able-vs-demo-able/">post by Johanna Rothman</a> makes the great point that even a product that is &ldquo;only&rdquo; demo-able has still demonstrated <em>integration amongst the team</em>.)
+From my perspective, the demo/release distinction had an entirely different motivation: I simply did not see time in the schedule for the year for two full release plus integration plus customer-feedback cycles.
+</span>
+<em>Alpha Demo</em> versus <em>Beta Release</em>: We want to move quickly, develop a minimum viable product and then iterate on it until we have something that delights our customers. We also want to work with a set of dedicated launch partners to evaluate an early version of the product (the beta). However, a product like this is unlikely to be a tool that can be trivially integrated: we expect there to be some amount of development effort associated with linking TurboWish into a given code base. Therefore, we do not expect our launch partners to be able to participate in multiple iterations of evaluating the product, simply due to the amount of development effort each integration is likely to take. So, we propose using different evaluation methodologies for different iteration cycles: For the alpha version, we will integrate TurboWish into code bases that we choose ourselves, give demos of the integrated result to our Launch Partners, and use their feedback in subsequent development of the alpha. For the beta version, we will work with our Launch Partners to integrate TurboWish into their code bases, and then at the end of the integration period, we will use the feedback they provide to make the final changes to the product.</p>
+
+<a name="doc:.Risks..Mitigations"></a>
+<h3>doc: Risks, Mitigations</h3>
+
+<blockquote><p>Risk: Time from “development tracks identified” to “PR/FAQ published” is only a week.<label for='&lsquo;dev-track-to-pr-faq&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;dev-track-to-pr-faq&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;This </span></p></blockquote>
+
+<p>Mitigation: We need to develop the PR/FAQ in parallel with doing the feasibility studies that identify the development tracks. (But I do not want to make them independent milestones; I want to be confident that the features in the PR/FAQ can be constructed before I try to enlist Launch Partners.)</p>
+
+<blockquote><p>Risk: Rust compiler leadership/maintenance will distract pnkfelix.<label for='&lsquo;compiler-work&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;compiler-work&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Another </span></p></blockquote>
+
+<p>Mitigation 1. Get buy-in from others and spread development effort</p>
+
+<p>Mitigation 2. Compiler Team focus for 2021 is rustc contributor experience, especially w.r.t. performance. Hopefully synergies will emerge from that.</p>
+
+<blockquote><p>Risk: Not much time remaining in February to establish user stories. Felix’s personal focus for short term are memory usage issues, and so he has been contributing stories related to that. But many customers express concern related to async/await, especially about understanding why their tasks fail to progress (i.e. sources of deadlock).</p></blockquote>
+
+<p><em>(No mitigation documented.)</em><label for='&lsquo;no-mitigation&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;no-mitigation&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;I </span></p>
+
+<blockquote><p>Risk: Some features may depend on some amount of GC style tracing, potentially starting from local owned variables on the stack as roots, and in any case traversing values on the heap. (For example, automatically dissecting ownership chains between futures and resources in order to identify causes of deadlock could make use of such tracing.) pnkFelix has experience in this area and believes it to be a solvable problem (especially given the profiling goal, as opposed to correct integration with arbitrary 3rd party GC tech), but it is not a settled problem.</p></blockquote>
+
+<p>Mitigation: Leverage ownership of relevant frameworks where possible. E.g. you don’t need to trace the local stack if you know your “root set” of interest is the set of tokio tasks. And you don’t need to make an general-purpose value-tracing system when a make-shift trait and associated derive will suffice for the specific problem at hand.</p>
+
+<a name="Time.isn.t.holding.us...Time.isn.t.after.us"></a>
+<h2>Time isn&rsquo;t holding us / Time isn&rsquo;t after us</h2>
+
+<p>And that&rsquo;s the goals doc, as it stood in mid-February</p>
+
+<p>Like I said above, there was a bit of a journey to get to this point. And even with this document in hand, we do not have enough to start making code: I wouldn&rsquo;t be able to hand this to a programmer and say &ldquo;do this.&rdquo;</p>
+
+<p>But I had goals. And I had a schedule. What was next on the schedule? <em>User Stories.</em> (Those will be the subject of the next blog post.)</p>
+]]></content>
+  </entry>
+  
+</feed>
