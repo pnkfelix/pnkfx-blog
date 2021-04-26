@@ -549,7 +549,7 @@ of giants.</p>
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2015/11/11/vis-via-snap-js/">Vis-a-vis, Part 2: Visualizing Graphs via snap.svg</a></h1>
+      <h1 class="entry-title"><a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">GC and Rust Part 1: Specifying the Problem</a></h1>
     
     
       <p class="meta">
@@ -565,27 +565,35 @@ of giants.</p>
   
 
 
-<time datetime="2015-11-11T18:00:00-05:00" pubdate data-updated="true"></time>
+<time datetime="2015-11-10T17:45:00-05:00" pubdate data-updated="true"></time>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p><a href="/blog/2015/10/12/viz-a-viz-js/">Previously</a> I discussed visualizing graphs (<code>G = (V,E)</code>)
-specified in DOT syntax (<code>digraph { a -&gt; b; }</code>) via
-<code>viz.js</code>, which is <code>graphviz</code> compiled to Javascript.</p>
+  <div class="entry-content"><p>This is the first in a series of posts will discuss why garbage
+collection is hard, especially for Rust, and brainstorm about
+solutions to the problems we face.</p>
 
-<p>However, I have decided that it is too difficult to convince
-graphviz to produce particular layouts. Therefore, I am going
-to try out other tools for working with SVG; in this post, I&rsquo;m
-going to discuss a relative newcomer to the scene, <a href="http://snapsvg.io/">snap.svg</a>.</p>
+<p>The relationship between garbage collection (GC) and the Rust
+programming language has been an interesting one.</p>
+
+<p>GC was originally deeply integrated into the language, complete with
+dedicated syntax (good old <code>@T</code> &hellip;). Over time the team found ways to
+lessen the dependency on GC, and then finally remove it from the
+language entirely.</p>
+
+<p>However, we still want to provide support for garbage collection.</p>
+
+<p>To explain why, I need to define the actual problems we seek to solve.
+So let us explore the problem space.</p>
 
 </div>
   
   
     <footer>
-      <a rel="full-article" href="/blog/2015/11/11/vis-via-snap-js/">Read on &rarr;</a>
+      <a rel="full-article" href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">Read on &rarr;</a>
     </footer>
   
 
