@@ -15,7 +15,7 @@ In my [previous post][part1], I described the observations that led us to select
 
 <!-- more -->
 
-Everything that follows was taken verbatim{% sidenote 'tmbg' 'Okay, not *verbatim*. [As promised][poll-tweet], I am spicing things up a little, this time offset outright quotations rather than section headings.' %} from the document I presented to the other members of the AWS Rust team. This document is an attempt to describe what I envisage as awesome developer experiences doing performance investigation. As with [part 1][part1], I will be adding side-commentary on the right-hand margin.
+Everything that follows was taken verbatim{% sidenote 'tmbg' 'Okay, not *verbatim*. [As promised][poll-tweet], I am spicing things up a little, this time via embedding of outright quotations (at an offset), rather than section headings.' %} from the document I presented to the other members of the AWS Rust team. This document is an attempt to describe what I envisage as awesome developer experiences doing performance investigation. As with [part 1][part1], I will be adding side-commentary on the right-hand margin.
 
 > As I think, I'm using up the time left to think
 
