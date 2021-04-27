@@ -9,9 +9,8 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="It&rsquo;s Clobbering Time Remember that thing I said back at the end of 2012?
-That thing?
-That thing about the important detail that: the _deploy/ &hellip;">
+  <meta name="description" content="(This post is largely a response to Niko Matsakis&rsquo;s blog post
+Destructors and Finalizers in Rust. I started composing it as a comment there, &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -69,6 +68,56 @@ That thing about the important detail that: the _deploy/ &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/01/29/implicit-versus-explicit-finalization/">Implicit Versus Explicit Finalization</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-01-29T22:47:00-05:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>(This post is largely a response to Niko Matsakis&rsquo;s blog post
+<a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">Destructors and Finalizers in Rust</a>.  I started composing it as a comment there,
+but eventually realized I needed more breathing room.)</p>
+
+<p>I agree wholeheartedly with Niko&rsquo;s statement that the Boehm paper
+<a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">&ldquo;Destructors, Finalizers, and Synchronization&rdquo;</a> is a really nice
+discussion of this topic.
+However, a significant portion of the destructor/finalizer design space is
+only briefly discussed in that paper, and I worry that Niko&rsquo;s post overlooks
+it.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2013/01/29/implicit-versus-explicit-finalization/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>

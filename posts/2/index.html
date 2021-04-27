@@ -9,9 +9,9 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="This is the first in a series of posts will discuss why garbage
-collection is hard, especially for Rust, and brainstorm about
-solutions to the &hellip;">
+  <meta name="description" content="Previously I discussed visualizing graphs (G = (V,E))
+specified in DOT syntax (digraph { a -&gt; b; }) via
+viz.js, which is graphviz compiled to &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -69,6 +69,54 @@ solutions to the &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/11/11/vis-via-snap-js/">Vis-a-vis, Part 2: Visualizing Graphs via snap.svg</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-11-11T18:00:00-05:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><a href="/blog/2015/10/12/viz-a-viz-js/">Previously</a> I discussed visualizing graphs (<code>G = (V,E)</code>)
+specified in DOT syntax (<code>digraph { a -&gt; b; }</code>) via
+<code>viz.js</code>, which is <code>graphviz</code> compiled to Javascript.</p>
+
+<p>However, I have decided that it is too difficult to convince
+graphviz to produce particular layouts. Therefore, I am going
+to try out other tools for working with SVG; in this post, I&rsquo;m
+going to discuss a relative newcomer to the scene, <a href="http://snapsvg.io/">snap.svg</a>.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/11/11/vis-via-snap-js/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -545,56 +593,6 @@ I had expected.</p>
   
     <footer>
       <a rel="full-article" href="/blog/2013/03/26/rusty-chain-puzzle-1/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2013/01/29/implicit-versus-explicit-finalization/">Implicit Versus Explicit Finalization</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-01-29T22:47:00-05:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>(This post is largely a response to Niko Matsakis&rsquo;s blog post
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">Destructors and Finalizers in Rust</a>.  I started composing it as a comment there,
-but eventually realized I needed more breathing room.)</p>
-
-<p>I agree wholeheartedly with Niko&rsquo;s statement that the Boehm paper
-<a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">&ldquo;Destructors, Finalizers, and Synchronization&rdquo;</a> is a really nice
-discussion of this topic.
-However, a significant portion of the destructor/finalizer design space is
-only briefly discussed in that paper, and I worry that Niko&rsquo;s post overlooks
-it.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2013/01/29/implicit-versus-explicit-finalization/">Read on &rarr;</a>
     </footer>
   
 
