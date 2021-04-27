@@ -9,7 +9,7 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="This is a post about some recent history. I want to tell the world about a project I am leading at Amazon Web Services, called &ldquo;TurboWish.& &hellip;">
+  <meta name="description" content="It&rsquo;s story-time! As I walk, I think about a new way to walk In my previous post, I described the observations that led us to select performance &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -28,6 +28,9 @@
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<!-- mermaid support as documented at http://insightfultroll.com/blog/2021/03/30/using-mermaid-with-jekyll/ -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true});</script>
 
   
 
@@ -64,6 +67,51 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2021/04/27/road-to-turbowish-part-2-stories/">Road to TurboWish; Part 2: Stories</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2021-04-27T11:21:32-04:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>It&rsquo;s story-time!</p>
+
+<blockquote><p>As I walk, I think about a new way to walk</p></blockquote>
+
+<p>In my <a href="/blog/2021/04/26/road-to-turbowish-part-1-goals/">previous post</a>, I described the observations that led us to select performance tooling as a focus, as well as the goals document I wrote to guide the next steps of the project. Now I want to show you the User Stories I wrote, to show what I think our customers want (and can reasonably expect) out of performance tools.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2021/04/27/road-to-turbowish-part-2-stories/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -544,62 +592,6 @@ of giants.</p>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">GC and Rust Part 1: Specifying the Problem</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2015-11-10T17:45:00-05:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>This is the first in a series of posts will discuss why garbage
-collection is hard, especially for Rust, and brainstorm about
-solutions to the problems we face.</p>
-
-<p>The relationship between garbage collection (GC) and the Rust
-programming language has been an interesting one.</p>
-
-<p>GC was originally deeply integrated into the language, complete with
-dedicated syntax (good old <code>@T</code> &hellip;). Over time the team found ways to
-lessen the dependency on GC, and then finally remove it from the
-language entirely.</p>
-
-<p>However, we still want to provide support for garbage collection.</p>
-
-<p>To explain why, I need to define the actual problems we seek to solve.
-So let us explore the problem space.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="2">&larr; Older</a>
@@ -615,6 +607,10 @@ So let us explore the problem space.</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2021/04/27/road-to-turbowish-part-2-stories/">Road to TurboWish; Part 2: Stories</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2021/04/26/road-to-turbowish-part-1-goals/">Road to TurboWish; Part 1: Goals</a>
       </li>
     
@@ -628,10 +624,6 @@ So let us explore the problem space.</p>
     
       <li class="post">
         <a href="/blog/2019/11/18/rust-bug-minimization-patterns/">Rust Bug Minimization Patterns</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/">Breaking News: Non-Lexical Lifetimes arrives for everyone</a>
       </li>
     
   </ul>

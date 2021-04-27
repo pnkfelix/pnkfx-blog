@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2021-04-26T17:15:35-04:00</updated>
+  <updated>2021-04-27T17:11:52-04:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,6 +12,211 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Road to TurboWish; Part 2: Stories]]></title>
+    <link href="http://blog.pnkfx.org/blog/2021/04/27/road-to-turbowish-part-2-stories/"/>
+    <updated>2021-04-27T11:21:32-04:00</updated>
+    <id>http://blog.pnkfx.org/blog/2021/04/27/road-to-turbowish-part-2-stories</id>
+    <content type="html"><![CDATA[<p>It&rsquo;s story-time!</p>
+
+<blockquote><p>As I walk, I think about a new way to walk</p></blockquote>
+
+<p>In my <a href="/blog/2021/04/26/road-to-turbowish-part-1-goals/">previous post</a>, I described the observations that led us to select performance tooling as a focus, as well as the goals document I wrote to guide the next steps of the project. Now I want to show you the User Stories I wrote, to show what I think our customers want (and can reasonably expect) out of performance tools.</p>
+
+<!-- more -->
+
+
+<p>Everything that follows was taken verbatim<label for='&lsquo;tmbg&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;tmbg&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Okay, </span> from the document I presented to the other members of the AWS Rust team. This document is an attempt to describe what I envisage as awesome developer experiences doing performance investigation. As with <a href="/blog/2021/04/26/road-to-turbowish-part-1-goals/">part 1</a>, I will be adding side-commentary on the right-hand margin.</p>
+
+<blockquote><p>As I think, I&rsquo;m using up the time left to think</p></blockquote>
+
+<p>My next post will present the design document that arose from these and other stories, as well as discussions about the realities of what we can expect to implement.</p>
+
+<hr />
+
+<p>Note: These are meant to be read in order: The first describes some up-front investment that the later stories either 1.) assume other developers already put in, or 2.) in the case of user “Barry”, state explicitly that such investment of effort is deliberately skipped by the developer.</p>
+
+<blockquote><p>And this train keeps rolling off the track</p>
+
+<p>Trying to act like something else</p>
+
+<p>Trying to go where it&rsquo;s been uninvited</p></blockquote>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I jumped right in and started making up a story about a newcomer to async Rust.
+I did not actually look at examples of user stories as they are typically used in Agile development, or even really how it is done at AWS. It has been a long time since I had read essays describing &ldquo;how&rdquo; to do Agile development; looking at that now, I see that typical user stories are <em>one or two sentences</em>. (I&rsquo;m not sure I can properly convey what I want these tools to do in one or two sentences. I mean, it would be a place to start, but I wanted to spell out the experience. Maybe the reality is that the step I&rsquo;m doing is <em>not</em> a user story. But it <em>does</em> seem like it at least falls into the <a href="https://medium.com/the-digital-project-manager/working-backwards-a-new-version-of-amazons-press-release-approach-to-plan-customer-centric-c17991583508">&ldquo;Working Backwards&rdquo; style</a> that is promoted here at AWS. It also matches the <a href="https://rust-lang.github.io/wg-async-foundations/vision/how_to_vision/shiny_future.html">&ldquo;shiny future&rdquo; story writing</a> approach that Rust&rsquo;s Async Foundations working group has been trail-blazing (apart from the fact that I skipped the step of writing a description of the <a href="https://rust-lang.github.io/wg-async-foundations/vision/how_to_vision/status_quo.html">&ldquo;status quo&rdquo;</a> for each of the stories here).
+</span></p>
+
+<a name="User.Story.1:.Abigail"></a>
+<h2>User Story 1: Abigail</h2>
+
+<p>Abigail is getting started with async Rust development. She&rsquo;s worked her way through the Async Book and transcribed some example code. Now she&rsquo;s trying to write her first medium sized program, a terminal-based chess program, and it doesn&rsquo;t produce any output after she makes her first move and is waiting for the opponent to move.</p>
+
+<p>After asking for advice about what to do on the Tokio Discord chat, she enables the turbowish feature in her Cargo.toml, and recompiles. She receives warnings from the compiler saying that there are calls to <code>task::spawn</code> but no contextual labels anywhere in her crate.</p>
+
+<p>Abigail reads the compiler&rsquo;s suggestions for the kinds of declarations to add, and adds annotations accordingly, labeling her tasks. (Her program is roughly structured according to an actor model, so she has labels like &ldquo;game AI&rdquo;, &ldquo;move validator&rdquo;, and &ldquo;terminal UI&rdquo;).</p>
+
+<p>Abigail reattempts a build, and now notices some of the previous warnings were not addressed in her change and are emited again: These warnings are about missing labels on resources, namely the channels used for communication between the tasks, e.g. &ldquo;user input&rdquo;, &ldquo;player move&rdquo;, &ldquo;opponent move&rdquo;, etc. She adds labels to the channels, and the program now compiles with no diagnostic warning. She runs her Chess program.</p>
+
+<p>The Chess program starts up, and this time it includes, as part of its console output, a socket to connect to, which is serviced by a dedicated Turbowish thread. She runs a separate tokio-console program, connecting it to the advertised socket on the Chess program. Events begin streaming from the TurboWish thread to the <code>tokio-console</code>. The <code>tokio-console</code> output notes that it has a webserver mode available; she opts into that, and the <code>tokio-console</code> spits out a local URL to connect to. Abigail starts up a web browser and connects it to the URL. The rendered page lists the three tasks.</p>
+
+<p>The Chess program again unexpectedly blocks (or, more precisely, livelocks) after she inputs her first move. Abigail looks at the rendered page, and notices a button that says &ldquo;task dependencies.&rdquo; She clicks it, and the page renders a picture showing a directed graph,<label for='&lsquo;directed-graph&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;directed-graph&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;This </span>
+linking tasks and resources (or more generally, wakers), which depicts both 1.) what resources a task is waiting on, and 2.) what tasks are responsible for making those resources available for use.</p>
+
+<p>The resulting rendering shows a cycle in the graph that looks like this, where circular nodes are tasks and rectangular nodes are resources shared by the tasks, like channels.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I am breaking my rule about presenting the verbatim text here. In the document I shared with my colleagues, the underlying file didn&rsquo;t support mermaid or any other markdown-oriented diagramming tools. So there I resorted to something like
+<code>(terminal UI)</code> <code>-&gt;</code> <code>[board update]</code> <code>-&gt;</code> <code>(move validator)</code> <code>-&gt;</code> <code>[player move]</code> <code>-&gt;</code> <code>(terminal UI)</code>
+in that document, where parentheses and square brackets represent circle vs square node shapes, differentiating tasks from resources.
+But I could not bring myself to subject my readers here to that, when its so easy to put in a mermaid diagram.
+</span></p>
+
+<!-- The manual height specification is a rough guess, to allow the rest of the doc to predict the space occupied by the graph once it is rendered. -->
+
+
+<div class="mermaid" style="height: 300px">
+graph LR
+  AI(("game AI"))
+  TUI --> Update --> Validator --> Player --> TUI
+  TUI(("terminal UI"))
+  Update["board update"]
+  Validator(("move validator"))
+  Player["player move"]
+</div>
+
+
+<p>Notably, there are no paths in the rendered graph from [board&nbsp;move]<label for='&lsquo;board-move-typo&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;board-move-typo&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;I </span>
+to (game&nbsp;AI).</p>
+
+<p>Abigail wonders why the move validator task is waiting for a player move, when she would expect it to be waiting an opponent move from the AI.</p>
+
+<p>She realizes there must be a error in her logic for how either the &ldquo;move&nbsp;validator&rdquo; or the &ldquo;board&nbsp;update&rdquo; are set up, since she would expect the &ldquo;game&nbsp;AI&rdquo; task to be somewhere in the path above.</p>
+
+<p>Moving her mouse over the graph, she notices that the graph edges link to points in her source code. She starts digging in, using the provided links as direction for where to look to figure out what went wrong in her logic.</p>
+
+<blockquote><p>And the rain falls down without my help I&rsquo;m afraid</p></blockquote>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+When I wrote these stories, I felt it would be useful for all of the characters to have names where their first letters corresponded to the letters of the Alphabet: Abigail, Barry, Chris, Daphne. Some feedback I got back almost immediately from Niko Matsakis was &ldquo;Why didn&rsquo;t you re-use the <a href="https://nikomatsakis.github.io/wg-async-foundations/vision/characters.html">characters from the Async Vision cast</a>?&rdquo; I don&rsquo;t have any great answers to that. (The obvious answer was a sheepish &ldquo;I haven&rsquo;t read the Async Vision document yet&hellip;&rdquo;; I have corrected that oversight since then.)
+</span></p>
+
+<a name="User.Story.2:.Barry"></a>
+<h2>User Story 2: Barry</h2>
+
+<p>Barry is an experienced tokio developer. He has been asked to help out with an AWS cloud service using tokio. The developers of the service are seeing higher latencies than expected for relatively small service requests.</p>
+
+<p>Barry enables tokio&rsquo;s turbowish feature. He opts not to take the compiler&rsquo;s diagnostic suggestions regarding missing contextual labels and downgrades the diagnostic to <code>#![allow]</code> across the crate, knowing that TurboWish will infer labels and attach them automatically based upon crate and module names (and a fixed number of stack frames, when debuginfo is available).</p>
+
+<p>Barry connects <code>tokio-console</code> to the cloud service&rsquo;s socket, and chooses its terminal user-interface instead of the webserver mode.</p>
+
+<p>Barry first asks for a live feed of tasks transition between (<code>running</code>, <code>waiting</code>, <code>ready</code>). The feed produces too much output to the terminal, so Barry sends it to a file instead, and then inspects it in a text editor, trying to see trends by eye. It is a lot of data though, too much for Barry to interpret without more tooling.</p>
+
+<p>Barry has dealt with parsing this output before, though.</p>
+
+<p>Barry has a home-grown script to extract a CSV file with numeric data from the output. Barry imports the CSV file into a spreadsheet and then constructs a histogram with buckets of ranges of individual wait-times, and how many tasks’ transition points are in each bucket.</p>
+
+<p>From this, Barry identifies a small set of tasks that spent an unusually long time in the <code>waiting</code> state. Going back to the original feed, Barry finds the the records for those long waits, which include a link to the point in the source code where the long waits occurred.</p>
+
+<p>Barry looks, and sees a call to <code>std::thread::sleep</code> instead of tokio&rsquo;s sleep function. [TODO: I&rsquo;d be happy to put in some other
+example here of blocking code that should be replaced with non-blocking code.]<label for='&lsquo;todo-other-examples&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;todo-other-examples&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;This </span></p>
+
+<p>Barry replaces the call <code>std::thread::sleep</code> with tokio&rsquo;s sleep function, and returns to the histogram to see what other instances of unusually long wait times he can find.</p>
+
+<blockquote><p>And my lawn gets wet though I&rsquo;ve withheld my consent</p></blockquote>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+With the Chris story, we have a sudden shift from async-oriented performance issues to compiler developer performance issues. what can I say other than <a href="https://thewritepractice.com/write-what-you-know/">&ldquo;write what you know&rdquo;</a>.
+</span>
+<label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+(Interestingly, all the essays I can find on that <a href="https://tvtropes.org/pmwiki/pmwiki.php/Main/WriteWhatYouKnow">trope</a> indicate that it is meant to be about knowledge of <em>inner emotions</em>, not about facts or experience.)
+</span></p>
+
+<a name="User.Story.3:.Chris"></a>
+<h2>User Story 3: Chris</h2>
+
+<p>Chris is a contributor to the Rust compiler, <code>rustc</code>. Chris is well-versed with Rust, at least for batch programs like the compiler, but they do not do any async Rust development. Chris wants to gain better understanding of memory usage internal to <code>rustc</code> itself.</p>
+
+<p>After asking around in the <code>#compiler-team</code> Zulip stream, Chris enables the <code>build.heap_inspector</code> setting in <code>rustc</code>&rsquo;s build
+configuration file, and rebuilds the compiler.</p>
+
+<p>Chris also fires up the TurboWish web frontend. This invocation of TurboWish uses a specialized config file developed and maintained by the Rust compiler team that handles interpreting the types that are special to the compiler.</p>
+
+<p>Chris uses environment variables to indicate which points in the compiler&rsquo;s control flow are of interest to them. More specifically, Chris wants to inspect the heap as it stands immediately after the borrow-checker runs.</p>
+
+<p>The compiler obliges: right after the borrow-checker runs, it starts from a set of known roots (tagged as such ahead of time by the rustc developer) and traverses the ownership graph from those roots,<label for='&lsquo;gc&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;gc&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;You </span> emitting a description of the arcs it encounters during its traversal. For each heap-allocated value the traversal encounters, the traversal code also
+includes information needed to reconstruct its &ldquo;payload size&rdquo;; i.e., enum values will include their discriminant, vectors and string include their length, etc.</p>
+
+<p>The TurboWish web front end receives this stream of graph traversal data. It uses this to provide a table describing the number of objects of each type, and how much internal fragmentation it detects based on the reported payload sizes. Chris inspects this table and determines that that there is an opportunity to reduce fragmentation by changing one of the enums to use a <code>Box</code>. Chris tries it out and sees the memory consumption of the compiler go down, and files a pull request
+with the change.</p>
+
+<p>(Note: This user story may or may not not provide value over other tools like dhat, depending on 1. whether it allows tracking allocations at a finer grain than malloc calls (e.g. sub-allocations within an arena) and/or 2. how much value one puts on being able to inspect portions of the heap rooted at certain owners. See also <a href="#Appendix">the appendix</a>, which includes a more ambitious “dream” proposal for Chris, but also one that I personally am not as sure actually pays off in terms of customer value versus mere “coolness” factor.)</p>
+
+<blockquote><p>When this grey world crumbles like a cake</p></blockquote>
+
+<a name="User.Story.4:.Daphne"></a>
+<h2>User Story 4: Daphne</h2>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+With Daphne&rsquo;s story, we return to async-oriented performance analysis.
+Async is a hot topic, and I figured it was worth exploring other stuff we could deliver. In this case, the idea is to turn the internal logging data into a rendered message sequence chart. (I actually do not know if people use message sequence charts on real logs in practice. I have seen them used <em>very</em> often for presenting small snippets that explain a protocol, but are they actually useful for traversing a complex series of interactions? I can imagine it could be, especially in an interactive presentation that can highlight links and automatically re-center on a selected end of a given arc in a graph.
+</span>
+Daphne is maintaining an existing a web service built atop tokio. She gets reports of poor performance for certain input queries that match the &ldquo;E&rdquo; command for her service, which already has TurboWish integrated. In response, she attaches <code>tokio-console</code> to her service, and tells it to trace the flow of requests matching the &ldquo;E&rdquo; command (more concretely, <code>[{req.path="/Q"}]=trace</code>), and then fires up the TurboWish web front-end.</p>
+
+<p>Daphne chooses a tab that says &ldquo;Show Scheduler.&rdquo; The resulting page looks something like Message Sequence Chart: Each of tokio&rsquo;s executor threads has a vertical line, and as futures are polled, they have corresponding boxes on the corresponding thread. Since Daphne has limited the output to just events related to the &ldquo;E&rdquo; command, all the futures she sees being scheduled are part of that query.</p>
+
+<p>From skimming the resulting charts, Daphne sees that when the &ldquo;E&rdquo; futures are being polled, they seem to yield again promptly. She does see some evidence the future is migrating to different threads, and she makes a note to try to investigate whether there is a way to ask tokio to avoid such thrashing (and also, whether there are metrics should could gather about whether doing so could help).</p>
+
+<p>There are also points in the program flow when <em>no</em> future related to the &ldquo;E&rdquo; query is scheduled. The event stream does not include information about which futures are polled during those times. Those portions of the executor threads vertical lines are colored dark green: they may be doing useful work, but its not work directly related to the events that have been filtered in.</p>
+
+<p>Daphne realizes that she needs to find out whether the &ldquo;E&rdquo; futures are being left unexecuted because they&rsquo;re still waiting for their corresponding wakers to be invoked, or if the &ldquo;E&rdquo; futures are all ready and there is some other issue in the scheduler (or in the other tasks that causes them to starve the executing threads). Daphne goes to <code>tokio-console</code> and issues the command requesting the feed of all tasks transitioning between (<code>running</code>, <code>waiting</code>, <code>ready</code>). With that, the message sequence chart now shows that her &ldquo;E&rdquo; futures are indeed ready much of the time. She also sees that there are large blocks of time where all of the threads in the pool are running without any interrupt. Daphne hovers the mouse over those rendered blocks of time,  and a pop-up window shows a description of the futures that are being polled at that time. Daphne goes off to investigate that piece of code, and discovers a <code>for</code>-loop with some semi-expensive body that never yields to the executor.</p>
+
+<a name="Appendix"></a>
+<h1>Appendix</h1>
+
+<blockquote><p>I&rsquo;ll be hanging from the hope</p>
+
+<p>That I&rsquo;ll never see that recipe again</p></blockquote>
+
+<a name="User.Story.3b:.Chris.s.Dream"></a>
+<h2>User Story 3b: Chris&rsquo;s Dream</h2>
+
+<p>Chris wants to inspect the heap as it stands immediately after the borrow-checker runs.</p>
+
+<p>The compiler obliges: right after the borrow-checker runs, it pauses and prompts for the user to connect TurboWish. Chris connects the <code>rustc-console</code> app and interactively asks what root objects are available to inspect. One of the named objects in the result is the &ldquo;MirBorrowckCtxt&rdquo; (i.e. the borrow-checking context). Still working at the terminal <code>rustc-console</code>, Chris first asks for how much memory is solely owned, potentially indirectly by the &ldquo;MirBorrowckCtxt&rdquo; object. <code>rustc-console</code> spits out a number. Chris then asks for how much memory is owned, potentially shared with others (e.g. via <code>Rc</code>), by the object. <code>rustc-console</code> spits out another, much larger number.</p>
+
+<p>Chris connects the TurboWish web front-end, and then queries for a ownership tree describing the values owned by the &ldquo;MirBorrowckCtxt&rdquo; object.</p>
+
+<p>TurboWish does a graph traversal over the owned heap allocated objects, starting from the borrow-checking context (<code>MirBorrowckCtxt</code>) as the root, and emits a description of the arcs it encounters during its traversal, as well as well as the data payload for any fields of types that have been previously marked by the rustc developers as of interest.</p>
+
+<p>The TurboWish web front end renders the resulting graph. But in addition to the direct ownership relatinships implied by the Rust language semantics the graph, it also includes arcs for any <code>&amp;</code>/<code>&amp;mut</code> references in the graph, and it <em>also</em> includes some domain-specific dotted arcs for keys into tables that are meant to be interpreted as references. (This of course is only possible due to the rustc-specialized config file that was included when TurboWish was loaded up.)</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I think this whole appendix was just an excuse to try to squeeze in a reference to Hyperbolic Trees. Just over twenty years ago, I spent a summer (or was it a year) hacking together code to render a graph via such trees as part of a project called <a href="http://alumni.media.mit.edu/~wex/CHI-99-Footprints.html">Footprints</a>; the linked paper still has screenshots of it.
+</span></p>
+
+<p>However, since the object graph is massive, the rendering does not fit on the window. Chris first toggles an option to change the rendering to use a hyperbolic tree (see <a href="https://en.wikipedia.org/wiki/Hyperbolic_tree">https://en.wikipedia.org/wiki/Hyperbolic_tree</a>), where the current object is presented centrally, and immediate children are surrounding smaller nodes, and grand-children are still smaller, et cetera. The hyperbolic tree presentation compacts the view significantly, at the cost of obscuring details of distant descendants and ancestors, as well as cousins.</p>
+
+<p>There is also an option on the presentation UI to have the circles for each node be different sizes depending on how much space they individually occupy on the heap (not including their linked children); Chris enables this setting, just to get a rough visual feeling for where memory space is going in the ownership tree.</p>
+
+<hr />
+
+<p>And that&rsquo;s all the user stories. That&rsquo;s the whole document.</p>
+
+<p>For the sequel, I will be presenting the design document that I think best represents the plan going forward.</p>
+
+<p>We are still figuring things out, to some extent, but I continue to dream about what we can do for our customers, the Rust developers of the world.</p>
+
+<blockquote><p>When the word comes down &ldquo;Never more will be around&rdquo;</p>
+
+<p>Thought I&rsquo;ll wish we were there, I was less than we could bear</p>
+
+<p>And I&rsquo;m not the only dust my mother raised</p>
+
+<p>I am not the only dust my mother raised</p></blockquote>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Road to TurboWish; Part 1: Goals]]></title>
@@ -2584,287 +2789,6 @@ this. (This was the design bug that led me to withdraw my &ldquo;Take II&rdquo;
 like GC-integration with Rust to satisfy.</p>
 
 <p>Next up: Why is it hard to satisfy the above criteria simultaneously?</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[An insight regarding DST grammar for Rust]]></title>
-    <link href="http://blog.pnkfx.org/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust/"/>
-    <updated>2014-03-13T07:04:00-04:00</updated>
-    <id>http://blog.pnkfx.org/blog/2014/03/13/an-insight-regarding-dst-grammar-for-rust</id>
-    <content type="html"><![CDATA[<p>Executive summary: <code>type</code> = <code>unsized</code> ⊎ <code>sized</code>, so we should use
-<code>type</code> as our generalization marker, not <code>unsized</code>.</p>
-
-<!-- more -->
-
-
-<ul>
-<li><a href="#background_dst">Background: Dynamically Sized Types (DST)</a></li>
-<li><a href="#the_insight">The Insight: <code>type</code> is a better generalization marker</a></li>
-<li><a href="#the_examples">Examples ported from DST, Take 5</a></li>
-</ul>
-
-
-<a name="L.a.id..background_dst..Background:.Dynamically.Sized.Types..DST...a."></a>
-<h2><a id="background_dst">Background: Dynamically Sized Types (DST)</a></h2>
-
-<p>The Rust team has been discussing incorporating &ldquo;dynamically-sized
-types&rdquo; into the static semantics for Rust.  Essentially the idea is to
-allow code to describe and name static types whose size is only known
-at Runtime.  E.g. the integer vector <code>[int, ..5]</code> is known at compile
-time to have five elements, and is considered (statically) sized,
-while the vector <code>[int]</code> has unknown size at compile time, and so that
-type is called unsized.</p>
-
-<p><a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">There</a>
-is <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">a</a>
-series <a href="http://smallcultfollowing.com/babysteps/blog/2013/11/26/thoughts-on-dst-1/">of</a>
-blog <a href="http://smallcultfollowing.com/babysteps/blog/2013/11/27/thoughts-on-dst-2">posts</a>
-about <a href="http://smallcultfollowing.com/babysteps/blog/2013/11/27/thoughts-on-dst-3/">dynamically</a>
-sized <a href="http://smallcultfollowing.com/babysteps/blog/2013/12/02/thoughts-on-dst-4/">types</a>
-on <a href="http://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/">niko&rsquo;s</a>
-blog.
-So I will not dive into the details too much here</p>
-
-<p>The main points are that the compiler wants to know whether a type is
-meant to always have a static size, or if it can potentially be
-unsized.  In a language without type polymorphism, this might be easy
-to determine directly from the parsed type expression (such as in the
-vector examples I gave at the outset).  But once you add polymorphism,
-things get a litle harder for the compiler.</p>
-
-<p>Anyway, the plan drafted in Niko&rsquo;s
-<a href="http://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/">&ldquo;DST, Take 5&rdquo;</a>
-is to add an <code>unsized</code> keyword, and then use it as a marker to make
-certain spots more general than they are by default.  The reasoning
-here is that in the common case, you want a type parameter to
-represent a sized type.  (Since there are certain operations you
-cannot do with a value of an unsized type, such copying the value into
-some other location, the compiler needs to know its size statically so
-that it can allocate an appopriate amount of space for it.)</p>
-
-<p>So under that scheme, to write type parameter of most general type,
-e.g. for a <code>struct</code> definition that ends with an unsized field,
-you need to write:
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">struct</span> <span class="n">Named</span><span class="o">&lt;</span><span class="kr">unsized</span> <span class="n">T</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="n">name</span><span class="o">:</span> <span class="o">~</span><span class="kt">str</span><span class="p">,</span>
-</span><span class='line'>    <span class="n">payload</span><span class="o">:</span> <span class="n">T</span>
-</span><span class='line'><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// Accepts solely &lt;em&gt;sized&lt;/em&gt; Named&lt;T&gt;.</span>
-</span><span class='line'><span class="k">fn</span> <span class="n">foo</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">Named</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">{</span> <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span> <span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="c1">// Accepts both sized and &lt;em&gt;unsized&lt;/em&gt; Named&lt;T&gt;</span>
-</span><span class='line'><span class="k">fn</span> <span class="n">bar</span><span class="o">&lt;</span><span class="kr">unsized</span> <span class="n">T</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">Named</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">{</span> <span class="o">&amp;</span><span class="n">hellip</span><span class="p">;</span> <span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure></p>
-
-<p>That is, you need to use what I will call a &ldquo;generalization&rdquo; marker at
-the spot where you bind a type variable, to indicate that the domain of
-that type variable is more general than the common-case default of
-a sized type.</p>
-
-<p>For defining a trait that can be implemented on any possible type,
-including unsized ones, you would need to use the <code>unsized</code> keyword
-somewhere there as well.  &ldquo;DST, Take 5&rdquo; proposed
-<code>trait Foo&lt;unsized Self&gt; : NormalBounds { ... }</code>
-(or <code>trait Foo : unsized + NormalBounds { ... }</code>, but this is broken for
-various reasons).
-I had been suggesting <code>unsized trait Foo : NormalBounds { ... }</code>,
-which Niko rightly objected to (since it is not the trait that is
-unsized, but rather potentially its Self type).
-Over the Rust work week last week I suggested
-<code>trait Foo for unsized : NormalBounds</code> { &hellip; }, which I think is the first
-suggestion that Niko and myself could both stomach.  (The reasoning
-behind the latter suggestion is that we write <code>impl Trait for
-SelfType</code>, so it makes sense to put the generalization marker into the
-same position, i.e. filling the placeholder in: <code>Trait for _</code>.)</p>
-
-<a name="L.a.id..the_insight..The.Insight:..code.type..code..is.a.better.generalization.marker..a."></a>
-<h2><a id="the_insight">The Insight: <code>type</code> is a better generalization marker</a></h2>
-
-<p>One of the concerns that Niko has pointed out to me is that it is easy
-to (mis)read <code>unsized T</code> as saying &ldquo;<code>T</code> must be unsized&rdquo;.  But that is not
-what it is saying; it is saying &ldquo;<code>T</code> <em>can</em> be unsized&rdquo;; you can still pass in
-a sized type for <code>T</code>.</p>
-
-<p>I was reflecting on that this morning, and I realized something:
-The whole point of DST is to partition the type universe into (Sized ⊎ Unsized).
-So if you want this construct to be more self-documenting, the
-generalization marker should be using some name to describe that union
-(Sized ⊎ Unsized), rather than the name <code>unsized</code>.</p>
-
-<p>But we already have a very appropriate name for that union: <code>type</code>!</p>
-
-<p>So that started me thinking: Why don&rsquo;t we use <code>type</code> as our generalization marker?
-So the definition of <code>bar</code> in the example above would be written
-<code>rust
-fn bar&lt;type T&gt;(&amp;Named&lt;T&gt;) { ... }
-</code>
-In fact, this can have a very simple explanation: If we keep the <code>Sized</code> trait bound,
-then you can just say that
-<code>rust
-fn foo&lt;T&gt;(args, ...){ ... }
-</code>
-desugars to
-<code>rust
-fn foo&lt;type T:Sized&gt;(args, ...) { ... }
-</code>
-and in general, any type variable formal binding <code>&lt;T:Bounds&gt;</code> desugars
-to <code>&lt;type T:Sized+Bounds&gt;</code></p>
-
-<p>I admit, when I first wrote this, I said &ldquo;hmm, this looks a bit like
-C++, is that a problem?&rdquo;  But I&rsquo;m coming to like it.  The biggest
-problem I can foresee is that a developer might be confused about when
-they are suppposed to write <code>foo&lt;type T&gt;</code> versus <code>foo&lt;T&gt;</code>.  But chances
-are that someone who does not understand the distinction will <em>not</em>
-suffer if they just guess the answer; if they over-generalize, either:</p>
-
-<ul>
-<li><p>the code will compile successfully anyway, in which case there is
-no harm, except perhaps w.r.t. forward-compatibility of their
-library when they may have wished they had imposed the <code>Sized</code>
-bound, or</p></li>
-<li><p>the compiler will flag a problem in their code, in which case
-hopefully our error messages will suggest to add a <code>:Sized</code> bound
-or to just not use <code>type</code> in the binding for <code>T</code>.</p></li>
-</ul>
-
-
-<p>If they under-generalize, then they (or their library&rsquo;s clients) will
-discover the problem when they apply <code>foo</code>.</p>
-
-<p>For the trait case, it is a little less obvious what to do.
-I think we could likewise write:
-<code>trait Foo for type : NormalBounds</code>
-for the maximally general case.
-<code>trait Foo : NormalBounds</code> would then desugar to
-<code>trait Foo for type : Sized + NormalBounds</code></p>
-
-<p>So the point is that you would only use the <code>type</code> keyword when you
-wanted to explicitly say &ldquo;I am generalizing over <em>all</em> types, not just
-sized ones&rdquo;, and thus are opting into the additional constraints that
-that scenario presents.</p>
-
-<p>This approach wouldn&rsquo;t be so palatable under earlier envisioned
-designs for DST where e.g. you were restricted to write explicitly
-<code>unsized struct S { ... }</code> for structs that could end up being
-unsized.  But at this point I think we have collectively decided that
-such a restriction is unnecessary and undesired, so there is no worry
-that someone might end up having to write <code>type struct S { ... }</code>,
-which definitely looks nonsensical.</p>
-
-<p>There is another potential advantage to this approach that I have not
-explored much yet: we could also add an <code>Unsized</code> trait bound, and
-allow people to write <code>&lt;type X:Unsized&gt;</code> for when they want to
-restrict <code>X</code> to unsized types alone.  I am not sure whether this is
-actual value in this, but it does not seem absurd to put in a special
-case in the coherence checker to allow one to write
-<code>impl&lt;X:Sized&gt; SomeTrait for X { ... }</code>
-and
-<code>impl&lt;X:Unsized&gt; SomeTrait for X { ... }</code>
-in order to get full coverage of <code>SomeTrait</code> for all types.</p>
-
-<p>Finally, another obvious (though obviously post Rust 1.0) direction
-that this approach suggests is that if we decide to add
-parameterization over constants, we can likewise use the <code>const</code>
-keyword in the spot where I have written the generalization marker
-<code>type</code>, e.g.
-<code>rust
-fn foo&lt;const N:int&gt;(nums: &amp;[f64, ..N]) { ... }
-</code>
-(In this case <code>const</code> would not be a generalization marker but instead
-a <em>kind</em> marker, since it is changing the domain of the parameter from
-being that of a type to being some value within a type.)</p>
-
-<a name="L.a.id..the_examples..Examples.ported.from.DST..Take.5..a."></a>
-<h2><a id="the_examples">Examples ported from DST, Take 5</a></h2>
-
-<p>Here are the ported definitions of <code>Rc</code> and <code>RcData</code>.
-(Update: had to turn off syntax highlighting to work-around a rendering bug on <code>*</code>.)
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-</pre></td><td class='code'><pre><code class='text'><span class='line'>struct Rc&lt;type T&gt; {
-</span><span class='line'>    ptr: *RcData&lt;T&gt;,
-</span><span class='line'>    // (a dummy field, just for illustrative purposes)
-</span><span class='line'>    dummy: uint,
-</span><span class='line'>}&lt;/p&gt;
-</span><span class='line'>
-</span><span class='line'>&lt;p&gt;struct RcData&lt;type T&gt; {
-</span><span class='line'>    ref_count: uint,&lt;/p&gt;
-</span><span class='line'>
-</span><span class='line'>&lt;pre&gt;&lt;code&gt;#[max_alignment]
-</span><span class='line'>data: T
-</span><span class='line'>&lt;/code&gt;&lt;/pre&gt;
-</span><span class='line'>
-</span><span class='line'>&lt;p&gt;}&lt;/p&gt;
-</span><span class='line'>
-</span><span class='line'>&lt;p&gt;impl&lt;type T&gt; Drop for Rc&lt;T&gt; {
-</span><span class='line'>    fn drop&amp;lt;&amp;lsquo;a&gt;(&amp;amp;&#39;a mut self) {
-</span><span class='line'>        unsafe {
-</span><span class='line'>            intrinsics::drop(&amp;amp;mut (*self.ptr).data);
-</span><span class='line'>            libc::free(self.ptr);
-</span><span class='line'>        }
-</span><span class='line'>    }
-</span><span class='line'>}
-</span></code></pre></td></tr></table></div></figure></p>
-
-<p>Here is the <code>ImmDeref</code> example:
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">trait</span> <span class="n">ImmDeref</span><span class="o">&lt;</span><span class="k">type</span> <span class="n">T</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">fn</span> <span class="n">deref</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">a</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="nl">&#39;a</span> <span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="nl">&#39;a</span> <span class="n">T</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">impl</span><span class="o">&lt;</span><span class="k">type</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">ImmDeref</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="k">for</span> <span class="n">Rc</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="p">{</span>
-</span><span class='line'>    <span class="k">fn</span> <span class="n">deref</span><span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">a</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="nl">&#39;a</span> <span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="nl">&#39;a</span> <span class="n">T</span> <span class="p">{</span>
-</span><span class='line'>        <span class="k">unsafe</span> <span class="p">{</span>
-</span><span class='line'>            <span class="o">&amp;</span><span class="n">amp</span><span class="p">;(</span><span class="o">*</span><span class="bp">self</span><span class="p">.</span><span class="n">ptr</span><span class="p">).</span><span class="n">data</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure></p>
-
-<p>(I think I need a wider variety of examples, but this is good enough for now.)</p>
 ]]></content>
   </entry>
   
