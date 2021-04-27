@@ -159,4 +159,6 @@ And that's the goals doc, as it stood in mid-February
 
 Like I said above, there was a bit of a journey to get to this point. And even with this document in hand, we do not have enough to start making code: I wouldn't be able to hand this to a programmer and say "do this."
 
-But I had goals. And I had a schedule. What was next on the schedule? *User Stories.* (Those will be the subject of the next blog post.)
+But I had goals. And I had a schedule. What was next on the schedule? [*User Stories.*, the subject of the next blog post.][part-2]
+
+[part-2]: /blog/2021/04/27/road-to-turbowish-part-2-stories/
