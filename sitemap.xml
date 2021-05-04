@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
+<loc>http://blog.pnkfx.org/blog/2021/05/03/road-to-turbowish-part-3-design/</loc>
+<lastmod>2021-05-03T14:29:02-04:00</lastmod>
+</url>
+<url>
 <loc>http://blog.pnkfx.org/blog/2021/04/27/road-to-turbowish-part-2-stories/</loc>
 <lastmod>2021-04-27T11:21:32-04:00</lastmod>
 </url>
@@ -39,6 +43,10 @@
 <url>
 <loc>http://blog.pnkfx.org/blog/2015/11/27/cherrypicking-tuftes-of-hair/</loc>
 <lastmod>2015-11-27T14:00:00-05:00</lastmod>
+</url>
+<url>
+<loc>http://blog.pnkfx.org/blog/2015/11/11/vis-via-snap-js/</loc>
+<lastmod>2015-11-11T18:00:00-05:00</lastmod>
 </url>
 <url>
 <loc>http://blog.pnkfx.org/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/</loc>

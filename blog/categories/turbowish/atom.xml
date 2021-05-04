@@ -4,7 +4,7 @@
   <title><![CDATA[Category: turbowish | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/turbowish/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2021-04-27T17:22:05-04:00</updated>
+  <updated>2021-05-04T00:18:40-04:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,6 +12,596 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Road to TurboWish part 3: Design]]></title>
+    <link href="http://blog.pnkfx.org/blog/2021/05/03/road-to-turbowish-part-3-design/"/>
+    <updated>2021-05-03T14:29:02-04:00</updated>
+    <id>http://blog.pnkfx.org/blog/2021/05/03/road-to-turbowish-part-3-design</id>
+    <content type="html"><![CDATA[<p>This is part three in a series about the TurboWish performance analysis tool suite. In <a href="/blog/2021/04/26/road-to-turbowish-part-1-goals/">part one</a> I described why our team selected this as a focus, and the goals for the tools. In <a href="/blog/2021/04/27/road-to-turbowish-part-2-stories/">part two</a> I presented four narratives, each representing different idealized future customer experiences using the tools.</p>
+
+<p>Now I want to show you the design document I developed, which digs more into how I think<label for='&lsquo;how-i-think&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;how-i-think&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;I </span> the system should be architected.</p>
+
+<!-- more -->
+
+
+<p>I will warn you up-front: This is a long post. Eight pages printed in my PDF preview; ten if you include the appendices. And yet it is largely just a transcription of <a href="https://hackmd.io/WsJg_695SUiH41DLMBRekA">another doc</a>. But the thing it is transcribing is going to evolve with time, and I like the idea of taking a snapshot of its state today. I also think the ideas in it are fun. A lot of it still remains to be designed. Much in here falls into the category of software that you can produce with a ton of dedicated programming on <em>every level of the software stack</em>; I want to figure out how to avoid that.</p>
+
+<p>My most important unresolved question is, how can we deliver all of this functionality with <em>minimal investment</em> on the part of our end developer who is themselves a newcomer to Async Rust programming.</p>
+
+<p>Everything that follows was taken verbatim<label for='&lsquo;pink-floyd&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;pink-floyd&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Okay, </span> from <a href="https://hackmd.io/WsJg_695SUiH41DLMBRekA">the document</a> I presented to the other members of the AWS Rust team. This document is an attempt<label for='&lsquo;second-attempt&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;second-attempt&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;There </span>  to describe a software architecture for the first, most important tool: An &ldquo;Async Monitor&rdquo; that models the behavior of one&rsquo;s Rust async runtime, alongside an &ldquo;Async Console&rdquo; that presents slices of information from that model. As with parts <a href="/blog/2021/04/26/road-to-turbowish-part-1-goals/">one</a> and <a href="/blog/2021/04/27/road-to-turbowish-part-2-stories/">two</a>, I will be adding side-commentary on the right-hand margin.</p>
+
+<hr />
+
+<a name="TurboWish.Development.Plan:.The.Async.Monitor.and.Console"></a>
+<h2>TurboWish Development Plan: The Async Monitor and Console</h2>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+(This time I did not repeat my <a href="https://twitter.com/pnkfelix/status/1387022496717807622">&ldquo;mistake&rdquo; of crowd-sourcing</a> the choice of source material. If I were a proper magician, I would have employed a force, but I had a bit too much confidence in my ability to find appropriate quotes, even from ABBA for goodness sakes!)
+</span></p>
+
+<blockquote><p>Overhead the albatross</p>
+
+<p>Hangs motionless upon the air</p>
+
+<p>And deep beneath the rolling waves</p>
+
+<p>In labyrinths of coral caves</p></blockquote>
+
+<a name="TurboWish.Overview"></a>
+<h2>TurboWish Overview</h2>
+
+<p>TurboWish is a suite of tools that give Rust developers insight into performance issues<label for='&lsquo;issues-with-issues&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;issues-with-issues&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;&ldquo;Performance </span> in their code.</p>
+
+<p>The first TurboWish deliverable is the Async Monitor and Console, which answers a developer&rsquo;s questions about how their code&rsquo;s async runtime<label for='&lsquo;runtime-v-executor&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;runtime-v-executor&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;I </span> is behaving as their program runs.</p>
+
+<p>The Async Console provides a summary of an async runtime&rsquo;s behavior, using concepts shared across the async rust ecosystem (such as tasks and resources), and metrics that are applicable to any async program (such as the average time each task spends waiting in a ready state).</p>
+
+<p>When a developer asks: &ldquo;Why is my task stuck?&rdquo; or &ldquo;Why is my app slow?&rdquo;, the Async Console is the first, and in some cases, the only tool they need to reach for. It will allow the developer to quickly see how tasks are scheduled (to learn how much time is spent in the developer&rsquo;s own code versus waiting to run), identify tasks that are starving or blocked and what resources they are waiting on, and identify tasks responsible for replenishing a scarce resource.</p>
+
+<p>We plan to expand the TurboWish tool suite with other tools<label for='&lsquo;other-tools&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;other-tools&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;You </span>  dedicated to other investigations, such heap profiling or sampling-based CPU profiling. This design document is dedicated to the Async Monitor and Console; in tandem, they are the tool that will drive the top-down investigation of an async developer&rsquo;s performance issues.</p>
+
+<blockquote><p>The echo of a distant time</p>
+
+<p>Comes willowing across the sand</p>
+
+<p>And everything is green and submarine</p></blockquote>
+
+<a name="Document.overview"></a>
+<h2>Document overview</h2>
+
+<p>This document describes the development plan for the first TurboWish tool: the Async Monitor and Console. It opens with the original goals followed by (proposed, unfinalized) <a href="#Tenets.of.TurboWish.Tool.Suite">tenets</a> for the TurboWish suite itself. It then presents a description of the <a href="#The.Async.Console.Experience">customer experience</a> using the Async Monitor and Console. Then it sketches an <a href="#Implementation.Plan">implementation plan</a>. A section follows describing <a href="#Metrics">metrics</a> for evaluating whether the tools are achieving their goal, and finally a section touching on <a href="#Security.Concerns">security concerns</a>. <a href="#Appendices">Appendices</a> follow the <a href="#Conclusion">conclusion</a> of the document, including an appendix with the <a href="#Schedule">project schedule</a>.</p>
+
+<blockquote><p>And no one showed us to the land</p>
+
+<p>And no one knows the where&rsquo;s or why&rsquo;s</p>
+
+<p>But something stirs and something tries</p>
+
+<p>And starts to climb toward the light</p></blockquote>
+
+<!-- goals embedded from other doc -->
+
+
+<a name="Goals"></a>
+<h1>Goals</h1>
+
+<!-- We don't need this link here; people who want to comment will already be looking at the original hackmd -->
+
+
+<!--
+[link to goals](https://hackmd.io/OcfdnDwKRSiW-6WmSVt0Bw) (if you want to comment on them, go to the linked doc)
+-->
+
+
+<p><em>Profile Production Code</em>: Incorporating the TurboWish Framework is low-overhead: it can be incorporated into production code<label for='&lsquo;production-code&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;production-code&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;You </span>  without producing an undue maintenance burden and without incurring significant performance overhead.</p>
+
+<p><em>Domain-specific Feedback</em>: Frameworks and applications can provide data for specialized metrics, specific to their internal architecture.</p>
+
+<p><em>Understand Hidden Costs and Connections</em>: Frameworks like tokio ease writing asynchronous code because they hide a number of details behind abstractions (such as generator code produced by the Rust compiler, or task queues managed by the tokio runtime). TurboWish exposes those hidden details, allowing developers to correlate them with other program events. It also exposes connections that humans usually have to reconstruct by hand (such as future to resource to future chains that can yield deadlock), allowing one to directly see from Rust’s ownership model how resources are being held in the object graph.</p>
+
+<p><em>Framework Agnostic</em>: Many of Rust’s customers use tokio, but not all of them. async-std  and fuschia_async are other frameworks for asynchronous programming. TurboWish can provide value to any such framework (though it may also provide framework-specific functionality when warranted). For our initial releases, we can focus on tokio alone, but expect integration with others if use with tokio proves successful.</p>
+
+<p><em>EC2 Instance Type Agnostic</em>: If we make use of any OS specific features (e.g. dtrace probes), they will be available on all EC2 AL2 instances, regardless of instance-type. (Specifically, we cannot require access to CPU performance counters for core functionality. We may offer extra features that utilize them.)</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+This use of the word &ldquo;tenets&rdquo; is part of Amazon parlance. When you see it, you can think &ldquo;Guiding Principles&rdquo;.
+</span></p>
+
+<a name="Tenets..of.TurboWish.Tool.Suite"></a>
+<h2>Tenets  of TurboWish Tool Suite</h2>
+
+<p>The Rust community at large, both within and outside of AWS, is the customer for TurboWish.</p>
+
+<p>Injected instrumentation must not block application progress.</p>
+
+<p>Timing-measurement noise induced by client instrumentation should be minimized.</p>
+
+<p>Present diagnoses in terms of customer-centric concepts, such as resource and task.</p>
+
+<p>Minimize coupling between components to encourage concurrent community development.</p>
+
+<p>The transition from development to production deserves as much performance tooling as production monitoring itself. (More specifically: We see customers struggling to get their software operating well enough to push to release; therefore, some tools can be specialized to the development use-case.)
+The Async Monitor is one such tool: It is aimed at programs under development, not in release.</p>
+
+<blockquote><p>Strangers passing in the street</p>
+
+<p>By chance, two separate glances meet</p>
+
+<p>And I am you and what I see is me</p></blockquote>
+
+<a name="The.Async.Console.Experience"></a>
+<h2>The Async Console Experience</h2>
+
+<p>When a developer wants to deploy the Async Monitor on their program, they will need to hook it in by adding it as an upstream dependency (in the <code>Cargo.toml</code> file) and also writing a few initialization lines at the start of their source code:</p>
+
+<pre><code class="rust">use turbowish_async_monitor as tw_monitor;
+
+#[tokio::main]
+async fn main() {
+    tw_monitor::builder().port(8080).init();
+
+    // Rest of the app
+}
+</code></pre>
+
+<p>With that initialization code in place, the service will operate in the same fashion as before, but will now also run the <em>Async Monitor</em>, which observes events and then, based on those observations, builds an internal model of the program and the async executor. External programs, such as the <em>Async Console</em> can now connect and present the state of the Async Monitor by connecting to the port indicated above..</p>
+
+<p>When the developer first connects the Async Console, they get a presentation similar to the UNIX <code>top</code> command, showing a brief summary of the executors (with metrics like the number of tasks running or sleeping, average times spent waiting to run, average <code>Future::poll</code> runtimes), and below that, a list of the current tasks, each on its own line with with an id number, name, current run state (Polling, Ready to poll, and Waiting), and a list of task attributes that include developer-specified metadata.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Mock up of the console UI was provided by Carl Lerche, a lead Tokio developer.
+</span>
+<img src="https://i.imgur.com/F71IQMl.png" alt="async console terminal user interface" /></p>
+
+<p>This view will dynamically update (just like <code>top</code>) as the application runs.</p>
+
+<p>The async console presents data primarily oriented around tasks and resources. The aim is for a model as straight-forward to understand as the Resource Allocation Graphs<label for='&lsquo;holt&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;holt&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;I </span> described by <a href="https://dl.acm.org/doi/10.1145/356603.356607">Ric Holt in 1972</a>: We wish to explain as much as we can in terms of tasks waiting for or using resources (either by locking them if they are exclusive resources, or by consuming them if they are cumulative resources such as message channels), or resources waiting for tasks to make them available (either by unlocking them for exclusive resources, or by refueling them if they are cumulative resources).</p>
+
+<p>The async console monitors for known performance pitfalls, and includes a highlighted alert at the top of the screen if the program is currently exhibiting one of those pitfalls. The alert provides a link to a problem-oriented view, that explains the pitfall and provides guidance as to how one can resolve it.</p>
+
+<p>From the async console, the developer can do three main things. First, they can dig into an individual <strong>record</strong> of a task or resource, by traversing hyperlinks for that task or resource. (A &ldquo;record&rdquo; in this context is a screen summarizing the event history and current status for that task or resource.) Second, they can <strong>pause</strong> a waiting task (or request that a specific non-waiting task be paused when it next evaluates a <code>.await</code>); such paused tasks can be subsequently inspected by a debugger attaching to the running process, and then resumed when the developer is done with the attached debugger. Third, they can <strong>rollback</strong> history, in order to inspect past states for tasks or resources.</p>
+
+<blockquote><p>And do I take you by the hand</p>
+
+<p>And lead you through the land</p>
+
+<p>And help me understand the best I can?</p></blockquote>
+
+<a name="Performance.Pitfall.Alerts"></a>
+<h3>Performance Pitfall Alerts</h3>
+
+<p>The performance pitfall alerts handle a collection of known cases where our customers are asking themselves: &ldquo;why is my task stuck?&rdquo;</p>
+
+<p>Example of problems that the Async Monitor can detect include: deadlock cycles, excessive polling times, and buggy implementation of <code>Future</code> that fail to register a waker.</p>
+
+<p>As a concrete example: When a deadlock cycle occurs, the async console displays an alert saying &ldquo;deadlock cycle detected.&rdquo; The developer follows the hyperlink for the alert, and this brings up a &ldquo;problem view&rdquo; that shows an interleaving list of tasks and resources<label for='&lsquo;lists-vs-graphs&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;lists-vs-graphs&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Here </span>, corresponding to the chain of dependencies that forms the cycle.</p>
+
+<a name="Resource.Records"></a>
+<h3>Resource Records</h3>
+
+<p>A resource record shows information about an individual resource.</p>
+
+<p>Some resources are <em>exclusive</em>: they can be held by at most N tasks at a time (where N is often 1, such as in the case of a mutex lock). The resource record for an exclusive resource will include a list of tasks that currently hold it. It will also include a separate list of tasks that are currently blocked while trying to acquire the resource.</p>
+
+<p>Some resources are <em>cumulative</em>: they hold some number of resource units (work items in a queue, messages on a channel, <em>et cetera</em>). The resource record for a cumulative resource will include a list of tasks that are currently blocked on the resource&rsquo;s current state (for example, for a channel, a receiver will block on an empty channel; a sender will block on a bounded channel at full capacity).<label for='&lsquo;blocking-in-either-direction&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;blocking-in-either-direction&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;The </span></p>
+
+<p>(In <a href="#holt72">Holt 1972</a>, the terms &ldquo;reusable&rdquo; and &ldquo;consumable&rdquo; roughly correspond to our usage of &ldquo;exclusive&rdquo; and &ldquo;cumulative&rdquo;. The correspondence is imperfect though; e.g. Holt refers to individual consumable resource units, while for us, a &ldquo;cumulative resource&rdquo; describes a collection of such consumable units, such as a channel.)</p>
+
+<p>In addition, the resource record will include lists of tasks that have signaled <em>intent</em> to interact with the resource. This way, the resource record for a multi-producer single-consumer channel can include a list of all of the sending tasks that hold the channel, as well as the receiver task associated with the channel, regardless of whether the channel&rsquo;s message buffer is empty, partially-full, or full.</p>
+
+<p>Listing the tasks that intend to interact with the resource is how we can provide the developer with enough information to resolve unexpected blocking behavior in their code. For example, after seeing that a sender task is blocked because a bounded channel is at full capacity, it is simple for the developer to follow hyperlinks to go from the sender task to the channel&rsquo;s resource record, and from there through another hyperlink to the receiver task, and then work on figuring out how to make the receiver task process messages more efficiently.</p>
+
+<a name="Task.Records"></a>
+<h3>Task Records</h3>
+
+<p>If a task is blocked, the task record will show what specific <code>.await</code> expression it is blocked on, by showing the span (file:line and column range) and the expression itself (<code>my_channel.send(value).await</code>). If the blockage is due to a specific resource, then a hyperlink to its resource record will be provided as well.</p>
+
+<p>More generally, a task record shows information about an individual task, including lists of resources associated with the task.</p>
+
+<p>If a task currently holds exclusive access to resources, all such resources will be listed.</p>
+
+<p>As mentioned earlier, tasks can signal intent to interact with a resource. There are two kinds of intention that can be signaled: conditional intent and unconditional intent.<label for='&lsquo;kinds-of-intent&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;kinds-of-intent&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;I </span></p>
+
+<p>A task signals <em>conditional intent</em> when the interaction is predicated on some external condition holding; i.e., it will occur only on some of the task&rsquo;s non-error control-flow paths. (One could imagine approximating conditional intent by just listing all the resources that are <em>reachable</em> from the task; this is a topic we should explore during implementation.)</p>
+
+<p>A task signals <em>unconditional intent</em> as a way to state &ldquo;<em>if</em> I can make sufficient forward progress, I <em>will</em> interact in this manner with that resource.&rdquo; It is essentially another way of saying: &ldquo;if you can figure out how to get me unblocked, these are the actions I will take&rdquo;, which can be crucial in resolving certain kinds of resource starvation issues.</p>
+
+<p>The task record shows two separate lists corresponding to the two kinds of intention. This way, developers are informed about <em>which</em> tasks to look at first when trying to understand the interactions between tasks and resources in their program.</p>
+
+<p>During execution, resources may move from the conditional list to the unconditional list, or they may move off the conditional list entirely, all according to what a task indicates as its code runs. When a task has actually performed its intended operation to completion (e.g. if it is entirely done sending messages on a given channel, and signals such to the async monitor) then the resource will likewise be removed from the task&rsquo;s resource lists.</p>
+
+<blockquote><p>And no one calls us to move on</p>
+
+<p>And no one forces down our eyes</p>
+
+<p>No one speaks and no one tries</p>
+
+<p>No one flies around the sun</p></blockquote>
+
+<a name="Pausing.a.Task"></a>
+<h3>Pausing a Task</h3>
+
+<p>Sometimes the information provided in the TurboWish Async Monitor&rsquo;s records will not give enough detail, and the developer will want to inspect the actual state of the task&rsquo;s memory on the live process in a debugger.</p>
+
+<p>To pause a task, the developer can go to its Task record page, or just select it in the Async Console overview, and then issue the &ldquo;pause&rdquo;  command. The executor pauses tasks by opting not to schedule them, instead leaving them suspended where they evaluated <code>.await</code>.</p>
+
+<p>As a convenience, the Async Console provides <code>gdb</code> and <code>lldb</code> commands as helpers that pause the task, then spawn the corresponding debugger processes and attach them appropriately to the paused task.</p>
+
+<a name="Rolling.Back.the.Event.Log"></a>
+<h3>Rolling Back the Event Log</h3>
+
+<p>Sometimes humans just don&rsquo;t understand how they got into some mess.</p>
+
+<p>For those situations, the Async Monitor offers rollback functionality. Developers can step backwards<label for='&lsquo;step-backwards&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;step-backwards&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;I </span> through the event history and see how such steps affect the task and resource records.</p>
+
+<p>For example, a <code>select!</code> expression in tokio will run a collection of futures concurrently. It will proceed with the value provided by whichever future completes first, <em>canceling</em> the other futures that lost the race. If code is not written to anticipate such cancellation, it can lead to data corruption, or tasks appearing to be blocked indefinitely (aka &ldquo;hung&rdquo;).</p>
+
+<p>As a concrete example adapted from a <a href="https://tomaka.medium.com/a-look-back-at-asynchronous-rust-d54d63934a1c">blog post</a>, consider this code:</p>
+
+<pre><code class="rust">let mut file = ...;
+let mut channel = ...;
+loop {
+    futures::select! {
+        _ =&gt; read_send(&amp;mut file, &amp;mut channel) =&gt; {},
+        some_data =&gt; socket.read_packet() =&gt; {
+            // ...
+        }
+    }
+}
+</code></pre>
+
+<p>Here, <code>read_send</code> is constructing a future on every iteration through the loop. If the <code>socket.read_packet()</code> invocation ever wins the <code>select!</code>-race, then the <code>read_send</code> future is dropped, which means the data may have been extracted from the file but not yet relayed on the <code>channel</code>. (The details are spelled out on the <a href="https://tomaka.medium.com/a-look-back-at-asynchronous-rust-d54d63934a1c">blog post</a>.)</p>
+
+<p>If a task appears to be hung, the Async Monitor allows the developer to gain insight into why: They can visit the task view for the blocked task. The task view will indicate where it is stuck (in the <code>select!</code>). Since <code>select!</code> is known to be a source of problems for developers, the view will also include a hyperlink that will &ldquo;rewind time&rdquo; to the invocation of <code>select!</code> on the previous iteration of this loop, so that one can observe what side-effects it had. Upon rewinding time, the task view indicates that the <code>socket.read_packet()</code> future won the race, and that the future returned from <code>read_send</code> was <em>dropped</em>.</p>
+
+<p>(At this point, we are relying on the developer having an &ldquo;Aha&rdquo; moment about the effect of dropping a future when it is in the middle of its computation. It would be good to explore ways to help people get the insight sooner. For example, maybe having the view here indicate <em>where</em> the <code>read_send</code> future was in its own computation at the time it was dropped would help someone see that we need to keep that same future running.)</p>
+
+<a name="Constraining.event.log.overhead"></a>
+<h4>Constraining event log overhead</h4>
+
+<p>As part of the configuration options for the Async Monitor, one can adjust the upper-bound on the size of the event log, in order to ensure its memory usage does not induce memory exhaustion, virtual memory swapping, or other problems that could excessively perturb performance evaluation.</p>
+
+<a name="Concluding.the.Experience"></a>
+<h3>Concluding the Experience</h3>
+
+<p>For many problems, the Async Monitor will provide the developer with the insight they need to resolve their questions about their programs interactions with the async executor. However, some performance problems will require further inspection. The Async Monitor can help with some of that, such as when it allows a developer to <a href="#Pausing.a.Task">pause a task</a>. But sometimes a developer will need insight into other aspects of their program, such as where memory or CPU time is going. Other tools will be needed for such cases.</p>
+
+<p>An appendix of this document shows a diagram of the expected developer <a href="#Appendix.B:.TurboWish.User.Work.Flow">work flow</a>. The diagram presents steps that are described above; but it also shows decision points where a user might need to employ another tool.</p>
+
+<p>Now that we have finished explaining the experience of someone using the tool, we will now discuss how to deliver that experience to our customers.</p>
+
+<blockquote><p>Cloudless everyday</p>
+
+<p>You fall upon my waking eyes</p>
+
+<p>Inviting and inciting me to rise</p></blockquote>
+
+<a name="Implementation.Plan"></a>
+<h2>Implementation Plan</h2>
+
+<p>As mentioned above, there are two main components: the Async Monitor, and the Async Console.</p>
+
+<p>The 2021 release of TurboWish will need to provide value without having any support from the Rust compiler or standard library. Therefore, the initial release will work by:
+ 1. leveraging instrumentation added directly to the async executor,
+ 2. encouraging service developers to add corresponding instrumentation, and
+ 3. capturing stack backtraces at key executor events.</p>
+
+<a name="Instrumentation"></a>
+<h3>Instrumentation</h3>
+
+<p>The instrumentation will be responsible for documenting how the relationships between tasks and resources change over time. More specifically, the instrumentation will capture: task state transitions (running, ready, waiting), task acquisition of exclusive resource (e.g. locking a mutex), task modifications of resource state (e.g. sending on a channel or receiving from it), and task <em>intent</em> to interact with resources.</p>
+
+<p>As mentioned in the <a href="#Task.Records">Task Records section</a>, there are two kinds of intent: conditional and unconditional. My long-term hope is to leverage some sort of heap-ownership tracing system to <em>infer conditional intent</em>, because signalling it via manual instrumentation will be arduous and error-prone. (Heap ownership tracking alone cannot infer unconditional intent, but it may be possible to leverage compiler analysis to perform such inference of unconditional intent.)</p>
+
+<a name="Component.Separation"></a>
+<h3>Component Separation</h3>
+
+<p>There are four short-term deliverables: 1. the Async Monitor, 2. the Async Console, 3. a specification of what instrumentation events the Async Monitor understands (which may come from the client code, the async executor, or any related libraries (e.g. Rayon or other crates that offer a thread pool)), and 4. the instrumentation of Tokio (following the aforementioned specification) to support the Async Monitor.</p>
+
+<a name="Diagram.of.Async.Monitor.Architecture"></a>
+<h4>Diagram of Async Monitor Architecture</h4>
+
+<p>This is a rendering of the component separation. There are two running programs: The program being developed, and the Async Console. Within the program being developed, instrumentation events are generated and travel on the event bus, where they are observed by the Async Monitor running as a thread in that process. The Async Monitor communicates with the Async Console, presenting portions of the model according to the requests that arrive from the console.</p>
+
+<!-- The manual height specification is a rough guess, to allow the rest of the doc to predict the space occupied by the graph once it is rendered. -->
+
+
+<div class="mermaid" style="height: 750px">
+flowchart TD
+  subgraph Client
+    TwCollect --- pause_reqs ---> Tokio
+    pause_reqs([introspection requests,<br/>e.g. 'pause'])
+    TracingEventBus
+    TracingEventBus -.-> TwCollect
+    TwCollect[Async Monitor]
+    TwCollect --- EventLog
+    EventLog[(EventLog)]
+
+    Tokio[Async Executor<br/>e.g. Tokio]
+    ClientCode[Client App Code]
+    Rayon
+
+    ClientCode -.-> TracingEventBus
+    Tokio -.-> TracingEventBus
+    Rayon -.-> TracingEventBus
+
+    TracingEventBus[Event Bus<br/>atop tracing crate<br/>&lt;follows event spec&gt;]
+  end
+
+  subgraph Console [Console Program __]
+    TwTui <--> TwCollect
+    TwTui([Async Console])
+  end
+</div>
+
+
+<a name="Development.Decoupling"></a>
+<h3>Development Decoupling</h3>
+
+<p>In order to enable concurrent development of the four deliverables, we will follow these steps:</p>
+
+<a name="Deliverable:.Event.specification"></a>
+<h4>Deliverable: Event specification</h4>
+
+<p>First, we must pick some format for specifying the grammar of the instrumentation events. Anything with an existing off-the-shelf parser-generator available as a Rust crate will serve. JSON might be a reasonable choice here, at least for initial prototyping; but we should also evaluate whether other event description formats incur less encoding overhead than JSON.</p>
+
+<p>(Another option would be a dedicated enum type for events. That would then need to be exposed in its own crate that downstream clients would need to add as a dependency. <del>Perhaps more importantly: we are very likely to use <code>tracing</code> as the event bus, which takes string-encoded messages as the basis for its encoding.</del>)</p>
+
+<p>Second, we must make an initial specification of events. Just saying &ldquo;it&rsquo;s JSON&rdquo; is not sufficient; we need to state how each desired event is actually encoded in the chosen grammar. This will evolve over time. It must cover everything listed in <a href="#Instrumentation">Instrumentation</a>.</p>
+
+<p>With these two pieces in place, we can spin off a few parallel tracks of development.</p>
+
+<a name="Deliverable:.Instrumenting.tokio"></a>
+<h4>Deliverable: Instrumenting tokio</h4>
+
+<p>For instrumenting tokio. I recommend that we start by developing an event-validating async monitor (or more simply, &ldquo;event-validator&rdquo;). The event-validator is responsible for ensuring the incoming event stream is coherent; it might build up a minimal model as part of its coherence check, but it is not responsible for gathering all the metrics that are expected of the Async Monitor product itself. With an event-validator in place, one can test the correctness of tokio instrumentation as it is added. (We will also need to do integration tests once the async monitor itself is constructed.)</p>
+
+<a name="Deliverable:.Async.Monitor"></a>
+<h4>Deliverable: Async Monitor</h4>
+
+<p>For the Async Monitor, I recommend the following baby-steps toward implementation.</p>
+
+<p>First, either make a new mock async executor, or select a pre-existing simple reference async executor (several exist on github), and using this as the mock executor. Use the mock executor for initial development of the Async Monitor: that is, the in-development Async Monitor would be exercised by building an internal model of the mock executor&rsquo;s state.</p>
+
+<p>The reason for employing a mock executor is two-fold: 1. it will be quicker to add (and modify when inevitably needed) the necessary instrumentation as the Async Monitor itself is developed, and 2. using a mock rather than tokio directly will help prevent inadvertent coupling between tokio itself and the async monitor; such coupling would make it hard to add support to other async executors like async-std in the future.</p>
+
+<p>In addition to a mock executor, I also recommend making an mock event stream that will simulate <em>both ends</em> connected to the Async Monitor: it will generate the events that we expect to be signaled by an instrumented application sitting atop some instrumented executor, and it will <em>also</em> simulate a console attached to the other side of the Async Monitor. I recommend having a mock event streamer because this is the easiest way to generate a deterministic series of instrumentation events interleaved with console events. Making such event generation deterministic will be crucial for testing the async monitor.</p>
+
+<a name="Deliverable:.Async.Console"></a>
+<h4>Deliverable: Async Console</h4>
+
+<p>Finally, for the console, I recommend that we make a mock async monitor. It will simulate the Async Monitor&rsquo;s side of the communication protocol used by any Console connecting to the monitor&rsquo;s port.</p>
+
+<p>(Defining the communication protocol between the Async Monitor and the Console is a prerequisite here. However, this protocol is only exposed to the Monitor and Console, and so it can be revised without having to worry about updating downstream clients.)</p>
+
+<a name="Deliverable.Development.Decoupling.Diagram"></a>
+<h4>Deliverable Development Decoupling Diagram</h4>
+
+<p>The three decoupled tracks listed above are repeated below in a visual diagram, showing the dependencies between the pieces.</p>
+
+<!-- The manual height specification is a rough guess, to allow the rest of the doc to predict the space occupied by the graph once it is rendered. -->
+
+
+<div class="mermaid" style="height: 300px">
+flowchart TD
+    spec[Event Specification]
+    spec --> validating_monitor[Event-Validating Async Monitor]
+    spec --> mock_executor[Mock Async Executor]
+    validating_monitor --> instrument_tokio[Add instrumentation to tokio]
+    spec --> mock_event_stream
+    mock_event_stream[Mock Event Streamer]
+    mock_executor --> async_monitor[Async Monitor]
+    mock_event_stream --> async_monitor
+    mock_monitor[Mock Async Monitor] --> Console
+</div>
+
+
+<a name="Long-term.concerns..short-cuts.for.the.Minimum.Viable.Product"></a>
+<h3>Long-term concerns; short-cuts for the Minimum Viable Product</h3>
+
+<p>See <a href="#Appendix.A:.Sacrifices.for.Minimum.Viable.Product">Appendix: Sacrifices for Minimum Viable Product</a></p>
+
+<blockquote><p>And through the window in the wall</p>
+
+<p>Come streaming in on sunlight wings</p>
+
+<p>A million bright ambassadors of morning</p></blockquote>
+
+<a name="Metrics"></a>
+<h2>Metrics</h2>
+
+<p>The goal of these tools is to provide users with insight into performance pitfalls. How can we know if the Async Monitor and Console are achieving their goal?</p>
+
+<p>There are two ways I can imagine approaching this: telemetry from the Async Console program, or evaluating out-of-band signals (such as sentiment analysis on social media). I will focus here on the telemetry option, under the assumption that any potential telemetry would be an opt-in choice presented to the customer when they first use the Async Console tool.</p>
+
+<a name="Telemetry:.Success.Metrics"></a>
+<h3>Telemetry: Success Metrics</h3>
+
+<p>For evaluating whether the tool is successfully providing users with insight, the most obvious answer is we could ask our users. When the console detects a problem and the user shifts to the dedicated problem view describing the problem, the console could also proactively ask the &ldquo;Yes&rdquo;/&ldquo;No&rdquo; question of whether the information it presents is helping the user solve their problem (or perhaps request a user happiness rating on a 1-5 to scale), and then ship those responses back to a service that collects such feedback.</p>
+
+<p>Alternatively: we already plan to have the tool link to websites that provide documentation of various known performance pitfalls. Rather than building telemetry into the console, the linked websites could ask the visitor whether the Async Monitor and Console are working for them. (However, this approach runs the risk of omitting the experiences of users who do not follow the links.)</p>
+
+<a name="Telemetry:.Failure.Metrics"></a>
+<h3>Telemetry: Failure Metrics</h3>
+
+<p>On the flip side of things, we also want to ensure that the instrumentation from TurboWish is not injecting too much overhead into our customer&rsquo;s applications.</p>
+
+<p>While it is probably not reasonable to try to measure the time spent issuing each individual instrumentation event, it is entirely reasonable to measure how many messages are being sent to the Async Monitor, how large they are, and which component (namely, the aync executor, or user code) issued them.</p>
+
+<p>My recommendation is to monitor how much load the instrumentation is putting onto the event bus, according to the event density over a sliding window of time (let&rsquo;s say 100 ms long). If the event density from user code exceeds some predetermined threshold in any given 100ms window, then the Async Console signals a problem report to the developer, telling them that their program&rsquo;s instrumentation may be slowing down the program. If the event density from the async executor (lets say tokio) exceeds a similar predetermined threshold, then the Async Console reports that up to a service associated with the tokio project. (Or, if the tokio project does not see value in getting such traffic, then the Async Console could suggest that the user file a bug on the tokio github.)</p>
+
+<a name="Security.Concerns"></a>
+<h2>Security Concerns</h2>
+
+<p>The instrumentation added to the tokio runtime and client application code may expose details of internal operation that customers do not exposed to the world at large.</p>
+
+<p>We should check that there are controls in place that ensure either: 1. code deployed to production does not have such instrumentation turned on, or 2. the async monitor is not initiated on production systems,  or 3. the port associated with the async monitor is blocked by a firewall guarding the customer&rsquo;s host machine or intranet.</p>
+
+<a name="Conclusion"></a>
+<h2>Conclusion</h2>
+
+<p>The Async Monitor and Console answer a developer&rsquo;s questions about how their code&rsquo;s async executor is behaving as their program runs. They provide a summary of the executor&rsquo;s behavior, with metrics about the tasks and resources their program is using. They allow the developer to identify scheduling decisions and see how task and resources depend on each other.</p>
+
+<p>Furthermore, they serve as the foundation of TurboWish. So, in effect: We aim in 2021 to deliver the foundation for 2022 and beyond. We will work with the Rust community to lay this groundwork, and our community will be enabled to make even more amazing tools atop this foundation.</p>
+
+<blockquote><p>And no one sings me lullabies</p>
+
+<p>And no one makes me close my eyes</p>
+
+<p>So I throw the windows wide</p>
+
+<p>And call to you across the sky</p></blockquote>
+
+<a name="FAQ"></a>
+<h1>FAQ</h1>
+
+<ul>
+<li>Q: Why build the Async Monitor into the application binary? Couldn&rsquo;t that be part of the Async Console instead, and have all the events stream to the Async Console?
+
+<ul>
+<li>A: The primary reason that the Async Monitor is part of the application binary is that we believe streaming all the events that the monitor needs to observe to an external program will inject too much overhead.
+A secondary reason for building the Async Monitor into the application binary is simplicity. If the monitor were a separate program, then one cannot ensure that the full stream of events reaches the monitor. At best one could strive for a <em>suffix</em> of the event stream, which means that the monitor has to be designed to still produce a useful model given such a suffix. (A <a href="https://hackmd.io/QYohB4uTTkas20t6rhCrww">previously considered architecture</a> handled the suffix problem by allowing the monitor to pose queries to the instrumented application, in order to get information such as &ldquo;what is the current set of tasks?&rdquo;)</li>
+</ul>
+</li>
+</ul>
+
+
+<a name="Appendices"></a>
+<h1>Appendices</h1>
+
+<a name="Appendix.A:.Sacrifices.for.Minimum.Viable.Product"></a>
+<h2>Appendix A: Sacrifices for Minimum Viable Product</h2>
+
+<a name="Minimal.Viable.Product:.Shims.for.resource.instrumentation"></a>
+<h3>Minimal Viable Product: Shims for resource instrumentation</h3>
+
+<!-- Note (pnkfelix): I'm not sure instrumented replacements will be the actual technique we use. 
+ But initial versions of the tool will need to either do this, or something even more invasive, so better to say
+ *something* about the need to take this kind of action. -->
+
+
+<p><em>Long-term concern:</em> We want developers to be able to deploy the Async Monitor with minimal changes to their code. A few lines of initialization code is acceptable, but broad changes to many files is not a good customer experience.</p>
+
+<p>Ways to accomplish this are under active discussion, but any solution with such limited source code modification will require one or more of: 1. changes to the Rust standard library, 2. changes to the rust compiler, or 3. use of low-level features such as <a href="https://illumos.org/books/dtrace/chp-intro.html">dtrace probes</a> or <a href="https://ebpf.io/">eBPF</a>. We have not yet decided on which of these options is appropriate.</p>
+
+<p><em>Short term sacrifice</em>: In addition to the initialization code described at the start of the description of <a href="#The.Async.Console.Experience">the developer experience</a>, initial versions of TurboWish also require the developer to swap in instrumented versions of common modules; a provided lint will guide developers in this process and help ensure no instances are overlooked.</p>
+
+<pre><code class="rust">use turbowish::sync::Mutex; // was previously `use std::sync::Mutex;`
+</code></pre>
+
+<p>(As already stated above, longer-term, we hope to leverage other facilities to get these instrumentation events.)</p>
+
+<a name="Minimal.Viable.Product:.Tokio-specific"></a>
+<h3>Minimal Viable Product: Tokio-specific</h3>
+
+<p><em>Long-term concern:</em> We want the Async Monitor and Console to work with any popular async executor: tokio and async-std are obvious choices here. For the Async Monitor to be useful on an async program, one must use an async executor that has appropriate TurboWish instrumentation added to it.</p>
+
+<p><em>Short term sacrifice:</em> We will deploy a prototype with tokio, but try to keep in mind any differences with other async executors as we design the protocol used for the async executor to communicate with the async monitor.</p>
+
+<a name="Minimum.Viable.Product:.Require.client.instrumentation.for.full-features"></a>
+<h3>Minimum Viable Product: Require client instrumentation for full-features</h3>
+
+<p><em>Long-term concern:</em> Client application code can benefit from adding extra instrumentation to their code. However, developers should be able to use and benefit from TurboWish without going to extremes adding new instrumentation beyond what the executor has out-of-the-box.</p>
+
+<p>Some components of the Async Monitor will work with zero client instrumentation. In particular: the initial console output that shows the list of tasks and how their time is spent between polling, ready, and waiting does not require any client instrumentation.</p>
+
+<p>However, other features of the Async Monitor, such as tasks listing resources with which they <em>intend</em> to interact, require either Rust compiler support or client instrumentation, or maybe both.</p>
+
+<p><em>Short term sacrifice:</em> We will prototype under the assumption that clients are willing to add instrumentation. The Async Monitor will differentiate between instrumentation that is &ldquo;trusted&rdquo;: cases where instrumentation bugs will make the Async Monitor and Console produce misleading results (e.g. if transitions between polling and waiting are omitted or forged), and &ldquo;untrusted&rdquo;: cases where instrumention bugs, by design of the monitor, will at most lead to confusion, but not outright lies (e.g. if incorrect attributes are attached to a task or resource, the console output showing those attributes will be likewise incorrect, but it need not disrupt other parts of the Async Monitor or Console).</p>
+
+<a name="Appendix.B:.TurboWish.User.Work.Flow"></a>
+<h2>Appendix B: TurboWish User Work Flow</h2>
+
+<!-- The manual height specification is a rough guess, to allow the rest of the doc to predict the space occupied by the graph once it is rendered. -->
+
+
+<div class="mermaid" style="height: 1750px">
+flowchart TD
+   Start --> PerfStart
+   %% Start --> TasksSeemBlocked
+   PerfStart([Performance does not match expectations])
+   PerfStart --> QA
+   %% TasksSeemBlocked([Tasks seem stuck])
+   %% TasksSeemBlocked --> A
+   QA{using<br/>async<br/>rust?}
+   QA --"yes" --> A
+   A --> R --> CC --> QProblemHighlighted
+   A[add TurboWish Async Console to service]
+   R[start serivce]
+   CC[connect to console]
+      
+   QProblemHighlighted{Console<br/>highlights<br/>problem}
+    
+   QProblemHighlighted -- "yes" --> ConsoleHighlight
+   ConsoleHighlight[observe console output]
+
+   ConsoleHighlight --> PendingWithoutWaker
+   PendingWithoutWaker([Console reports:<br/>buggy Future detected])
+   
+   ConsoleHighlight --> CycleDetected
+   CycleDetected([Console reports:<br/>deadlock cycle detected])
+   
+   PendingWithoutWaker --> UserReadsDocs
+   CycleDetected --> UserReadsDocs
+   UserReadsDocs[read linked Rust documentation]
+   
+   UserReadsDocs --> IdentifyRootCause   
+   
+   QProblemHighlighted -- "no" --> QStuckTask
+   
+   QStuckTask{any tasks<br/>blocked?}
+   
+   QStuckTask -- "yes" --> InspectEachStuckTask --> FollowTaskResourceChains --> IdentifyRootCause
+   
+   InspectEachStuckTask[inspect each stuck task]
+   FollowTaskResourceChains[follow task/resource dependencies]
+   IdentifyRootCause[identify root cause of problem]
+     
+   QPH{excessive<br/>memory usage?}
+  
+   QPH -. "yes" .-> H
+   QPH -. "no" .-> P
+   
+   QA -. "no" .-> QPH
+   
+   H[use turbowish-heapprof<br/>&lt;future project&gt;]
+   P[use turbowish-perf<br/>&lt;future project&gt;]
+</div>
+
+
+<a name="Appendix.C:.Instrumentation.notes..brainstorming."></a>
+<h2>Appendix C: Instrumentation notes (brainstorming)</h2>
+
+<p>(This section assumes that a set of related wakers is a reasonable and necessary proxy for &ldquo;resource&rdquo;. This assumption will be revisited during development; the executor controls creation of wakers, so it is a natural point to instrument; but the wakers may not have sufficient context available at their creation points to support describing their associated resource.)</p>
+
+<p>The most basic functionality for the task/resource graph user story requires the executor to emit events whenever:</p>
+
+<ul>
+<li>a task is spawned,</li>
+<li>a task is dropped,</li>
+<li>a waker is created,</li>
+<li>a waker is cloned,</li>
+<li>a waker is dropped, or</li>
+<li>a waker is transferred from one task to another.</li>
+</ul>
+
+
+<p>Supporting other user stories will likely require tracking other information as well (such as how many pending futures have had <code>wake</code> called and are awaiting a call to <code>poll</code>). We may need to add additional hooks to the async executor, analogous to the support for &ldquo;pause&rdquo;, that the Async Monitor can invoke to turn on tracing of such information.</p>
+
+<p>The emitted events should include unique identifiers (UID) for any referenced task/wakers.
+ * For values that are themselves boxed or own a heap-allocated value, we should be able to use a memory address as a UID, as long as we also include some sort of timestamp with the events (and the Event Collector will infer when memory is being reused and update its internal model accordingly).
+ * (If we need to track values that do not have a uniquely associated heap values, then we may need to add some sort of unique-id generation for them. So far I haven&rsquo;t seen a need in tokio&rsquo;s types.)</p>
+
+<p>The emitted events should also include some notion of the calling context for the event. This calling context should be meaningful from the viewpoint of the Client App Code.
+ * For example, when <code>&lt;TimerFuture as Future&gt;::poll</code> calls <code>cx.waker().clone()</code>, we want the waker construction event to include (at minimum) that a waker was created from <code>TimerFuture</code>, so that one can properly tell what <em>kind of resource</em> that <code>waker</code> is associated with.
+ * (It would be even better to include enough information in the event for the Event Collector to know <em>which specific resource</em> is associated with the waker, rather than just its type.</p>
+
+<p>These events may include program-internal details such as (partial) stack traces that will include memory addresses of program code
+ * (We cannot change existing APIs to thread through details like file/line-number info in the style of <code>#[track_caller]</code>, so in general this is the only way I expect to be able to infer calling context without putting undue burden on client code.)
+ * More specifically: Based on my understanding of the API&rsquo;s available, providing contextual info about the calling context of <code>cx.waker().clone()</code> will require either 1. client instrumentation that sets some thread- or task-local state, or 2. backtracing through the stack to find instruction addresses that the Async Monitor can, via debuginfo, map back to the calling context.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Road to TurboWish; Part 2: Stories]]></title>

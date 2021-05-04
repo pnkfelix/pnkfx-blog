@@ -9,9 +9,9 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="This is the first in a series of posts will discuss why garbage
-collection is hard, especially for Rust, and brainstorm about
-solutions to the &hellip;">
+  <meta name="description" content="This post: I describe some changes to my blog&rsquo;s presentation
+format, and how I hacked them in by cherry-picking from the shoulders
+of giants. ">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -69,6 +69,97 @@ solutions to the &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/11/27/cherrypicking-tuftes-of-hair/">Cherry-picking From the Shoulders of Giants</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-11-27T14:00:00-05:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>This post: I describe some changes to my blog&rsquo;s presentation
+format, and how I hacked them in by cherry-picking from the shoulders
+of giants.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/11/27/cherrypicking-tuftes-of-hair/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/11/11/vis-via-snap-js/">Vis-a-vis, Part 2: Visualizing Graphs via snap.svg</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-11-11T18:00:00-05:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><a href="/blog/2015/10/12/viz-a-viz-js/">Previously</a> I discussed visualizing graphs (<code>G = (V,E)</code>)
+specified in DOT syntax (<code>digraph { a -&gt; b; }</code>) via
+<code>viz.js</code>, which is <code>graphviz</code> compiled to Javascript.</p>
+
+<p>However, I have decided that it is too difficult to convince
+graphviz to produce particular layouts. Therefore, I am going
+to try out other tools for working with SVG; in this post, I&rsquo;m
+going to discuss a relative newcomer to the scene, <a href="http://snapsvg.io/">snap.svg</a>.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/11/11/vis-via-snap-js/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -497,110 +588,6 @@ Just install
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2013/03/26/rusty-chain-puzzle-1/">Rusty Chain Puzzle 1.</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-03-26T10:28:00-04:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>I have been trying to get my feet wet programming in
-<a href="http://www.rust-lang.org/">Rust</a>.</p>
-
-<p>A month and a half ago, I thought &ldquo;Maybe I will hack up an Earley
-parser in a variety of languages, including Rust.&rdquo;  That sent me down
-a long path of learning about how Earley parsing works; I have not yet
-written up my results from that investigation, and I still have not
-written the Rust version of the code.</p>
-
-<p>Last weekend, I sat down and said, &ldquo;Let&rsquo;s try a simpler goal: A couple
-simple exercies, maybe taken from Knuth&rsquo;s
-<a href="http://www-cs-faculty.stanford.edu/~uno/taocp.html">TAOCP</a>&rdquo;
-This was indeed a much simpler goal, but it was more difficult than
-I had expected.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2013/03/26/rusty-chain-puzzle-1/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2013/01/29/implicit-versus-explicit-finalization/">Implicit Versus Explicit Finalization</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-01-29T22:47:00-05:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>(This post is largely a response to Niko Matsakis&rsquo;s blog post
-<a href="http://smallcultfollowing.com/babysteps/blog/2013/01/17/destructors-and-finalizers-in-rust/">Destructors and Finalizers in Rust</a>.  I started composing it as a comment there,
-but eventually realized I needed more breathing room.)</p>
-
-<p>I agree wholeheartedly with Niko&rsquo;s statement that the Boehm paper
-<a href="http://www.hpl.hp.com/techreports/2002/HPL-2002-335.html">&ldquo;Destructors, Finalizers, and Synchronization&rdquo;</a> is a really nice
-discussion of this topic.
-However, a significant portion of the destructor/finalizer design space is
-only briefly discussed in that paper, and I worry that Niko&rsquo;s post overlooks
-it.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2013/01/29/implicit-versus-explicit-finalization/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="3">&larr; Older</a>
@@ -618,6 +605,10 @@ it.</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2021/05/03/road-to-turbowish-part-3-design/">Road to TurboWish part 3: Design</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2021/04/27/road-to-turbowish-part-2-stories/">Road to TurboWish; Part 2: Stories</a>
       </li>
     
@@ -631,10 +622,6 @@ it.</p>
     
       <li class="post">
         <a href="/blog/2021/03/11/mentoring-rust-diagnostics-issue-81658/">Mentoring rust diagnostics issue 81658</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2019/11/18/rust-bug-minimization-patterns/">Rust Bug Minimization Patterns</a>
       </li>
     
   </ul>
