@@ -552,13 +552,16 @@ The most basic functionality for the task/resource graph user story requires the
 Supporting other user stories will likely require tracking other information as well (such as how many pending futures have had `wake` called and are awaiting a call to `poll`). We may need to add additional hooks to the async executor, analogous to the support for "pause", that the Async Monitor can invoke to turn on tracing of such information.
 
 The emitted events should include unique identifiers (UID) for any referenced task/wakers.
+
  * For values that are themselves boxed or own a heap-allocated value, we should be able to use a memory address as a UID, as long as we also include some sort of timestamp with the events (and the Event Collector will infer when memory is being reused and update its internal model accordingly).
  * (If we need to track values that do not have a uniquely associated heap values, then we may need to add some sort of unique-id generation for them. So far I haven't seen a need in tokio's types.)
 
 The emitted events should also include some notion of the calling context for the event. This calling context should be meaningful from the viewpoint of the Client App Code.
+
  * For example, when `<TimerFuture as Future>::poll` calls `cx.waker().clone()`, we want the waker construction event to include (at minimum) that a waker was created from `TimerFuture`, so that one can properly tell what *kind of resource* that `waker` is associated with.
  * (It would be even better to include enough information in the event for the Event Collector to know *which specific resource* is associated with the waker, rather than just its type.
 
 These events may include program-internal details such as (partial) stack traces that will include memory addresses of program code
+
  * (We cannot change existing APIs to thread through details like file/line-number info in the style of `#[track_caller]`, so in general this is the only way I expect to be able to infer calling context without putting undue burden on client code.)
  * More specifically: Based on my understanding of the API's available, providing contextual info about the calling context of `cx.waker().clone()` will require either 1. client instrumentation that sets some thread- or task-local state, or 2. backtracing through the stack to find instruction addresses that the Async Monitor can, via debuginfo, map back to the calling context.
