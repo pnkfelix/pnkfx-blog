@@ -4,7 +4,7 @@
   <title><![CDATA[Category: performance | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/performance/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2021-05-04T00:18:40-04:00</updated>
+  <updated>2021-05-04T00:32:20-04:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -589,17 +589,29 @@ flowchart TD
 
 <p>Supporting other user stories will likely require tracking other information as well (such as how many pending futures have had <code>wake</code> called and are awaiting a call to <code>poll</code>). We may need to add additional hooks to the async executor, analogous to the support for &ldquo;pause&rdquo;, that the Async Monitor can invoke to turn on tracing of such information.</p>
 
-<p>The emitted events should include unique identifiers (UID) for any referenced task/wakers.
- * For values that are themselves boxed or own a heap-allocated value, we should be able to use a memory address as a UID, as long as we also include some sort of timestamp with the events (and the Event Collector will infer when memory is being reused and update its internal model accordingly).
- * (If we need to track values that do not have a uniquely associated heap values, then we may need to add some sort of unique-id generation for them. So far I haven&rsquo;t seen a need in tokio&rsquo;s types.)</p>
+<p>The emitted events should include unique identifiers (UID) for any referenced task/wakers.</p>
 
-<p>The emitted events should also include some notion of the calling context for the event. This calling context should be meaningful from the viewpoint of the Client App Code.
- * For example, when <code>&lt;TimerFuture as Future&gt;::poll</code> calls <code>cx.waker().clone()</code>, we want the waker construction event to include (at minimum) that a waker was created from <code>TimerFuture</code>, so that one can properly tell what <em>kind of resource</em> that <code>waker</code> is associated with.
- * (It would be even better to include enough information in the event for the Event Collector to know <em>which specific resource</em> is associated with the waker, rather than just its type.</p>
+<ul>
+<li>For values that are themselves boxed or own a heap-allocated value, we should be able to use a memory address as a UID, as long as we also include some sort of timestamp with the events (and the Event Collector will infer when memory is being reused and update its internal model accordingly).</li>
+<li>(If we need to track values that do not have a uniquely associated heap values, then we may need to add some sort of unique-id generation for them. So far I haven&rsquo;t seen a need in tokio&rsquo;s types.)</li>
+</ul>
 
-<p>These events may include program-internal details such as (partial) stack traces that will include memory addresses of program code
- * (We cannot change existing APIs to thread through details like file/line-number info in the style of <code>#[track_caller]</code>, so in general this is the only way I expect to be able to infer calling context without putting undue burden on client code.)
- * More specifically: Based on my understanding of the API&rsquo;s available, providing contextual info about the calling context of <code>cx.waker().clone()</code> will require either 1. client instrumentation that sets some thread- or task-local state, or 2. backtracing through the stack to find instruction addresses that the Async Monitor can, via debuginfo, map back to the calling context.</p>
+
+<p>The emitted events should also include some notion of the calling context for the event. This calling context should be meaningful from the viewpoint of the Client App Code.</p>
+
+<ul>
+<li>For example, when <code>&lt;TimerFuture as Future&gt;::poll</code> calls <code>cx.waker().clone()</code>, we want the waker construction event to include (at minimum) that a waker was created from <code>TimerFuture</code>, so that one can properly tell what <em>kind of resource</em> that <code>waker</code> is associated with.</li>
+<li>(It would be even better to include enough information in the event for the Event Collector to know <em>which specific resource</em> is associated with the waker, rather than just its type.</li>
+</ul>
+
+
+<p>These events may include program-internal details such as (partial) stack traces that will include memory addresses of program code</p>
+
+<ul>
+<li>(We cannot change existing APIs to thread through details like file/line-number info in the style of <code>#[track_caller]</code>, so in general this is the only way I expect to be able to infer calling context without putting undue burden on client code.)</li>
+<li>More specifically: Based on my understanding of the API&rsquo;s available, providing contextual info about the calling context of <code>cx.waker().clone()</code> will require either 1. client instrumentation that sets some thread- or task-local state, or 2. backtracing through the stack to find instruction addresses that the Async Monitor can, via debuginfo, map back to the calling context.</li>
+</ul>
+
 ]]></content>
   </entry>
   
