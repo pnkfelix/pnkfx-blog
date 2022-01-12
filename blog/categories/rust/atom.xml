@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2022-01-11T23:14:47-05:00</updated>
+  <updated>2022-01-11T23:24:34-05:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -233,7 +233,11 @@ methods that print the structure for their values. The debugger printouts were
 useful when the language didn&rsquo;t provide it out of the box (like in C and C++),
 but they less value in Rust.</p>
 
-<p>One benefit of using a debugger here, rather than just using log statements, is
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Another counter-argument to this supposed first benefit: In a language like Rust,
+anyone can use <code>unsafe</code> code to transmute the value to raw bits, and subsequently print them. This power is not solely in the debugger&rsquo;s hands.
+</span>
+One benefit of using a debugger here, rather than just using log statements, is
 that a debugger will let you immediately see the concrete representation (such
 as concrete hashtable layout) in places where the developer has chosen a more
 abstract view for the <code>Debug</code> trait implementation. But again we hear echos of
