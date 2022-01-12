@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2021-05-04T00:32:20-04:00</updated>
+  <updated>2022-01-11T23:14:47-05:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,6 +12,579 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Why I use a debugger]]></title>
+    <link href="http://blog.pnkfx.org/blog/2022/01/10/why-i-use-a-debugger/"/>
+    <updated>2022-01-10T11:12:57-05:00</updated>
+    <id>http://blog.pnkfx.org/blog/2022/01/10/why-i-use-a-debugger</id>
+    <content type="html"><![CDATA[<p>I have been thinking about the Rust debugging experience, and I want to try
+tease apart what value a debugger provides to me.</p>
+
+<!-- more -->
+
+
+<p>Last year, I gave a talk at <a href="https://plus.qconferences.com/plus2021/presentation/reversible-debugging-rr">QCon</a> that promoted the use of <a href="https://rr-project.org/"><code>rr</code></a> as a tool
+for exploring Rust code. I wanted to convey an <em>excitement</em> about debugging,
+about using this tool to dive into the weeds of your program&rsquo;s behavior.</p>
+
+<p>Since then, I have continued to talk to developers, promoting <code>rr</code> (and the
+associated service <a href="https://pernos.co/">pernos.co</a>). And I heard Rust developers say that they are
+happy with their experience using instrumentation such as logging statements or
+the <a href="https://tracing.rs/tracing/">tracing</a> infrastructure.</p>
+
+<p>I have to agree: Logging statements <em>are</em> useful, and sometimes they are all you
+need. Here is a great quote from &ldquo;The Practice of Programming&rdquo;, by Kernighan and
+Pike:</p>
+
+<blockquote><p>As personal choice, we tend not to use debuggers beyond getting a stack trace or the value of a variable or two. One reason is that it is easy to get lost in details of complicated data structures and control flow; we find stepping through a program less productive than thinking harder and adding output statements and self-checking code at critical places. Clicking over statements takes longer than scanning the output of judiciously-placed displays. It takes less time to decide where to put print statements than to single-step to the critical section of code, even assuming we know where that is. More important, debugging statements stay with the program; debugging sessions are transient.</p></blockquote>
+
+<p>This quote is apt for many reasons; I will revisit it again before the end of
+this post.</p>
+
+<p>I do not know the typical way that people use debuggers. But I can imagine it
+looks much like the image depicted above: you start your program, you use a
+single-step command to go through it line by line, and you examine raw memory
+dumps to try to figure out what the machine is doing. After that initial
+exploration, you might set breakpoints at specific lines of code, and then tell
+the debugger to continue running until it hits any of those breakpoints.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Advanced debugger users will set <em>conditional</em> breakpoints, which only halt the
+program if a specific predicate holds when it hits the breakpoint, or even
+<em>scripted</em> breakpoints, which will automatically execute a series of debugger
+commands each time they hit the breakpoint. One neat trick is that you often can
+end a script with <code>continue</code>, so that it seems as though the program never
+stopped at all, except for the side-effects on the debugger itself (such as
+setting <em>other</em> breakpoints).
+</span></p>
+
+<p>But that typical usage pattern doesn&rsquo;t really provide much value over just
+adding log statements. If all you want to do is learn what steps the computer
+took, and what data was in certain variables at those steps, printing to a log
+<em>is</em> a better way to achieve that.</p>
+
+<p>So, why am I advocating for more people to include a debugger as one of the tools
+to keep ready on their Rust development utility belt?</p>
+
+<p>There are four main features that a debugger gives me that are not always
+fulfilled by adding log statements:</p>
+
+<ul>
+<li><a href="#Object.Code.Inspection">object code inspection</a>,</li>
+<li><a href="#Raw.Control-Flow">raw control-flow</a>,</li>
+<li><a href="#Memory.Exploration">memory exploration</a>, and</li>
+<li><a href="#Hardware.Watchpoints">hardware watchpoints</a>.</li>
+</ul>
+
+
+<p>Of the four, i think hardware watchpoints are the best example of a capability
+that is both broadly useful and not typically available outside of a debugger.
+I will delve into each of these in turn below.</p>
+
+<a name="Object.Code.Inspection"></a>
+<h2>Object Code Inspection</h2>
+
+<p>By &ldquo;object code inspection&rdquo;, I mean that I can attach a debugger to any binary,
+without having to recompile anything. When your workflow is to add new print
+statements each time you want to inspect something new, that means editing your
+code and recompiling it. That edit-recompile-debug cycle has two problems: it can
+be slow (especially the recompilation step). Worse still, the edits can cause
+bugs to mysteriously go away, aka the <a href="https://en.wikipedia.org/wiki/Heisenbug">&ldquo;observer effect&rdquo;</a>.
+(To be fair, using a debugger can also cause those <a href="https://en.wikipedia.org/wiki/Heisenbug">Heisenbugs</a> to change
+behavior. This is where tools like <a href="https://rr-project.org/"><code>rr</code></a> can really shine.)</p>
+
+<p>How valuable is &ldquo;object code inspection&rdquo;? I have given two reasons to avoid the
+edit-recompile steps: reduced latency, and reducing the observer effect.</p>
+
+<p><em>Honestly:</em> It is not a frequent need for my current work. Much of my work
+involves either fixing bugs that reproduce readily in the face of source code
+changes, or adding features (which inherently requires source code changes).</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+However, in practice this can be very
+painful: We do not have much support for building an unoptimized <code>rustc</code> (it has
+a <em>very</em> long bootstrap time), but once you enable optimizations, the debugging
+experience degrades quite a bit in Rust today.
+</span></p>
+
+<p>There is one important exception here: <code>rustc</code> itself has a long bootstrap time;
+so I have often <em>tried</em> to use a debugger to debug <code>rustc</code> itself, rather than
+rely on an edit-recompile-debug cycle.</p>
+
+<a name="Raw.Control-Flow"></a>
+<h2>Raw Control-Flow</h2>
+
+<p>By &ldquo;raw control-flow&rdquo;, I mean that one can step through the individual assembly
+code instructions to see exactly what the machine is executing.</p>
+
+<p>For example, at a method invocation, one can step forward and discover how
+exactly to which function that invocation dispatches as it goes through <code>Deref</code>
+implementations until it finally reaches the target method.</p>
+
+<p>As another example, one can step through the the instructions corresponding to
+the subcomponents of a <code>match</code> pattern. This way, one might discover which parts
+matched and which failed to match, and in what order they were evaluated.</p>
+
+<p>Here is a concrete example of the latter:</p>
+
+<pre><code class="rust">struct P { a: char, b: char, c: &amp;'static str }
+
+fn main() {
+    let p = P { a: 'h', b: 'i', c: "world" };
+    foo(p);
+}
+
+fn foo(p: P) {
+    match p {
+        P { b: 'i', a: 'y', c } =&gt; println!("yi, {}", c),
+        P { a: 'h', b, c } =&gt; println!("h{}, {}", b, c),
+        _ =&gt; panic!("unmatched"),
+    }
+}
+</code></pre>
+
+<p>After compiling the above with debuginfo enabled and running it under <code>gdb</code>,
+I can investigate the body of <code>foo</code> while its running:</p>
+
+<pre><code>(gdb) step
+boom::foo (p=...) at boom.rs:9
+9       match p {
+(gdb) disassemble
+Dump of assembler code for function _ZN4boom3foo17h3035bcff6328b12bE:
+   0x000055555555db70 &lt;+0&gt;: sub    $0x128,%rsp
+   0x000055555555db77 &lt;+7&gt;: mov    %rdi,0x38(%rsp)
+=&gt; 0x000055555555db7c &lt;+12&gt;:    cmpl   $0x69,0x14(%rdi)
+   0x000055555555db80 &lt;+16&gt;:    jne    0x55555555db8d &lt;_ZN4boom3foo17h3035bcff6328b12bE+29&gt;
+   0x000055555555db82 &lt;+18&gt;:    mov    0x38(%rsp),%rax
+   0x000055555555db87 &lt;+23&gt;:    cmpl   $0x79,0x10(%rax)
+   0x000055555555db8b &lt;+27&gt;:    je     0x55555555db9d &lt;_ZN4boom3foo17h3035bcff6328b12bE+45&gt;
+   0x000055555555db8d &lt;+29&gt;:    mov    0x38(%rsp),%rax
+   0x000055555555db92 &lt;+34&gt;:    cmpl   $0x68,0x10(%rax)
+   0x000055555555db96 &lt;+38&gt;:    je     0x55555555dbeb &lt;_ZN4boom3foo17h3035bcff6328b12bE+123&gt;
+   0x000055555555db98 &lt;+40&gt;:    jmp    0x55555555dc6e &lt;_ZN4boom3foo17h3035bcff6328b12bE+254&gt;
+</code></pre>
+
+<p>In the above, we can see three comparison instructions: a comparison of <code>0x14(%rdi)</code> with <code>$0x69</code> (the character &lsquo;i&rsquo;), then a comparison of <code>0x10(%rax)</code> with <code>$0x79</code> (the character &lsquo;y&rsquo;). If they&rsquo;re both equal, then it jumps to <code>0x55555555db9d</code> (which is presumably the first arm&rsquo;s body). If they&rsquo;re not, then it does a comparison of <code>0x10(%rax)</code> with <code>$0x68</code> (the character &lsquo;h&rsquo;), and if <em>that</em> is equal, then it jumps to <code>0x55555555dbeb</code> (which is preumably the second arm&rsquo;s body).</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+The people I imagine doing this kind of investigation are the ones working out the low-level semantic guarantees when it comes to investigating
+things like <a href="https://github.com/rust-lang/rust/issues/87520">rust#87520</a>.
+</span>
+Pretty low-level details, admittedly. Someone <em>new</em> to Rust cannot be expected to do this kind of investigation to gain insight into the language.</p>
+
+<p>In short, this seems like a case where Kernighan and Pike&rsquo;s quote above is
+especially apt: we can easily get lost in the details of the
+control flow as rendered here.</p>
+
+<p>So, how valuable is &ldquo;raw control-flow&rdquo;?</p>
+
+<p><em>Honestly:</em> The more experience I gain in a language or a particular project,
+the less and less I find myself relying on this kind of spulunking. The
+evaluation order of <code>match</code> shouldn&rsquo;t matter in most cases, so I would not
+optimize the debugging UX for that. Seeing how method dispatch resolves <em>is</em>
+useful, but in practice logging statements provide enough insight that people
+rarely find themselves wanting to step through the individual assembly
+instructions.</p>
+
+<p>Insight into the raw control-flow is probably most useful for someone peeking
+into low-level details of the semantics of the language (or a given project,
+especially a code base with tricky macros that generate control-flow
+structures). One might hope that that group generalizes to beginners who are
+learning the language. But I am not certain that raw control-flow will
+efficiently provide practical insight. For example, consider the following:</p>
+
+<pre><code class="rust">#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+struct D(&amp;'static str);
+
+fn main() {
+    let d = D("my name is D");
+    println!("{:?}", d);
+}
+
+impl Drop for D {
+    fn drop(&amp;mut self) {
+        println!("Goodbye, {}", self.0);
+    }
+}
+</code></pre>
+
+<p>A newcomer to Rust who is not familiar with the destructor system might think
+that the above code only prints a single line of text. Running the code (even
+outside of a debugger) will show that to be incorrect. But: Will stepping
+through it in a debugger provide the insight about where the <code>&lt;D as Drop&gt;::drop</code>
+call comes from? It is not clear to me that it would.</p>
+
+<a name="Memory.Exploration"></a>
+<h2>Memory Exploration</h2>
+
+<p>By &ldquo;memory exploration&rdquo;, I mean that when my debugger is attached to a paused
+program, I can inspect values on the stack or heap, walking down the nodes of a
+binary tree or the entries in a hashtable. A good debugger will do some amount
+of memory traversal and semantic interpretation on my behalf, using type
+information from the program&rsquo;s associated debuginfo to determine how best to
+interpret the bits it finds and print it nicely (e.g. showing comma-separated
+array elements).</p>
+
+<p>How valuable is &ldquo;memory exploration&rdquo;?</p>
+
+<p><em>Honestly:</em> In Rust, one can add <code>#[derive(Debug)]</code> to type definitions to get
+methods that print the structure for their values. The debugger printouts were
+useful when the language didn&rsquo;t provide it out of the box (like in C and C++),
+but they less value in Rust.</p>
+
+<p>One benefit of using a debugger here, rather than just using log statements, is
+that a debugger will let you immediately see the concrete representation (such
+as concrete hashtable layout) in places where the developer has chosen a more
+abstract view for the <code>Debug</code> trait implementation. But again we hear echos of
+the Kernighan and Pike quote: Seeing that concrete representation may be crucial
+in some scenarios, but in many cases it will just be unnecessary detail
+distracting you from the problem at hand.</p>
+
+<p>A second benefit with respect to memory exploration is that a debugger will also
+let you inspect values that were not part of the original log statement. But,
+one can view that as a special case of bypassing the edit-recompile cycle, which
+we already discussed above. If the edit-recompile cycle is short, then there is
+little cost to adding a new log statement that includes the value of interest.</p>
+
+<a name="Hardware.Watchpoints"></a>
+<h2>Hardware Watchpoints</h2>
+
+<p>So we have come to perhaps my <em>favorite</em> debugger feature: Hardware watchpoints.</p>
+
+<p>This is the main feature that most programming languages do not provide.</p>
+
+<p>The idea is simple: the gdb command <code>watch -location &lt;place&gt;</code> will
+break the next time the memory at the given place is modified.
+For example, <code>watch -location array[i]</code> will evaluate <code>&amp;array[i]</code> to
+its address, and then the next time <code>array[i]</code> is changed, the debugger
+will stop and print out both the old value and the new value.</p>
+
+<p>Consider the following (buggy) code for merging two sorted sequences into a
+single sorted sequence:</p>
+
+<pre><code class="rust">fn main() {
+    let mut r = [99, 98, 97, 96, 95];
+    merge(&amp;mut r, &amp;[10, 30], &amp;[20, 40, 60]);
+    dbg!(r);
+}
+
+// Supposedly merges sorted `a` and `b` into  `recv`.
+fn merge(recv: &amp;mut [i32], a: &amp;[i32], b: &amp;[i32]) {
+    let mut ai = a.iter();
+    let mut bi = b.iter();
+    let (mut a_cur, mut b_cur) = (ai.next(), bi.next());
+    for i in 0..recv.len() {
+        match (a_cur, b_cur) {
+            (Some(x), Some(y)) =&gt; {
+                if *x &lt;= *y {
+                    recv[i] = *x;
+                    a_cur = ai.next();
+                } else {
+                    recv[i] = *y;
+                    a_cur = ai.next();
+                }
+            }
+            (Some(x), None) =&gt; {
+                recv[i] = *x;
+                a_cur = ai.next();
+            }
+            (None, Some(y)) =&gt; {
+                recv[i] = *y;
+                b_cur = bi.next();
+            }
+            (None, None) =&gt; {
+                return;
+            }
+        }
+    }
+}
+</code></pre>
+
+<p>When I run the code above, I get the output:</p>
+
+<pre><code>[boom.rs:4] r = [
+    10,
+    20,
+    20,
+    40,
+    60,
+]
+</code></pre>
+
+<p>which is not quite right! The third element of the generated array is 20,
+instead of 30.</p>
+
+<p>This toy example is small enough that you might be able to see the bug from
+immediate inspection. Adding more test cases to the run might also make the
+problem apparent. But I am going to use it to illustrate how to use a hardware
+watchpoint to jump immediately to the point in the control flow where the third
+element of the <code>recv</code> array is overwritten.</p>
+
+<p>After starting up the debugger, we let it evaluate the line that creates
+the destination array:</p>
+
+<pre><code>(gdb) start
+Temporary breakpoint 1, boom::main () at boom.rs:2
+2       let mut r = [99, 98, 97, 96, 95];
+(gdb) next
+3       merge(&amp;mut r, &amp;[10, 30], &amp;[20, 40, 60]);
+(gdb) 
+</code></pre>
+
+<p>Next, lets first check that we understand what we are looking at:</p>
+
+<pre><code>(gdb) print r
+$1 = [99, 98, 97, 96, 95]
+(gdb) print r[2]
+$2 = 97
+</code></pre>
+
+<p>Yep: We have our destination array <code>r</code>, and it currently has 97 as its
+third element <code>r[2]</code>.</p>
+
+<p>So we tell the debugger that we want it to break as soon as that location
+is changed, and then let the program run!</p>
+
+<pre><code>(gdb) watch -location r[2]
+Hardware watchpoint 2: -location r[2]
+(gdb) continue
+Continuing.
+
+Hardware watchpoint 2: -location r[2]
+
+Old value = 97
+New value = 20
+boom::merge (recv=&amp;mut [i32](size=5) = {...}, a=&amp;[i32](size=2) = {...}, b=&amp;[i32](size=3) = {...}) at boom.rs:29
+29                  b_cur = bi.next();
+(gdb) 
+</code></pre>
+
+<p>We are now within the body of <code>fn merge</code> instead of <code>fn main</code> (as you might have
+expected), immediately after the mutation occured:</p>
+
+<pre><code class="rust">            (None, Some(y)) =&gt; {
+                recv[i] = *y;
+                b_cur = bi.next();
+            }
+</code></pre>
+
+<p>And indeed, if we print out <code>recv</code> at this point, we can see that the
+array has been &ldquo;corrupted&rdquo;, since we now see the two copies of 20 in the
+output:</p>
+
+<pre><code>(gdb) p recv
+$3 = &amp;mut [i32](size=5) = {10, 20, 20, 96, 95}
+(gdb) ```
+</code></pre>
+
+<p>I am running with the <code>rust-gdb</code> command here, which has extensions for
+printing slices nicely. If you were doing this under just normal <code>gdb</code>, then
+you would see something like this instead.</p>
+
+<pre><code>(gdb) p recv
+$3 = &amp;mut [i32] {data_ptr: 0x7fffffffe238, length: 5}
+</code></pre>
+
+<p>This kind of break-on-write is most useful for <em>unsafe</em> languages, when you have
+data being corrupted due to out of bounds accesses. One certainly can encode
+examples of that in unsafe Rust, but we also do not expect them to arise as
+frequently.</p>
+
+<p>But <em>honestly</em> (a ha): Is this actually revealing anything about the core problem
+here? The logic at <em>this</em> <code>match</code>-arm is entirely sound: if we have <code>(None,
+Some(y))</code> for our two cursors traversing the slices, then we should pass along
+<code>y</code> and keep traversing down the right cursor. Whatever the bug is, it is
+arising somewhere else, before we even get here.</p>
+
+<a name="Reversible.Debugging"></a>
+<h2>Reversible Debugging</h2>
+
+<p>If I were restricting my attention to <code>gdb</code>/<code>rust-gdb</code> alone, this would be a
+point where I would start talking about re-running the program and stepping
+through it carefully, or trying to hypothesize points of interest based on
+analyzing the source code and setting breakpoints at those points. But if we
+were going to do that, then we might as well invest our time adding some of
+those logging statements discussed above, because I think those would show the
+problem here just as fast, if not faster!</p>
+
+<p>My goal is to show you an <em>alternative</em> strategy, that works for code bases that
+you are not that familiar with.</p>
+
+<p>Lets continue looking at the merge example, but let us now run it under <a href="https://rr-project.org/"><code>rr.</code></a></p>
+
+<p>First we record a run of interest:</p>
+
+<pre><code>% rr record ./boom
+rr: Saving execution to trace directory `/home/pnkfelix/.local/share/rr/boom-2'.
+[boom.rs:4] r = [
+    10,
+    20,
+    20,
+    40,
+    60,
+]
+% 
+</code></pre>
+
+<p>With that recording in place, we can replay the run under <code>rr</code>, which gives an
+interface similar to <code>gdb</code>. (And we will tell <code>rr</code> that we want it to use
+<code>rust-gdb</code> as our debugger to get those extensions for rendering Rust
+collections.)</p>
+
+<pre><code>% rr replay -d ~/.cargo/bin/rust-gdb
+</code></pre>
+
+<p>Our initial interaction with <code>rr</code> will be much like how we interacted with <code>gdb</code>
+above: we&rsquo;ll start the program, set a hardware watchpoint for the third array
+element, and let it run forward.</p>
+
+<pre><code>(rr) break main
+Breakpoint 1 at 0x55e4f162f437: main. (2 locations)
+(rr) c
+Continuing.
+
+Breakpoint 1, 0x000055e4f162fae0 in main ()
+(rr) next
+Single stepping until exit from function main,
+which has no line number information.
+
+Breakpoint 1, boom::main () at boom.rs:2
+2       let mut r = [99, 98, 97, 96, 95];
+(rr) 
+3       merge(&amp;mut r, &amp;[10, 30], &amp;[20, 40, 60]);
+(rr) watch -location r[2]
+Hardware watchpoint 2: -location r[2]
+(rr) c
+Continuing.
+
+Hardware watchpoint 2: -location r[2]
+
+Old value = 97
+New value = 20
+boom::merge (recv=&amp;mut [i32](size=5) = {...}, a=&amp;[i32](size=2) = {...}, b=&amp;[i32](size=3) = {...}) at boom.rs:29
+29                  b_cur = bi.next();
+(rr) 
+</code></pre>
+
+<p>But now that we have reached this point in <em>replay</em>, we can rewind time.
+We can ask questions like &ldquo;how did <code>a_cur</code> (the left-hand side of the tuple) become <code>None</code> already, without us ever emitting 30 to the <code>recv</code> array?
+Well, the question doesn&rsquo;t <em>quite</em> look like that. But we can ask "When was <code>a_cur</code> last written to before this point?&rdquo;, which ends up effectively the same question.</p>
+
+<pre><code>(rr) watch a_cur
+Hardware watchpoint 3: a_cur
+(rr) 
+</code></pre>
+
+<p>Now we tell the system to run backwards.</p>
+
+<pre><code>(rr) reverse-continue
+Continuing.
+
+Hardware watchpoint 2: -location r[2]
+
+Old value = 20
+New value = 97
+0x000055e4f162fa95 in boom::merge (recv=&amp;mut [i32](size=5) = {...}, a=&amp;[i32](size=2) = {...}, b=&amp;[i32](size=3) = {...}) at boom.rs:28
+28                  recv[i] = *y;
+(rr)
+</code></pre>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+The <code>gdb</code> output is potentially confusing because the notions of &ldquo;Old&rdquo; and &ldquo;New&rdquo;
+are inverted here. To dive deeper into this topic, you might consider the
+watching the films Primer or TENET.
+</span></p>
+
+<p>We still have our first watch point in place for <code>r[2]</code>, so it halted almost
+immediately. (When we were running forward, a watchpoint makes us stop right
+after the write occurs. When we run backwards, a watchpoint makes us stop right
+before the write occurs.)</p>
+
+<p>Let us keep going backwards.</p>
+
+<pre><code>(rr) reverse-continue
+Continuing.
+
+Hardware watchpoint 3: a_cur
+
+Old value = core::option::Option&lt;&amp;i32&gt;::None
+New value = core::option::Option&lt;&amp;i32&gt;::Some(0x55e4f1664004)
+boom::merge (recv=&amp;mut [i32](size=5) = {...}, a=&amp;[i32](size=2) = {...}, b=&amp;[i32](size=3) = {...}) at boom.rs:20
+20                      a_cur = ai.next();
+(rr) 
+</code></pre>
+
+<p>And now we see where <code>a_cur</code> is being assigned <code>None</code>: line 20:</p>
+
+<pre><code class="rust">        match (a_cur, b_cur) {
+            (Some(x), Some(y)) =&gt; {
+                if *x &lt;= *y {
+                    recv[i] = *x;
+                    a_cur = ai.next();
+                } else {
+                    recv[i] = *y;
+                    a_cur = ai.next(); // here's the assignment
+                }
+            }
+            ...
+        }
+</code></pre>
+
+<p>And if you look at this, you might see the problem: in that arm of the <code>if</code>, we
+are copying over the right-hand tuple value (<code>*y</code>, from <code>b_cur</code>), but we are
+advancing the <em>left-hand</em> cursor, <code>a_cur</code>.</p>
+
+<p>With that insight, we can make an easy fix: replace line 20 with</p>
+
+<pre><code class="rust">                    b_cur = bi.next(); // was `a_cur = ai.next();`
+</code></pre>
+
+<p>With that change in place, the code works:</p>
+
+<pre><code>[boom.rs:4] r = [
+    10,
+    20,
+    30,
+    40,
+    60,
+]
+</code></pre>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+<em>This</em> is a case where the ability to explore memory
+and add printouts from the debugger is crucial: Because now we are exploring the
+behavior of one specific trace, and we do not always have the opportunity to
+try to recreate the trace on a new version of the program.
+</span></p>
+
+<p>There are other advantages provided by <code>rr</code>. For example, record/replay means
+that you can investigate a trace repeatedly. Each time you replay the trace,
+you&rsquo;ll observe the same execution; and you can add breakpoints (and print
+statements on those breakpoints) on that exact trace as it replays. This is
+invaluable for tracking down bugs that are intermittent or that depend on subtle
+event orderings.</p>
+
+<a name="Closing.Thoughts"></a>
+<h2>Closing Thoughts</h2>
+
+<p>I started writing this post thinking &ldquo;I&rsquo;m excited about debuggers! Why is no one
+in the Rust community using them?&rdquo; As I dug into the topic, I kept asking myself
+&ldquo;what feature is provided here that people cannot more readily get via their
+logging instrumentation? What value <em>am</em> I getting from this?&rdquo;</p>
+
+<p>As you might infer from my &ldquo;Honestly&rdquo; notes above, I had to admit that
+the advantages of a debugger when compared to logging instrumentation
+may be limited in scope. At least, that&rsquo;s how I see things with typical
+debugging workflows.</p>
+
+<p>Tools like <code>rr</code> open up <em>new</em> debugging workflows, one of which I delved into
+above. I plan to write more in the future about other such new workflows, such
+as ones provided by services like <a href="https://pernos.co/">pernos.co</a>. More generally, I want to spend
+some time thinking about the nature of debugging: how it links in with how we
+develop features, how we communicate our ideas, and how we validate our models.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Road to TurboWish part 3: Design]]></title>
@@ -1968,542 +2541,6 @@ Hope that you copied over all your live objects from 2015!</p>
 </script>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Surfaces and Signatures: Component Privacy versus Dependence]]></title>
-    <link href="http://blog.pnkfx.org/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency/"/>
-    <updated>2015-12-19T22:30:00+01:00</updated>
-    <id>http://blog.pnkfx.org/blog/2015/12/19/signatures-and-surfaces-thoughts-on-privacy-versus-dependency</id>
-    <content type="html"><![CDATA[<p>I have had some thoughts on what <em>privacy</em> is used for in programming
-languages, and how it differs from the notion of <em>dependence</em> between
-modules (or at least compilation units) in a language like Rust.
-And I thought I should share.</p>
-
-<!-- more -->
-
-
-<p>I have been working on an
-RFC<label for='&lsquo;arr-eff-what&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;arr-eff-what&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;<a </span>
-meant to increase the expressiveness of Rust&rsquo;s privacy construct
-(the <code>pub</code> modifier), and in the process hopefully simplify the mental
-model for what privacy means there.</p>
-
-<p>However, I kept finding myself diving into regressions in my draft RFC
-document: idealized hypothetical semantics for privacy, and
-discussions of what motivates different aspects of that semantics.</p>
-
-<p>Eventually I realized that such text was going to really bog down the
-RFC itself (which is meant to describe a relatively simple language
-change);
-so I decided it was time for a blog
-post<label for='&lsquo;gc-posts&rsquo;' class='margin-toggle sidenote-number'></label><input type='checkbox' id='&lsquo;gc-posts&rsquo;' class='margin-toggle'/><span class='sidenote'>&lsquo;Yes, </span>,
-if for no other reason than to provide a place for me to cut-and-paste
-all those digressions.</p>
-
-<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
-Bugs including:
-&ldquo;Trait re-exports fail due to privacy of containing module&rdquo; (<a href="https://github.com/rust-lang/rust/issues/18241">#18241</a>),
-&ldquo;Rules governing references to private types in public APIs not enforced in impls&rdquo; (<a href="https://github.com/rust-lang/rust/issues/28325">#28325</a>)
-&ldquo;Type alias can be used to bypass privacy check&rdquo; (<a href="https://github.com/rust-lang/rust/issues/28450">#28450</a>),
-&ldquo;Private trait&rsquo;s methods reachable through a public supertrait&rdquo; (<a href="https://github.com/rust-lang/rust/issues/28514">#28514</a>),
-&ldquo;Non-exported type in exported type signature does not error&rdquo; (<a href="https://github.com/rust-lang/rust/issues/29668">#29668</a>),
-</span>
-There are a number of bugs that have been filed against the privacy
-checking in Rust; some are simply implementation issues, but the
-comment threads in the issues make it clear that in some cases,
-different people have very different mental models about how privacy
-interacts with aliases (e.g. <code>type</code> declarations) and re-exports.</p>
-
-<p>The existing privacy rules in Rust try to enforce two things:</p>
-
-<ol>
-<li><p>When an item references a path, all of the names on that path need to
-be visible (in terms of privacy) in the referencing context, and,</p></li>
-<li><p>Private items should not be exposed in the surface of public API&rsquo;s.</p></li>
-</ol>
-
-
-<p>One might reasonably ask: What do I mean by &ldquo;visible&rdquo;, or &ldquo;surface&rdquo;?</p>
-
-<p>For Rust today, &ldquo;visible&rdquo; means &ldquo;either (1.) public, via <code>pub</code>, (2.)
-defined in the current module, or (3.) defined in a parent of the
-current module.&rdquo;</p>
-
-<p>But &ldquo;surface&rdquo; is a bit more subtle, and before we discuss it, I want
-to talk a bit about the purpose of &ldquo;visibility&rdquo; in the first place.</p>
-
-<a name="Digression:.a.dependence.need.not.be.visible"></a>
-<h2>Digression: a dependence need not be visible</h2>
-
-<p>In a hypothetical idealized programming language (<em>not</em> Rust), and
-under a particularly extreme reading of the term &ldquo;private&rdquo;, changes to
-definitions that are private to one module would have no effect on the
-validity of pre-existing uses from other modules. Another way of
-looking at this: changes to private definitions in one compilation
-unit would not require other compilation units to be recompiled, and
-will not cause programs that previously type-checked to stop
-type-checking.</p>
-
-<p>One form of this ideal is the following:</p>
-
-<script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"></script>
-
-
-<div id="extreme_private_calls"></div>
-
-
-<script>
-    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent"; node [shape="rect"]; subgraph cluster_1 { fn_a [label="pub fn a()"]; label="unit1"; } subgraph cluster_2 { fn_b [label="pub fn b()"]; fn_c [label="fn c()"]; fn_b -> fn_c [label="calls"]; label="unit2"; } fn_a -> fn_b [label="calls"]; }';
-    var elem = document.getElementById("extreme_private_calls");
-    elem.innerHTML = Viz(dot_source, "svg");
-</script>
-
-
-<p>In this picture, one can see that the <code>fn c()</code> is a private component
-of &ldquo;unit2&rdquo;: it may just be an implementation detail of the body of
-<code>pub fn b()</code>, that the author of &ldquo;unit2&rdquo; can revise at will or
-eliminate entirely, without requiring any changes to &ldquo;unit1&rdquo;
-downstream.</p>
-
-<p>A problem arises when one sees other kinds of composition, at least in
-language like Rust, where values are directly embedded into their
-containers.  For example, instead of function calls, imagine type
-definitions:</p>
-
-<script src="http://blog.pnkfx.org/javascripts/viz.js" charset="utf-8"></script>
-
-
-<div id="extreme_private_types"></div>
-
-
-<script>
-    var dot_source = 'digraph { rankdir="LR"; bgcolor="transparent"; node [shape="rect"]; subgraph cluster_1 { struct_a [label="pub struct A { \\l    b: unit2::B \\l}\\l"]; label="unit1"; } subgraph cluster_2 { struct_b [label="pub struct B { \\l    c: C \\l}\\l"]; struct_c [label="struct C {\\l    x: i32,\\l    y: i32\\l}\\l"]; label="unit2"; } struct_a -> struct_b [label="uses"]; struct_b -> struct_c[label="uses", constraint=false] }';
-    var elem = document.getElementById("extreme_private_types");
-    elem.innerHTML = Viz(dot_source, "svg");
-</script>
-
-
-<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
-In many other languages (e.g. Java, ML, Scheme), such
-changes do not require recompiling the downstream crate, because
-the members of structural types are just <em>references</em> to other heap-allocated
-values, rather than being directly embedded in the allocated structure.
-</span>
-In this situation, even though the <code>struct C</code> is not publicly
-accessible outside of &ldquo;unit2&rdquo;, changes to <code>struct C</code> will still
-require the downstream &ldquo;unit1&rdquo; to be recompiled (because the contents
-of <code>struct A</code>, and thus its size in bytes, may have changed along with
-<code>struct C</code>).</p>
-
-<p>So, what does it <em>mean</em> that <code>C</code> is &ldquo;private&rdquo;, if there is still a
-dependence from the contents of &ldquo;unit1&rdquo; on the supposedly private
-definition of <code>struct C</code>?</p>
-
-<p>My answer to this is to distinguish between <em>visibility</em> versus <em>dependency</em>.</p>
-
-<p>In the above picture, <code>struct A</code> in &ldquo;unit1&rdquo; has a dependence on the
-definition of <code>struct C</code> in &ldquo;unit2&rdquo;. But <code>struct C</code> remains
-<em>invisible</em> to <code>struct A</code>, in the sense that one cannot actually write
-a direct reference to that type in the context of &ldquo;unit1.&rdquo;</p>
-
-<a name="What.is.visibility.for."></a>
-<h2>What is visibility for?</h2>
-
-<p>Some basic definitions: An item is just as it is declared in the Rust
-<a href="https://doc.rust-lang.org/reference.html#items">reference manual</a>: a component of a crate, located at a fixed path
-(potentially at the &ldquo;outermost&rdquo; anonymous module) within the module
-tree of the crate.</p>
-
-<p>Every item can be thought of as having some hidden implementation
-component(s) along with an exposed surface API.</p>
-
-<p>So, for example, in:
-<code>rust
-pub fn foo(x: Input) -&gt; Output { Body }
-</code>
-the surface of <code>fn foo</code> includes <code>Input</code> and <code>Output</code>, while the <code>Body</code> is
-hidden.</p>
-
-<p>What I would like is to establish the following
-invariant<label for='&lsquo;inv&rsquo;' class='margin-toggle'> &#8853;</label><input type='checkbox' id='&lsquo;inv&rsquo;' class='margin-toggle'/><span class='marginnote'>&lsquo;Yes, </span>
-for the language: if an item <code>I</code> is accessible in context <code>C</code>, then the
-surface for <code>I</code> does not expose anything that is inaccessible to <code>C</code>.</p>
-
-<a name="Intuition.behind.what..surface..means"></a>
-<h2>Intuition behind what &ldquo;surface&rdquo; means</h2>
-
-<p>I am taking care to distinguish between the phrase &ldquo;exposed surface
-API&rdquo; (more simply put, &ldquo;surface API&rdquo; or just &ldquo;surface&rdquo;), versus the
-more common unqualified phrase &ldquo;API&rdquo;, because some items have
-components that I argue are part of the item&rsquo;s programming interface,
-but are not part of the publicly exposed surface of the item (further
-discussed in a <a href="#Why.is.a..surface..not.the.same.as.a.signature.">later section</a>).</p>
-
-<p>The inutition behind the term &ldquo;surface&rdquo; is this:
-The exposed surface of an item is all of the
-components<label for='&lsquo;surface-components&rsquo;' class='margin-toggle'> &#8853;</label><input type='checkbox' id='&lsquo;surface-components&rsquo;' class='margin-toggle'/><span class='marginnote'>&lsquo;&ldquo;components&rdquo; </span>
- that the client operation&rsquo;s context must be able to reference to in order to use this
-item legally.</p>
-
-<p>There are two halves to this, that are roughly analogous to the output
-and input types of a function: ensuring that local reasoning holds,
-and ensuring an interface is actually usable.</p>
-
-<a name="Restricting.output.surface.enables.local.reasoning"></a>
-<h3>Restricting output surface enables local reasoning</h3>
-
-<p>A function&rsquo;s return type is part of its exposed surface, because if
-a module has decided that a type <code>T</code> should be inaccessible in some
-outer context <code>C</code>, then we do not want a value of that type to flow
-into <code>C</code> while still having the type
-<code>T</code>.<label for='&lsquo;boxes&rsquo;' class='margin-toggle'> &#8853;</label><input type='checkbox' id='&lsquo;boxes&rsquo;' class='margin-toggle'/><span class='marginnote'>&lsquo;Of </span></p>
-
-<p>In other words, we wish to reject such code in order to enable
-module authors to employ <em>local reasoning</em> about all possible
-locations in the source code that the operations on instances of
-<code>T</code> could be invoked.</p>
-
-<p>This <em>is</em> a soundness criteria: People need to be able to employ
-this kind of reasoning.</p>
-
-<a name="Restricting.input.surface.catches.API.mistakes"></a>
-<h3>Restricting input surface catches API mistakes</h3>
-
-<p>A function&rsquo;s input types are part of its exposed surface, because
-without access to such types, the function is not callable.</p>
-
-<p>In other words, we wish to reject such code in order to catch bugs
-where a crate is <em>accidentally providing</em> a function without realizing
-that it cannot actually be used in the contexts that the author wants
-it available in.</p>
-
-<p>This is not a soundness criteria; it is just a language usability one.<label for='&lsquo;prioritizing-halves&rsquo;' class='margin-toggle'> &#8853;</label><input type='checkbox' id='&lsquo;prioritizing-halves&rsquo;' class='margin-toggle'/><span class='marginnote'>&lsquo;In </span></p>
-
-<a name="Why.is.a..surface..not.the.same.as.a.signature."></a>
-<h2>Why is a &ldquo;surface&rdquo; not the same as a signature?</h2>
-
-<p>Intuitively, one might ask: &ldquo;well, this is easy: the <em>signature</em> of
-<code>fn foo</code> is <code>fn (Input) -&gt; Output</code>; does that not suffice as the
-description of the <em>surface</em> of <code>fn foo</code>?&rdquo;</p>
-
-<p>I am distinguishing the above notion of &ldquo;surface&rdquo; from the idea of a
-&ldquo;signature&rdquo;, for the following reason: To my mind, the signature
-(e.g. of a type or a function) contains all of the meta-data needed to
-check (in the current crate or in other crates) whether a item is
-being used properly. Such a signature may include references to names
-that are not actually accessible in the current context. Compare this
-to the <em>surface</em>, which is the subset of the names of the signature
-that <em>must</em> be accessible in any context where the item is itself
-accessible.</p>
-
-<p>One example of where this kind of thinking can be applied is
-<code>where</code> clauses. A where-clause can reference things that are not
-accessible outside of the module of the function.  I would consider
-such a <code>where</code> clause to still be part of the function&rsquo;s signature
-(e.g., I would expect the compiler to reject my attempt to call the
-function if I violate the encoded constraint), but I do not
-necessarily consider the types or traits within that where clause part
-of the surface API, since there are hidden parts to the constraint
-that I do not have access to in my calling module.</p>
-
-<p>Here is a concrete example that runs in Rust 1.5:</p>
-
-<pre><code class="rust">mod a {
-    struct S(&amp;'static str);                 // private struct type S
-    pub trait Trait { fn compute(&amp;self) -&gt; i32; }
-
-    impl Trait for (i32, S) {
-        fn compute(&amp;self) -&gt; i32 { self.0 + ((self.1).0.len() as i32) }
-    }
-
-    pub fn foo&lt;X&gt;(x: X) -&gt; i32
-        where (X, S): Trait // where clause refers to private type S
-    {
-        (x,S("hi")).compute()
-    }
-}
-
-fn main() {
-    println!("{}", a::foo(3));
-}
-</code></pre>
-
-<p>There are other examples that we may want to support in the future.
-For example, Rust (version 1.5) considers bounding a type parameter
-directly via a private trait to be illegal, but we might reasonably
-revise the rules to say that while such a bound is part of the
-signature, it need not be part of the <em>surface</em>.</p>
-
-<p>(A very similar construction is allowed in Rust 1.5: A <code>pub</code> trait
-can have a private <em>parent</em> trait, which allows us to encode the
-latter construction anyway: the surface area of a function does not
-include the parent traits of bounds on its type parameters.)</p>
-
-<p>That&rsquo;s a lot of text to read. Here is the kind of code I am talking
-about:</p>
-
-<pre><code class="rust">mod a {
-    struct S(String);                      // private type
-    trait Trait { fn make_s(&amp;self) -&gt; S; } // private trait
-    pub trait SubT: Trait { }              // public trait to placate rustc
-
-    pub fn foo&lt;X:SubT&gt;(x: X) { // public fn that external code *can* use.
-        let s: S = x.make_s();
-        s.do_stuff();
-    }
-
-    // Impl trait for both () and i32, so clients can call `foo` on () or i32.
-    impl Trait for () { fn make_s(&amp;self) -&gt; S { S(format!("():()")) } }
-    impl Trait for i32 { fn make_s(&amp;self) -&gt; S { S(format!("{}:i32", self)) } }
-    impl SubT for () {}
-    impl SubT for i32 {}
-
-    impl S { fn do_stuff(&amp;self) { println!("stuff with {}", self.0); } }
-}
-
-fn main() {
-    a::foo(());
-    a::foo(3);
-}
-</code></pre>
-
-<p>In short: the term &ldquo;surface API&rdquo; here is <em>not</em> synonymous with the
-term &ldquo;signature&rdquo;.</p>
-
-<p>Assuming that you believe me that this new term, &ldquo;surface API&rdquo;, is
-actually warranted, you might now ask: &ldquo;How does one determine the
-surface API of an item?&rdquo; That is one of those questions that may sound
-trivial at first, but it is actually a bit subtle.</p>
-
-<p>Let us explore.</p>
-
-<a name="Some.items.can.change.their.surface.based.on.context"></a>
-<h3>Some items can change their surface based on context</h3>
-
-<p>For some items, such as <code>fn</code> definitions, the surface API is the same
-regardless of the context of where the item is used; for example, if a
-function is visible to you, then its surface API is simply its
-argument and return types, regardless of from where the function is
-referenced.</p>
-
-<p>However, the previous rule does not generally hold for most items; in
-general, the exposed surface of a given item is dependent on the
-context where that item is referenced.</p>
-
-<p>The main examples of this are:</p>
-
-<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
-All of these bullets are phrased as &ldquo;can be hidden&rdquo;, i.e.,
-the visibility may be restricted. However, in Rust today,
-one can write: <code>mod a{struct X{pub y: i32}}</code>
-I may want to generalize the statements here. (Then again, I
-am not clear whether there is any way to actually <em>use</em> the
-<code>y</code> field that has been exposed in this way.)
-</span></p>
-
-<ul>
-<li><p><code>struct</code> fields can be hidden in a <code>struct</code>,</p></li>
-<li><p>inherent methods can be hidden relative to the type they are attached to, and</p></li>
-<li><p>items can be hidden in a <code>mod</code>.</p></li>
-</ul>
-
-
-<p>In all cases where a surface component can be hidden in this
-context-dependent fashion, there is an associated <code>pub</code>-modifier
-present on the definition of that component.</p>
-
-<p>As an example of how the surface of a <code>struct</code> is context dependent,
-the following is legal:</p>
-
-<pre><code class="rust">mod a {
-    #[derive(Default)]
-    struct Priv(i32);
-
-    pub mod b {
-        #[derive(Default)]
-        pub struct F {
-            pub    x: i32,
-                   y: ::a::Priv,
-        }
-
-        // ... accesses to F.{x,y} ...
-    }
-    // ... accesses to F.x ...
-}
-
-mod k {
-  use a::b::F;
-  // ... accesses to F and F.x ...
-}
-</code></pre>
-
-<p>Within <code>mod b</code>, the surface API of <code>F</code> includes both the fields <code>x</code>
-and <code>y</code>, which means that the use of the type <code>Priv</code> is okay, since
-that is accessible from the context of <code>mod b</code>.</p>
-
-<p>Elsewhere, such as within <code>mod k</code>, the surface API of <code>F</code> is just the
-field <code>x</code>. But this is again okay, because the type of <code>x: i32</code> is
-visible everywhere.</p>
-
-<a name="Aliases.and.translucency"></a>
-<h3>Aliases and translucency</h3>
-
-<p>Some items, such as <code>type</code> aliases, <code>const</code> definitions, or rebinding
-imports a la <code>use &lt;path&gt; as &lt;ident&gt;</code>, can act to introduce named aliases
-to an item.</p>
-
-<p>In such cases, the alias itself has its own associated visibility:</p>
-
-<pre><code class="rust">mod a {
-    pub struct S(String); // public type
-    type Alias1 = S;      // private alias to the type
-}
-
-pub use a::S as Alias2;   // public alias to the type
-</code></pre>
-
-<p>The surface of simple aliases is also simple: the surface of an
-alias
-is just the paths referenced on its right-hand side.</p>
-
-<p>As a small additional wrinkle, type aliases can be type-parametric. In
-general, the exposed surface of a type alias are the bounds on its
-type parameters, plus the paths referenced on its left-hand side.</p>
-
-<p>So, for example, according to the rules today:</p>
-
-<pre><code class="rust">mod bad_aliases {
-    struct Private1(String); // private type
-    pub type PubAlias1 = Private1; // ERROR: private type exposed in pub surface
-
-    trait PrivateTrait { }
-    pub type PubAlias2&lt;X:PrivateTrait&gt; = i32; // ERROR: private trait exposed in pub surface
-}
-</code></pre>
-
-<p>The more interesting issue is how <em>other</em> surface APIs are influenced
-when they reference an alias.</p>
-
-<p>For example:</p>
-
-<pre><code class="rust">mod a {
-    pub struct S(String); // public type
-    type Alias1 = S;      // private alias to the type
-
-    pub fn twice(s: Alias1) -&gt; String { s.0 }
-    //              ~~~~~~
-    //                 |
-    // Should a `pub fn` be able to reference a private alias,
-    // if it points to a suitably public type (like `S` here)?
-}
-
-pub use a::S as Alias2;   // public alias to the type
-</code></pre>
-
-<p>Should it be legal for us to publicly export <code>fn twice</code> from <code>mod a</code>,
-even though it&rsquo;s signature references a private type alias?</p>
-
-<p>The language team recently <a href="https://github.com/rust-lang/rust/pull/29973#issuecomment-165723770">debated</a> this topic, because
-it was suggested that allowing this would <a href="https://github.com/rust-lang/rust/pull/29973#issuecomment-158686899">reduce breakage</a>
-from a pull request.</p>
-
-<p>The conclusion for now was to continue to disallow the reference to
-the private alias in the signature of a public function.</p>
-
-<p>However, there are similar cases that <em>are</em> allowed today (also
-discussed on that same PR), mainly involving references to <code>const</code> paths
-from types in such signatures.</p>
-
-<pre><code class="rust">mod a {
-    const LEN: usize = 4;
-    pub fn max(a: [i32; LEN]) -&gt; i32 { a.iter().map(|i|*i).max().unwrap() }
-    //                  ~~~
-    //                   |
-    // A reference to a private const in a public signature
-    // is legal in Rust today.
-}
-
-fn main() {
-    println!("{}", a::max([1,4,2,3]));
-}
-</code></pre>
-
-<p>I have not made up my mind as to which option would be better here.
-We may decide to leave things as they are, or loosen the rules for
-type aliases (so that they act more like <code>const</code> in the latter code),
-or we may tighten the rules for references to <code>const</code> (so that one
-would have to make <code>LEN</code> in the above code <code>pub</code>).</p>
-
-<p>Regardless of what path we take, I think it makes sense today for the
-language specification to at least identify a high-level abstraction
-here, rather than dealing with each alias-creating form like <code>type</code> or
-<code>const</code> or <code>use</code> individually in an ad-hoc manner.</p>
-
-<p>Namely, I want to pin down the idea of a <em>translucent name</em>. Such a
-name is not part of the API surface where it occurs; instead, an
-occurrence adds the surface of the alias statement itself to the API
-surface.</p>
-
-<p>So, as another artifical example, if we were to change the language so
-that <code>type</code> aliases were <em>translucent</em> when determining the exposed
-surface of an API, then we might have the following:</p>
-
-<pre><code class="rust">mod a { // (not legal Rust today)
-    pub struct S(String); // public type
-    pub trait Bound { type X; fn trait_method(&amp;self) -&gt; Self::X; }
-    impl Bound for String { type X = String; fn trait_method(&amp;self) -&gt; String { self.clone() } }
-    impl Bound for S { type X = String; fn trait_method(&amp;self) -&gt; String { self.0.clone() } }
-
-    type Alias&lt;T: Bound&gt; = (T, T::X, S); // private Alias, with surface = {Bound, S}
-
-    pub fn free_fun&lt;T: Bound&lt;X=String&gt;&gt;(a: Alias&lt;T&gt;) -&gt; String
-    //                 ~~~~~   ~~~~~~      ~~~~~        ~~~~~~
-    //  free_fun has     |       |           |            |
-    //     surface = { Bound, String, surface(Alias), String }
-    //             = { Bound, String,    Bound, S   , String }
-    //             = { Bound, S, String }
-    //
-    // which is compatible with `free_fn` being `pub`, because
-    // `Bound`, `S`, and `String` are all `pub`.
-    {
-        format!("{}{}", a.0.trait_method(), (a.1).0)
-    }
-}
-</code></pre>
-
-<p>Note 1: Even though <code>Alias</code> is type-parameteric over <code>T</code>, that
-parameter would not be considered part of its surface. Anyone using
-the alias would have to have access to whatever type they plugged in
-there, of course.</p>
-
-<p>Note 2: Type parameter bounds not enforced on type aliases in Rust yet.</p>
-
-<p>This computation and questions here would become a little more
-interesting if we had restricted visibility access modifiers on
-associated items in traits. However, we do not have to consider it:
-All associated items are implicitly <code>pub</code>, and so we do not need to
-worry about whether the <code>X</code> in a projection like <code>T::X</code> is visible.
-All that matters is whether the trait <code>Bound</code> itself is visible (which
-is already reflected in the surfaces where <code>Bound</code> is used).</p>
-
-<a name="Conclusion"></a>
-<h2>Conclusion</h2>
-
-<p>Okay, that was of a bit of a meandering tour through some
-of the issues I have been thinking about.</p>
-
-<p>The big ideas I want to stress are these:</p>
-
-<ul>
-<li><p>The &ldquo;surface&rdquo; of an item can be different from the &ldquo;signature&rdquo; of
-that item.</p></li>
-<li><p>Restricting the components in a surface of an item according to the
-visibility of that item (1.) enables local reasoning and (2.)
-catches API mistakes.</p></li>
-</ul>
 
 ]]></content>
   </entry>

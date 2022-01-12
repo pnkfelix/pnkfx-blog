@@ -1,0 +1,1046 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Why I use a debugger - The {pnk}f(eli)x Blog</title>
+  <meta name="author" content="Felix S. Klock II">
+
+  
+  <meta name="description" content="I have been thinking about the Rust debugging experience, and I want to try
+tease apart what value a debugger provides to me. Last year, I gave a &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://blog.pnkfx.org/blog/2022/01/10/why-i-use-a-debugger/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="The {pnk}f(eli)x Blog" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<!-- mermaid support as documented at http://insightfultroll.com/blog/2021/03/30/using-mermaid-with-jekyll/ -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true});</script>
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">The {pnk}f(eli)x Blog</a></h1>
+  
+    <h2>The informal ramblings of an ex-pat PL enthusiast</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:blog.pnkfx.org" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Why I Use a Debugger</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2022-01-10T11:12:57-05:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I have been thinking about the Rust debugging experience, and I want to try
+tease apart what value a debugger provides to me.</p>
+
+<!-- more -->
+
+
+<p>Last year, I gave a talk at <a href="https://plus.qconferences.com/plus2021/presentation/reversible-debugging-rr">QCon</a> that promoted the use of <a href="https://rr-project.org/"><code>rr</code></a> as a tool
+for exploring Rust code. I wanted to convey an <em>excitement</em> about debugging,
+about using this tool to dive into the weeds of your program&rsquo;s behavior.</p>
+
+<p>Since then, I have continued to talk to developers, promoting <code>rr</code> (and the
+associated service <a href="https://pernos.co/">pernos.co</a>). And I heard Rust developers say that they are
+happy with their experience using instrumentation such as logging statements or
+the <a href="https://tracing.rs/tracing/">tracing</a> infrastructure.</p>
+
+<p>I have to agree: Logging statements <em>are</em> useful, and sometimes they are all you
+need. Here is a great quote from &ldquo;The Practice of Programming&rdquo;, by Kernighan and
+Pike:</p>
+
+<blockquote><p>As personal choice, we tend not to use debuggers beyond getting a stack trace or the value of a variable or two. One reason is that it is easy to get lost in details of complicated data structures and control flow; we find stepping through a program less productive than thinking harder and adding output statements and self-checking code at critical places. Clicking over statements takes longer than scanning the output of judiciously-placed displays. It takes less time to decide where to put print statements than to single-step to the critical section of code, even assuming we know where that is. More important, debugging statements stay with the program; debugging sessions are transient.</p></blockquote>
+
+<p>This quote is apt for many reasons; I will revisit it again before the end of
+this post.</p>
+
+<p>I do not know the typical way that people use debuggers. But I can imagine it
+looks much like the image depicted above: you start your program, you use a
+single-step command to go through it line by line, and you examine raw memory
+dumps to try to figure out what the machine is doing. After that initial
+exploration, you might set breakpoints at specific lines of code, and then tell
+the debugger to continue running until it hits any of those breakpoints.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Advanced debugger users will set <em>conditional</em> breakpoints, which only halt the
+program if a specific predicate holds when it hits the breakpoint, or even
+<em>scripted</em> breakpoints, which will automatically execute a series of debugger
+commands each time they hit the breakpoint. One neat trick is that you often can
+end a script with <code>continue</code>, so that it seems as though the program never
+stopped at all, except for the side-effects on the debugger itself (such as
+setting <em>other</em> breakpoints).
+</span></p>
+
+<p>But that typical usage pattern doesn&rsquo;t really provide much value over just
+adding log statements. If all you want to do is learn what steps the computer
+took, and what data was in certain variables at those steps, printing to a log
+<em>is</em> a better way to achieve that.</p>
+
+<p>So, why am I advocating for more people to include a debugger as one of the tools
+to keep ready on their Rust development utility belt?</p>
+
+<p>There are four main features that a debugger gives me that are not always
+fulfilled by adding log statements:</p>
+
+<ul>
+<li><a href="#Object.Code.Inspection">object code inspection</a>,</li>
+<li><a href="#Raw.Control-Flow">raw control-flow</a>,</li>
+<li><a href="#Memory.Exploration">memory exploration</a>, and</li>
+<li><a href="#Hardware.Watchpoints">hardware watchpoints</a>.</li>
+</ul>
+
+
+<p>Of the four, i think hardware watchpoints are the best example of a capability
+that is both broadly useful and not typically available outside of a debugger.
+I will delve into each of these in turn below.</p>
+
+<a name="Object.Code.Inspection"></a>
+<h2>Object Code Inspection</h2>
+
+<p>By &ldquo;object code inspection&rdquo;, I mean that I can attach a debugger to any binary,
+without having to recompile anything. When your workflow is to add new print
+statements each time you want to inspect something new, that means editing your
+code and recompiling it. That edit-recompile-debug cycle has two problems: it can
+be slow (especially the recompilation step). Worse still, the edits can cause
+bugs to mysteriously go away, aka the <a href="https://en.wikipedia.org/wiki/Heisenbug">&ldquo;observer effect&rdquo;</a>.
+(To be fair, using a debugger can also cause those <a href="https://en.wikipedia.org/wiki/Heisenbug">Heisenbugs</a> to change
+behavior. This is where tools like <a href="https://rr-project.org/"><code>rr</code></a> can really shine.)</p>
+
+<p>How valuable is &ldquo;object code inspection&rdquo;? I have given two reasons to avoid the
+edit-recompile steps: reduced latency, and reducing the observer effect.</p>
+
+<p><em>Honestly:</em> It is not a frequent need for my current work. Much of my work
+involves either fixing bugs that reproduce readily in the face of source code
+changes, or adding features (which inherently requires source code changes).</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+However, in practice this can be very
+painful: We do not have much support for building an unoptimized <code>rustc</code> (it has
+a <em>very</em> long bootstrap time), but once you enable optimizations, the debugging
+experience degrades quite a bit in Rust today.
+</span></p>
+
+<p>There is one important exception here: <code>rustc</code> itself has a long bootstrap time;
+so I have often <em>tried</em> to use a debugger to debug <code>rustc</code> itself, rather than
+rely on an edit-recompile-debug cycle.</p>
+
+<a name="Raw.Control-Flow"></a>
+<h2>Raw Control-Flow</h2>
+
+<p>By &ldquo;raw control-flow&rdquo;, I mean that one can step through the individual assembly
+code instructions to see exactly what the machine is executing.</p>
+
+<p>For example, at a method invocation, one can step forward and discover how
+exactly to which function that invocation dispatches as it goes through <code>Deref</code>
+implementations until it finally reaches the target method.</p>
+
+<p>As another example, one can step through the the instructions corresponding to
+the subcomponents of a <code>match</code> pattern. This way, one might discover which parts
+matched and which failed to match, and in what order they were evaluated.</p>
+
+<p>Here is a concrete example of the latter:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">struct</span> <span class="n">P</span> <span class="p">{</span> <span class="n">a</span><span class="o">:</span> <span class="n">char</span><span class="p">,</span> <span class="n">b</span><span class="o">:</span> <span class="n">char</span><span class="p">,</span> <span class="n">c</span><span class="o">:</span> <span class="o">&amp;</span><span class="n">&#39;static</span> <span class="kt">str</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">p</span> <span class="o">=</span> <span class="n">P</span> <span class="p">{</span> <span class="n">a</span><span class="o">:</span> <span class="sc">&#39;h&#39;</span><span class="p">,</span> <span class="n">b</span><span class="o">:</span> <span class="sc">&#39;i&#39;</span><span class="p">,</span> <span class="n">c</span><span class="o">:</span> <span class="s">&quot;world&quot;</span> <span class="p">};</span>
+</span><span class='line'>    <span class="n">foo</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">foo</span><span class="p">(</span><span class="n">p</span><span class="o">:</span> <span class="n">P</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">match</span> <span class="n">p</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">P</span> <span class="p">{</span> <span class="n">b</span><span class="o">:</span> <span class="sc">&#39;i&#39;</span><span class="p">,</span> <span class="n">a</span><span class="o">:</span> <span class="sc">&#39;y&#39;</span><span class="p">,</span> <span class="n">c</span> <span class="p">}</span> <span class="o">=&gt;</span> <span class="nb">println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;yi, {}&quot;</span><span class="p">,</span> <span class="n">c</span><span class="p">),</span>
+</span><span class='line'>        <span class="n">P</span> <span class="p">{</span> <span class="n">a</span><span class="o">:</span> <span class="sc">&#39;h&#39;</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span> <span class="p">}</span> <span class="o">=&gt;</span> <span class="nb">println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;h{}, {}&quot;</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">),</span>
+</span><span class='line'>        <span class="n">_</span> <span class="o">=&gt;</span> <span class="n">panic</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;unmatched&quot;</span><span class="p">),</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After compiling the above with debuginfo enabled and running it under <code>gdb</code>,
+I can investigate the body of <code>foo</code> while its running:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span> <span class="n">step</span>
+</span><span class='line'><span class="n">boom</span><span class="o">::</span><span class="n">foo</span> <span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="p">...)</span> <span class="n">at</span> <span class="n">boom</span><span class="p">.</span><span class="n">rs</span><span class="o">:</span><span class="mi">9</span>
+</span><span class='line'><span class="mi">9</span>     <span class="k">match</span> <span class="n">p</span> <span class="p">{</span>
+</span><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span> <span class="n">disassemble</span>
+</span><span class='line'><span class="n">Dump</span> <span class="n">of</span> <span class="n">assembler</span> <span class="n">code</span> <span class="k">for</span> <span class="n">function</span> <span class="n">_ZN4boom3foo17h3035bcff6328b12bE</span><span class="o">:</span>
+</span><span class='line'>   <span class="mh">0x000055555555db70</span> <span class="o">&lt;+</span><span class="mi">0</span><span class="o">&gt;:</span>   <span class="n">sub</span>    <span class="err">$</span><span class="mh">0x128</span><span class="p">,</span><span class="o">%</span><span class="n">rsp</span>
+</span><span class='line'>   <span class="mh">0x000055555555db77</span> <span class="o">&lt;+</span><span class="mi">7</span><span class="o">&gt;:</span>   <span class="n">mov</span>    <span class="o">%</span><span class="n">rdi</span><span class="p">,</span><span class="mh">0x38</span><span class="p">(</span><span class="o">%</span><span class="n">rsp</span><span class="p">)</span>
+</span><span class='line'><span class="o">=&gt;</span> <span class="mh">0x000055555555db7c</span> <span class="o">&lt;+</span><span class="mi">12</span><span class="o">&gt;:</span>    <span class="n">cmpl</span>   <span class="err">$</span><span class="mh">0x69</span><span class="p">,</span><span class="mh">0x14</span><span class="p">(</span><span class="o">%</span><span class="n">rdi</span><span class="p">)</span>
+</span><span class='line'>   <span class="mh">0x000055555555db80</span> <span class="o">&lt;+</span><span class="mi">16</span><span class="o">&gt;:</span>  <span class="n">jne</span>    <span class="mh">0x55555555db8d</span> <span class="o">&lt;</span><span class="n">_ZN4boom3foo17h3035bcff6328b12bE</span><span class="o">+</span><span class="mi">29</span><span class="o">&gt;</span>
+</span><span class='line'>   <span class="mh">0x000055555555db82</span> <span class="o">&lt;+</span><span class="mi">18</span><span class="o">&gt;:</span>  <span class="n">mov</span>    <span class="mh">0x38</span><span class="p">(</span><span class="o">%</span><span class="n">rsp</span><span class="p">),</span><span class="o">%</span><span class="n">rax</span>
+</span><span class='line'>   <span class="mh">0x000055555555db87</span> <span class="o">&lt;+</span><span class="mi">23</span><span class="o">&gt;:</span>  <span class="n">cmpl</span>   <span class="err">$</span><span class="mh">0x79</span><span class="p">,</span><span class="mh">0x10</span><span class="p">(</span><span class="o">%</span><span class="n">rax</span><span class="p">)</span>
+</span><span class='line'>   <span class="mh">0x000055555555db8b</span> <span class="o">&lt;+</span><span class="mi">27</span><span class="o">&gt;:</span>  <span class="n">je</span>     <span class="mh">0x55555555db9d</span> <span class="o">&lt;</span><span class="n">_ZN4boom3foo17h3035bcff6328b12bE</span><span class="o">+</span><span class="mi">45</span><span class="o">&gt;</span>
+</span><span class='line'>   <span class="mh">0x000055555555db8d</span> <span class="o">&lt;+</span><span class="mi">29</span><span class="o">&gt;:</span>  <span class="n">mov</span>    <span class="mh">0x38</span><span class="p">(</span><span class="o">%</span><span class="n">rsp</span><span class="p">),</span><span class="o">%</span><span class="n">rax</span>
+</span><span class='line'>   <span class="mh">0x000055555555db92</span> <span class="o">&lt;+</span><span class="mi">34</span><span class="o">&gt;:</span>  <span class="n">cmpl</span>   <span class="err">$</span><span class="mh">0x68</span><span class="p">,</span><span class="mh">0x10</span><span class="p">(</span><span class="o">%</span><span class="n">rax</span><span class="p">)</span>
+</span><span class='line'>   <span class="mh">0x000055555555db96</span> <span class="o">&lt;+</span><span class="mi">38</span><span class="o">&gt;:</span>  <span class="n">je</span>     <span class="mh">0x55555555dbeb</span> <span class="o">&lt;</span><span class="n">_ZN4boom3foo17h3035bcff6328b12bE</span><span class="o">+</span><span class="mi">123</span><span class="o">&gt;</span>
+</span><span class='line'>   <span class="mh">0x000055555555db98</span> <span class="o">&lt;+</span><span class="mi">40</span><span class="o">&gt;:</span>  <span class="n">jmp</span>    <span class="mh">0x55555555dc6e</span> <span class="o">&lt;</span><span class="n">_ZN4boom3foo17h3035bcff6328b12bE</span><span class="o">+</span><span class="mi">254</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In the above, we can see three comparison instructions: a comparison of <code>0x14(%rdi)</code> with <code>$0x69</code> (the character &lsquo;i&rsquo;), then a comparison of <code>0x10(%rax)</code> with <code>$0x79</code> (the character &lsquo;y&rsquo;). If they&rsquo;re both equal, then it jumps to <code>0x55555555db9d</code> (which is presumably the first arm&rsquo;s body). If they&rsquo;re not, then it does a comparison of <code>0x10(%rax)</code> with <code>$0x68</code> (the character &lsquo;h&rsquo;), and if <em>that</em> is equal, then it jumps to <code>0x55555555dbeb</code> (which is preumably the second arm&rsquo;s body).</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+The people I imagine doing this kind of investigation are the ones working out the low-level semantic guarantees when it comes to investigating
+things like <a href="https://github.com/rust-lang/rust/issues/87520">rust#87520</a>.
+</span>
+Pretty low-level details, admittedly. Someone <em>new</em> to Rust cannot be expected to do this kind of investigation to gain insight into the language.</p>
+
+<p>In short, this seems like a case where Kernighan and Pike&rsquo;s quote above is
+especially apt: we can easily get lost in the details of the
+control flow as rendered here.</p>
+
+<p>So, how valuable is &ldquo;raw control-flow&rdquo;?</p>
+
+<p><em>Honestly:</em> The more experience I gain in a language or a particular project,
+the less and less I find myself relying on this kind of spulunking. The
+evaluation order of <code>match</code> shouldn&rsquo;t matter in most cases, so I would not
+optimize the debugging UX for that. Seeing how method dispatch resolves <em>is</em>
+useful, but in practice logging statements provide enough insight that people
+rarely find themselves wanting to step through the individual assembly
+instructions.</p>
+
+<p>Insight into the raw control-flow is probably most useful for someone peeking
+into low-level details of the semantics of the language (or a given project,
+especially a code base with tricky macros that generate control-flow
+structures). One might hope that that group generalizes to beginners who are
+learning the language. But I am not certain that raw control-flow will
+efficiently provide practical insight. For example, consider the following:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="cp">#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]</span>
+</span><span class='line'><span class="k">struct</span> <span class="n">D</span><span class="p">(</span><span class="o">&amp;</span><span class="n">&#39;static</span> <span class="kt">str</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="n">d</span> <span class="o">=</span> <span class="n">D</span><span class="p">(</span><span class="s">&quot;my name is D&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="nb">println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;{:?}&quot;</span><span class="p">,</span> <span class="n">d</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">impl</span> <span class="nb">Drop</span> <span class="k">for</span> <span class="n">D</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">fn</span> <span class="nb">drop</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="bp">self</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="nb">println</span><span class="o">!</span><span class="p">(</span><span class="s">&quot;Goodbye, {}&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="p">.</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A newcomer to Rust who is not familiar with the destructor system might think
+that the above code only prints a single line of text. Running the code (even
+outside of a debugger) will show that to be incorrect. But: Will stepping
+through it in a debugger provide the insight about where the <code>&lt;D as Drop&gt;::drop</code>
+call comes from? It is not clear to me that it would.</p>
+
+<a name="Memory.Exploration"></a>
+<h2>Memory Exploration</h2>
+
+<p>By &ldquo;memory exploration&rdquo;, I mean that when my debugger is attached to a paused
+program, I can inspect values on the stack or heap, walking down the nodes of a
+binary tree or the entries in a hashtable. A good debugger will do some amount
+of memory traversal and semantic interpretation on my behalf, using type
+information from the program&rsquo;s associated debuginfo to determine how best to
+interpret the bits it finds and print it nicely (e.g. showing comma-separated
+array elements).</p>
+
+<p>How valuable is &ldquo;memory exploration&rdquo;?</p>
+
+<p><em>Honestly:</em> In Rust, one can add <code>#[derive(Debug)]</code> to type definitions to get
+methods that print the structure for their values. The debugger printouts were
+useful when the language didn&rsquo;t provide it out of the box (like in C and C++),
+but they less value in Rust.</p>
+
+<p>One benefit of using a debugger here, rather than just using log statements, is
+that a debugger will let you immediately see the concrete representation (such
+as concrete hashtable layout) in places where the developer has chosen a more
+abstract view for the <code>Debug</code> trait implementation. But again we hear echos of
+the Kernighan and Pike quote: Seeing that concrete representation may be crucial
+in some scenarios, but in many cases it will just be unnecessary detail
+distracting you from the problem at hand.</p>
+
+<p>A second benefit with respect to memory exploration is that a debugger will also
+let you inspect values that were not part of the original log statement. But,
+one can view that as a special case of bypassing the edit-recompile cycle, which
+we already discussed above. If the edit-recompile cycle is short, then there is
+little cost to adding a new log statement that includes the value of interest.</p>
+
+<a name="Hardware.Watchpoints"></a>
+<h2>Hardware Watchpoints</h2>
+
+<p>So we have come to perhaps my <em>favorite</em> debugger feature: Hardware watchpoints.</p>
+
+<p>This is the main feature that most programming languages do not provide.</p>
+
+<p>The idea is simple: the gdb command <code>watch -location &lt;place&gt;</code> will
+break the next time the memory at the given place is modified.
+For example, <code>watch -location array[i]</code> will evaluate <code>&amp;array[i]</code> to
+its address, and then the next time <code>array[i]</code> is changed, the debugger
+will stop and print out both the old value and the new value.</p>
+
+<p>Consider the following (buggy) code for merging two sorted sequences into a
+single sorted sequence:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="k">fn</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">r</span> <span class="o">=</span> <span class="p">[</span><span class="mi">99</span><span class="p">,</span> <span class="mi">98</span><span class="p">,</span> <span class="mi">97</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">95</span><span class="p">];</span>
+</span><span class='line'>    <span class="n">merge</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="n">r</span><span class="p">,</span> <span class="o">&amp;</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="o">&amp;</span><span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">60</span><span class="p">]);</span>
+</span><span class='line'>    <span class="n">dbg</span><span class="o">!</span><span class="p">(</span><span class="n">r</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Supposedly merges sorted `a` and `b` into  `recv`.</span>
+</span><span class='line'><span class="k">fn</span> <span class="n">merge</span><span class="p">(</span><span class="n">recv</span><span class="o">:</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="p">[</span><span class="kt">i32</span><span class="p">],</span> <span class="n">a</span><span class="o">:</span> <span class="o">&amp;</span><span class="p">[</span><span class="kt">i32</span><span class="p">],</span> <span class="n">b</span><span class="o">:</span> <span class="o">&amp;</span><span class="p">[</span><span class="kt">i32</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">ai</span> <span class="o">=</span> <span class="n">a</span><span class="p">.</span><span class="n">iter</span><span class="p">();</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="k">mut</span> <span class="n">bi</span> <span class="o">=</span> <span class="n">b</span><span class="p">.</span><span class="n">iter</span><span class="p">();</span>
+</span><span class='line'>    <span class="kd">let</span> <span class="p">(</span><span class="k">mut</span> <span class="n">a_cur</span><span class="p">,</span> <span class="k">mut</span> <span class="n">b_cur</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="n">ai</span><span class="p">.</span><span class="n">next</span><span class="p">(),</span> <span class="n">bi</span><span class="p">.</span><span class="n">next</span><span class="p">());</span>
+</span><span class='line'>    <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mf">0.</span><span class="p">.</span><span class="n">recv</span><span class="p">.</span><span class="n">len</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">match</span> <span class="p">(</span><span class="n">a_cur</span><span class="p">,</span> <span class="n">b_cur</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">Some</span><span class="p">(</span><span class="n">y</span><span class="p">))</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>                <span class="k">if</span> <span class="o">*</span><span class="n">x</span> <span class="o">&lt;=</span> <span class="o">*</span><span class="n">y</span> <span class="p">{</span>
+</span><span class='line'>                    <span class="n">recv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">*</span><span class="n">x</span><span class="p">;</span>
+</span><span class='line'>                    <span class="n">a_cur</span> <span class="o">=</span> <span class="n">ai</span><span class="p">.</span><span class="n">next</span><span class="p">();</span>
+</span><span class='line'>                <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>                    <span class="n">recv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">*</span><span class="n">y</span><span class="p">;</span>
+</span><span class='line'>                    <span class="n">a_cur</span> <span class="o">=</span> <span class="n">ai</span><span class="p">.</span><span class="n">next</span><span class="p">();</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">None</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">recv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">*</span><span class="n">x</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">a_cur</span> <span class="o">=</span> <span class="n">ai</span><span class="p">.</span><span class="n">next</span><span class="p">();</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="p">(</span><span class="nb">None</span><span class="p">,</span> <span class="nb">Some</span><span class="p">(</span><span class="n">y</span><span class="p">))</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">recv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">*</span><span class="n">y</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">b_cur</span> <span class="o">=</span> <span class="n">bi</span><span class="p">.</span><span class="n">next</span><span class="p">();</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="p">(</span><span class="nb">None</span><span class="p">,</span> <span class="nb">None</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>                <span class="k">return</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When I run the code above, I get the output:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">[</span><span class="n">boom</span><span class="p">.</span><span class="n">rs</span><span class="o">:</span><span class="mi">4</span><span class="p">]</span> <span class="n">r</span> <span class="o">=</span> <span class="p">[</span>
+</span><span class='line'>    <span class="mi">10</span><span class="p">,</span>
+</span><span class='line'>    <span class="mi">20</span><span class="p">,</span>
+</span><span class='line'>    <span class="mi">20</span><span class="p">,</span>
+</span><span class='line'>    <span class="mi">40</span><span class="p">,</span>
+</span><span class='line'>    <span class="mi">60</span><span class="p">,</span>
+</span><span class='line'><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>which is not quite right! The third element of the generated array is 20,
+instead of 30.</p>
+
+<p>This toy example is small enough that you might be able to see the bug from
+immediate inspection. Adding more test cases to the run might also make the
+problem apparent. But I am going to use it to illustrate how to use a hardware
+watchpoint to jump immediately to the point in the control flow where the third
+element of the <code>recv</code> array is overwritten.</p>
+
+<p>After starting up the debugger, we let it evaluate the line that creates
+the destination array:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span> <span class="n">start</span>
+</span><span class='line'><span class="n">Temporary</span> <span class="n">breakpoint</span> <span class="mi">1</span><span class="p">,</span> <span class="n">boom</span><span class="o">::</span><span class="n">main</span> <span class="p">()</span> <span class="n">at</span> <span class="n">boom</span><span class="p">.</span><span class="n">rs</span><span class="o">:</span><span class="mi">2</span>
+</span><span class='line'><span class="mi">2</span>     <span class="kd">let</span> <span class="k">mut</span> <span class="n">r</span> <span class="o">=</span> <span class="p">[</span><span class="mi">99</span><span class="p">,</span> <span class="mi">98</span><span class="p">,</span> <span class="mi">97</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">95</span><span class="p">];</span>
+</span><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span> <span class="n">next</span>
+</span><span class='line'><span class="mi">3</span>     <span class="n">merge</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="n">r</span><span class="p">,</span> <span class="o">&amp;</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="o">&amp;</span><span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">60</span><span class="p">]);</span>
+</span><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, lets first check that we understand what we are looking at:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span> <span class="nb">print</span> <span class="n">r</span>
+</span><span class='line'><span class="err">$</span><span class="mi">1</span> <span class="o">=</span> <span class="p">[</span><span class="mi">99</span><span class="p">,</span> <span class="mi">98</span><span class="p">,</span> <span class="mi">97</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">95</span><span class="p">]</span>
+</span><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span> <span class="nb">print</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</span><span class='line'><span class="err">$</span><span class="mi">2</span> <span class="o">=</span> <span class="mi">97</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Yep: We have our destination array <code>r</code>, and it currently has 97 as its
+third element <code>r[2]</code>.</p>
+
+<p>So we tell the debugger that we want it to break as soon as that location
+is changed, and then let the program run!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span> <span class="n">watch</span> <span class="o">-</span><span class="n">location</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</span><span class='line'><span class="n">Hardware</span> <span class="n">watchpoint</span> <span class="mi">2</span><span class="o">:</span> <span class="o">-</span><span class="n">location</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</span><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span> <span class="k">continue</span>
+</span><span class='line'><span class="n">Continuing</span><span class="p">.</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Hardware</span> <span class="n">watchpoint</span> <span class="mi">2</span><span class="o">:</span> <span class="o">-</span><span class="n">location</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Old</span> <span class="n">value</span> <span class="o">=</span> <span class="mi">97</span>
+</span><span class='line'><span class="n">New</span> <span class="n">value</span> <span class="o">=</span> <span class="mi">20</span>
+</span><span class='line'><span class="n">boom</span><span class="o">::</span><span class="n">merge</span> <span class="p">(</span><span class="n">recv</span><span class="o">=&amp;</span><span class="k">mut</span> <span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span> <span class="o">=</span> <span class="p">{...},</span> <span class="n">a</span><span class="o">=&amp;</span><span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">=</span> <span class="p">{...},</span> <span class="n">b</span><span class="o">=&amp;</span><span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span> <span class="o">=</span> <span class="p">{...})</span> <span class="n">at</span> <span class="n">boom</span><span class="p">.</span><span class="n">rs</span><span class="o">:</span><span class="mi">29</span>
+</span><span class='line'><span class="mi">29</span>                    <span class="n">b_cur</span> <span class="o">=</span> <span class="n">bi</span><span class="p">.</span><span class="n">next</span><span class="p">();</span>
+</span><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We are now within the body of <code>fn merge</code> instead of <code>fn main</code> (as you might have
+expected), immediately after the mutation occured:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'>        <span class="p">(</span><span class="nb">None</span><span class="p">,</span> <span class="nb">Some</span><span class="p">(</span><span class="n">y</span><span class="p">))</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>            <span class="n">recv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">*</span><span class="n">y</span><span class="p">;</span>
+</span><span class='line'>            <span class="n">b_cur</span> <span class="o">=</span> <span class="n">bi</span><span class="p">.</span><span class="n">next</span><span class="p">();</span>
+</span><span class='line'>        <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And indeed, if we print out <code>recv</code> at this point, we can see that the
+array has been &ldquo;corrupted&rdquo;, since we now see the two copies of 20 in the
+output:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span> <span class="n">p</span> <span class="n">recv</span>
+</span><span class='line'><span class="err">$</span><span class="mi">3</span> <span class="o">=</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span> <span class="o">=</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">95</span><span class="p">}</span>
+</span><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span> <span class="err">```</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I am running with the <code>rust-gdb</code> command here, which has extensions for
+printing slices nicely. If you were doing this under just normal <code>gdb</code>, then
+you would see something like this instead.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">(</span><span class="n">gdb</span><span class="p">)</span> <span class="n">p</span> <span class="n">recv</span>
+</span><span class='line'><span class="err">$</span><span class="mi">3</span> <span class="o">=</span> <span class="o">&amp;</span><span class="k">mut</span> <span class="p">[</span><span class="kt">i32</span><span class="p">]</span> <span class="p">{</span><span class="n">data_ptr</span><span class="o">:</span> <span class="mh">0x7fffffffe238</span><span class="p">,</span> <span class="n">length</span><span class="o">:</span> <span class="mi">5</span><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This kind of break-on-write is most useful for <em>unsafe</em> languages, when you have
+data being corrupted due to out of bounds accesses. One certainly can encode
+examples of that in unsafe Rust, but we also do not expect them to arise as
+frequently.</p>
+
+<p>But <em>honestly</em> (a ha): Is this actually revealing anything about the core problem
+here? The logic at <em>this</em> <code>match</code>-arm is entirely sound: if we have <code>(None,
+Some(y))</code> for our two cursors traversing the slices, then we should pass along
+<code>y</code> and keep traversing down the right cursor. Whatever the bug is, it is
+arising somewhere else, before we even get here.</p>
+
+<a name="Reversible.Debugging"></a>
+<h2>Reversible Debugging</h2>
+
+<p>If I were restricting my attention to <code>gdb</code>/<code>rust-gdb</code> alone, this would be a
+point where I would start talking about re-running the program and stepping
+through it carefully, or trying to hypothesize points of interest based on
+analyzing the source code and setting breakpoints at those points. But if we
+were going to do that, then we might as well invest our time adding some of
+those logging statements discussed above, because I think those would show the
+problem here just as fast, if not faster!</p>
+
+<p>My goal is to show you an <em>alternative</em> strategy, that works for code bases that
+you are not that familiar with.</p>
+
+<p>Lets continue looking at the merge example, but let us now run it under <a href="https://rr-project.org/"><code>rr.</code></a></p>
+
+<p>First we record a run of interest:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="o">%</span> <span class="n">rr</span> <span class="n">record</span> <span class="p">.</span><span class="o">/</span><span class="n">boom</span>
+</span><span class='line'><span class="n">rr</span><span class="o">:</span> <span class="n">Saving</span> <span class="n">execution</span> <span class="n">to</span> <span class="n">trace</span> <span class="n">directory</span> <span class="err">`</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">pnkfelix</span><span class="o">/</span><span class="p">.</span><span class="n">local</span><span class="o">/</span><span class="n">share</span><span class="o">/</span><span class="n">rr</span><span class="o">/</span><span class="n">boom</span><span class="o">-</span><span class="mi">2</span><span class="err">&#39;</span><span class="p">.</span>
+</span><span class='line'><span class="p">[</span><span class="n">boom</span><span class="p">.</span><span class="n">rs</span><span class="o">:</span><span class="mi">4</span><span class="p">]</span> <span class="n">r</span> <span class="o">=</span> <span class="p">[</span>
+</span><span class='line'>    <span class="mi">10</span><span class="p">,</span>
+</span><span class='line'>    <span class="mi">20</span><span class="p">,</span>
+</span><span class='line'>    <span class="mi">20</span><span class="p">,</span>
+</span><span class='line'>    <span class="mi">40</span><span class="p">,</span>
+</span><span class='line'>    <span class="mi">60</span><span class="p">,</span>
+</span><span class='line'><span class="p">]</span>
+</span><span class='line'><span class="o">%</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With that recording in place, we can replay the run under <code>rr</code>, which gives an
+interface similar to <code>gdb</code>. (And we will tell <code>rr</code> that we want it to use
+<code>rust-gdb</code> as our debugger to get those extensions for rendering Rust
+collections.)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="o">%</span> <span class="n">rr</span> <span class="n">replay</span> <span class="o">-</span><span class="n">d</span> <span class="o">~/</span><span class="p">.</span><span class="n">cargo</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">rust</span><span class="o">-</span><span class="n">gdb</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Our initial interaction with <code>rr</code> will be much like how we interacted with <code>gdb</code>
+above: we&rsquo;ll start the program, set a hardware watchpoint for the third array
+element, and let it run forward.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span> <span class="k">break</span> <span class="n">main</span>
+</span><span class='line'><span class="n">Breakpoint</span> <span class="mi">1</span> <span class="n">at</span> <span class="mh">0x55e4f162f437</span><span class="o">:</span> <span class="n">main</span><span class="p">.</span> <span class="p">(</span><span class="mi">2</span> <span class="n">locations</span><span class="p">)</span>
+</span><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span> <span class="n">c</span>
+</span><span class='line'><span class="n">Continuing</span><span class="p">.</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Breakpoint</span> <span class="mi">1</span><span class="p">,</span> <span class="mh">0x000055e4f162fae0</span> <span class="k">in</span> <span class="n">main</span> <span class="p">()</span>
+</span><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span> <span class="n">next</span>
+</span><span class='line'><span class="n">Single</span> <span class="n">stepping</span> <span class="n">until</span> <span class="n">exit</span> <span class="n">from</span> <span class="n">function</span> <span class="n">main</span><span class="p">,</span>
+</span><span class='line'><span class="n">which</span> <span class="n">has</span> <span class="n">no</span> <span class="n">line</span> <span class="n">number</span> <span class="n">information</span><span class="p">.</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Breakpoint</span> <span class="mi">1</span><span class="p">,</span> <span class="n">boom</span><span class="o">::</span><span class="n">main</span> <span class="p">()</span> <span class="n">at</span> <span class="n">boom</span><span class="p">.</span><span class="n">rs</span><span class="o">:</span><span class="mi">2</span>
+</span><span class='line'><span class="mi">2</span>     <span class="kd">let</span> <span class="k">mut</span> <span class="n">r</span> <span class="o">=</span> <span class="p">[</span><span class="mi">99</span><span class="p">,</span> <span class="mi">98</span><span class="p">,</span> <span class="mi">97</span><span class="p">,</span> <span class="mi">96</span><span class="p">,</span> <span class="mi">95</span><span class="p">];</span>
+</span><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span>
+</span><span class='line'><span class="mi">3</span>     <span class="n">merge</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span> <span class="n">r</span><span class="p">,</span> <span class="o">&amp;</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span> <span class="o">&amp;</span><span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">60</span><span class="p">]);</span>
+</span><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span> <span class="n">watch</span> <span class="o">-</span><span class="n">location</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</span><span class='line'><span class="n">Hardware</span> <span class="n">watchpoint</span> <span class="mi">2</span><span class="o">:</span> <span class="o">-</span><span class="n">location</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</span><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span> <span class="n">c</span>
+</span><span class='line'><span class="n">Continuing</span><span class="p">.</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Hardware</span> <span class="n">watchpoint</span> <span class="mi">2</span><span class="o">:</span> <span class="o">-</span><span class="n">location</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Old</span> <span class="n">value</span> <span class="o">=</span> <span class="mi">97</span>
+</span><span class='line'><span class="n">New</span> <span class="n">value</span> <span class="o">=</span> <span class="mi">20</span>
+</span><span class='line'><span class="n">boom</span><span class="o">::</span><span class="n">merge</span> <span class="p">(</span><span class="n">recv</span><span class="o">=&amp;</span><span class="k">mut</span> <span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span> <span class="o">=</span> <span class="p">{...},</span> <span class="n">a</span><span class="o">=&amp;</span><span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">=</span> <span class="p">{...},</span> <span class="n">b</span><span class="o">=&amp;</span><span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span> <span class="o">=</span> <span class="p">{...})</span> <span class="n">at</span> <span class="n">boom</span><span class="p">.</span><span class="n">rs</span><span class="o">:</span><span class="mi">29</span>
+</span><span class='line'><span class="mi">29</span>                    <span class="n">b_cur</span> <span class="o">=</span> <span class="n">bi</span><span class="p">.</span><span class="n">next</span><span class="p">();</span>
+</span><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>But now that we have reached this point in <em>replay</em>, we can rewind time.
+We can ask questions like &ldquo;how did <code>a_cur</code> (the left-hand side of the tuple) become <code>None</code> already, without us ever emitting 30 to the <code>recv</code> array?
+Well, the question doesn&rsquo;t <em>quite</em> look like that. But we can ask "When was <code>a_cur</code> last written to before this point?&rdquo;, which ends up effectively the same question.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span> <span class="n">watch</span> <span class="n">a_cur</span>
+</span><span class='line'><span class="n">Hardware</span> <span class="n">watchpoint</span> <span class="mi">3</span><span class="o">:</span> <span class="n">a_cur</span>
+</span><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we tell the system to run backwards.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span> <span class="n">reverse</span><span class="o">-</span><span class="k">continue</span>
+</span><span class='line'><span class="n">Continuing</span><span class="p">.</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Hardware</span> <span class="n">watchpoint</span> <span class="mi">2</span><span class="o">:</span> <span class="o">-</span><span class="n">location</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Old</span> <span class="n">value</span> <span class="o">=</span> <span class="mi">20</span>
+</span><span class='line'><span class="n">New</span> <span class="n">value</span> <span class="o">=</span> <span class="mi">97</span>
+</span><span class='line'><span class="mh">0x000055e4f162fa95</span> <span class="k">in</span> <span class="n">boom</span><span class="o">::</span><span class="n">merge</span> <span class="p">(</span><span class="n">recv</span><span class="o">=&amp;</span><span class="k">mut</span> <span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span> <span class="o">=</span> <span class="p">{...},</span> <span class="n">a</span><span class="o">=&amp;</span><span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">=</span> <span class="p">{...},</span> <span class="n">b</span><span class="o">=&amp;</span><span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span> <span class="o">=</span> <span class="p">{...})</span> <span class="n">at</span> <span class="n">boom</span><span class="p">.</span><span class="n">rs</span><span class="o">:</span><span class="mi">28</span>
+</span><span class='line'><span class="mi">28</span>                    <span class="n">recv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">*</span><span class="n">y</span><span class="p">;</span>
+</span><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+The <code>gdb</code> output is potentially confusing because the notions of &ldquo;Old&rdquo; and &ldquo;New&rdquo;
+are inverted here. To dive deeper into this topic, you might consider the
+watching the films Primer or TENET.
+</span></p>
+
+<p>We still have our first watch point in place for <code>r[2]</code>, so it halted almost
+immediately. (When we were running forward, a watchpoint makes us stop right
+after the write occurs. When we run backwards, a watchpoint makes us stop right
+before the write occurs.)</p>
+
+<p>Let us keep going backwards.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span> <span class="n">reverse</span><span class="o">-</span><span class="k">continue</span>
+</span><span class='line'><span class="n">Continuing</span><span class="p">.</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Hardware</span> <span class="n">watchpoint</span> <span class="mi">3</span><span class="o">:</span> <span class="n">a_cur</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">Old</span> <span class="n">value</span> <span class="o">=</span> <span class="n">core</span><span class="o">::</span><span class="n">option</span><span class="o">::</span><span class="nb">Option</span><span class="o">&lt;&amp;</span><span class="kt">i32</span><span class="o">&gt;::</span><span class="nb">None</span>
+</span><span class='line'><span class="n">New</span> <span class="n">value</span> <span class="o">=</span> <span class="n">core</span><span class="o">::</span><span class="n">option</span><span class="o">::</span><span class="nb">Option</span><span class="o">&lt;&amp;</span><span class="kt">i32</span><span class="o">&gt;::</span><span class="nb">Some</span><span class="p">(</span><span class="mh">0x55e4f1664004</span><span class="p">)</span>
+</span><span class='line'><span class="n">boom</span><span class="o">::</span><span class="n">merge</span> <span class="p">(</span><span class="n">recv</span><span class="o">=&amp;</span><span class="k">mut</span> <span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span> <span class="o">=</span> <span class="p">{...},</span> <span class="n">a</span><span class="o">=&amp;</span><span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">=</span> <span class="p">{...},</span> <span class="n">b</span><span class="o">=&amp;</span><span class="p">[</span><span class="kt">i32</span><span class="p">](</span><span class="n">size</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span> <span class="o">=</span> <span class="p">{...})</span> <span class="n">at</span> <span class="n">boom</span><span class="p">.</span><span class="n">rs</span><span class="o">:</span><span class="mi">20</span>
+</span><span class='line'><span class="mi">20</span>                        <span class="n">a_cur</span> <span class="o">=</span> <span class="n">ai</span><span class="p">.</span><span class="n">next</span><span class="p">();</span>
+</span><span class='line'><span class="p">(</span><span class="n">rr</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And now we see where <code>a_cur</code> is being assigned <code>None</code>: line 20:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'>    <span class="k">match</span> <span class="p">(</span><span class="n">a_cur</span><span class="p">,</span> <span class="n">b_cur</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">Some</span><span class="p">(</span><span class="n">y</span><span class="p">))</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">*</span><span class="n">x</span> <span class="o">&lt;=</span> <span class="o">*</span><span class="n">y</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">recv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">*</span><span class="n">x</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">a_cur</span> <span class="o">=</span> <span class="n">ai</span><span class="p">.</span><span class="n">next</span><span class="p">();</span>
+</span><span class='line'>            <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">recv</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">*</span><span class="n">y</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">a_cur</span> <span class="o">=</span> <span class="n">ai</span><span class="p">.</span><span class="n">next</span><span class="p">();</span> <span class="c1">// here&#39;s the assignment</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="p">...</span>
+</span><span class='line'>    <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And if you look at this, you might see the problem: in that arm of the <code>if</code>, we
+are copying over the right-hand tuple value (<code>*y</code>, from <code>b_cur</code>), but we are
+advancing the <em>left-hand</em> cursor, <code>a_cur</code>.</p>
+
+<p>With that insight, we can make an easy fix: replace line 20 with</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'>                <span class="n">b_cur</span> <span class="o">=</span> <span class="n">bi</span><span class="p">.</span><span class="n">next</span><span class="p">();</span> <span class="c1">// was `a_cur = ai.next();`</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With that change in place, the code works:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="p">[</span><span class="n">boom</span><span class="p">.</span><span class="n">rs</span><span class="o">:</span><span class="mi">4</span><span class="p">]</span> <span class="n">r</span> <span class="o">=</span> <span class="p">[</span>
+</span><span class='line'>    <span class="mi">10</span><span class="p">,</span>
+</span><span class='line'>    <span class="mi">20</span><span class="p">,</span>
+</span><span class='line'>    <span class="mi">30</span><span class="p">,</span>
+</span><span class='line'>    <span class="mi">40</span><span class="p">,</span>
+</span><span class='line'>    <span class="mi">60</span><span class="p">,</span>
+</span><span class='line'><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+<em>This</em> is a case where the ability to explore memory
+and add printouts from the debugger is crucial: Because now we are exploring the
+behavior of one specific trace, and we do not always have the opportunity to
+try to recreate the trace on a new version of the program.
+</span></p>
+
+<p>There are other advantages provided by <code>rr</code>. For example, record/replay means
+that you can investigate a trace repeatedly. Each time you replay the trace,
+you&rsquo;ll observe the same execution; and you can add breakpoints (and print
+statements on those breakpoints) on that exact trace as it replays. This is
+invaluable for tracking down bugs that are intermittent or that depend on subtle
+event orderings.</p>
+
+<a name="Closing.Thoughts"></a>
+<h2>Closing Thoughts</h2>
+
+<p>I started writing this post thinking &ldquo;I&rsquo;m excited about debuggers! Why is no one
+in the Rust community using them?&rdquo; As I dug into the topic, I kept asking myself
+&ldquo;what feature is provided here that people cannot more readily get via their
+logging instrumentation? What value <em>am</em> I getting from this?&rdquo;</p>
+
+<p>As you might infer from my &ldquo;Honestly&rdquo; notes above, I had to admit that
+the advantages of a debugger when compared to logging instrumentation
+may be limited in scope. At least, that&rsquo;s how I see things with typical
+debugging workflows.</p>
+
+<p>Tools like <code>rr</code> open up <em>new</em> debugging workflows, one of which I delved into
+above. I plan to write more in the future about other such new workflows, such
+as ones provided by services like <a href="https://pernos.co/">pernos.co</a>. More generally, I want to spend
+some time thinking about the nature of debugging: how it links in with how we
+develop features, how we communicate our ideas, and how we validate our models.</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Felix S. Klock II</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2022-01-10T11:12:57-05:00" pubdate data-updated="true"></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/debugging/'>debugging</a>, <a class='category' href='/blog/categories/rust/'>rust</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://blog.pnkfx.org/blog/2022/01/10/why-i-use-a-debugger/" data-via="pnkfelix" data-counturl="http://blog.pnkfx.org/blog/2022/01/10/why-i-use-a-debugger/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2021/05/03/road-to-turbowish-part-3-design/" title="Previous Post: Road to TurboWish part 3: Design">&laquo; Road to TurboWish part 3: Design</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2022/01/10/why-i-use-a-debugger/">Why I use a debugger</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2021/05/03/road-to-turbowish-part-3-design/">Road to TurboWish part 3: Design</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2021/04/27/road-to-turbowish-part-2-stories/">Road to TurboWish; Part 2: Stories</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2021/04/26/road-to-turbowish-part-1-goals/">Road to TurboWish; Part 1: Goals</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2021/03/25/how-to-dismantle-an-atomic-bomb/">How to dismantle an Atomic bomb</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/pnkfelix">@pnkfelix</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'pnkfelix',
+            count: 4,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>On Delicious</h1>
+  <div id="delicious"></div>
+  <script type="text/javascript" src="http://feeds.delicious.com/v2/json/pnkfelix?count=3&amp;sort=date&amp;callback=renderDeliciousLinks"></script>
+  <p><a href="http://delicious.com/pnkfelix">My Delicious Bookmarks &raquo;</a></p>
+</section>
+
+
+<section class="googleplus">
+  <h1>
+    <a href="https://plus.google.com/pnkfelix?rel=author">
+      <img src="http://www.google.com/images/icons/ui/gprofile_button-32.png" width="32" height="32">
+      Google+
+    </a>
+  </h1>
+</section>
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2022 - Felix S. Klock II -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
