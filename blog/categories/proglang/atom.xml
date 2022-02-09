@@ -4,7 +4,7 @@
   <title><![CDATA[Category: proglang | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/proglang/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2022-01-11T23:24:34-05:00</updated>
+  <updated>2022-02-09T13:09:22-05:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -12,6 +12,250 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[What is Rust's Hole Purpose?]]></title>
+    <link href="http://blog.pnkfx.org/blog/2022/02/09/what-is-rusts-hole-purpose/"/>
+    <updated>2022-02-09T13:00:00-05:00</updated>
+    <id>http://blog.pnkfx.org/blog/2022/02/09/what-is-rusts-hole-purpose</id>
+    <content type="html"><![CDATA[<p>There is a adage in the business world that goes something like this:</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+This quote is attributed to Theodore Levitt, but there is <a href="https://quoteinvestigator.com/2019/03/23/drill/">significant evidence</a> that the
+adage predated his use of it.
+</span></p>
+
+<blockquote><p>People don&rsquo;t want to buy a quarter-inch drill, they want a quarter-inch hole.</p></blockquote>
+
+<p>It is a good line.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Some people I talk to make the leap from safety to another property: <em>security</em>.
+The two topics are related, since safety issues can sometimes be exploited and thus
+yield security issues. But you can theoretically achieve security atop an unsafe language; and safety alone does not ensure security. So it is a messy relationship at best.
+</span></p>
+
+<p>The adage came to my mind recently in a discussion of Rust&rsquo;s selling points.
+An oft-cited selling point, at least for a Programming Language enthusiast like myself, is that Rust offers <em>safety</em>.</p>
+
+<!-- more -->
+
+
+<p>I was not familiar with the adage before last year. I first heard it used as the
+punchline to a significantly longer parable, set at the keynote for a sales convention for a drill company.
+The lesson of the adage is that to be customer-focused, you
+must keep in mind that drills are only a <em>means to an end</em> for your customer.</p>
+
+<p>Safety is important: it eliminates a significant class of bugs that
+plague software written in low-level systems languages.</p>
+
+<p>But, thinking of the drill/hole adage, I stopped and asked myself: &ldquo;Who <em>wants</em> safety? Is it an end in itself? If it is merely a means to an end, then to <em>what end</em>?&rdquo;</p>
+
+<p>At this point, while reflecting on that topic, I decided to look more into the origins of the drill/hole adage; that diversion led me to a lovely <a href="https://www.websearchsocial.com/why-that-whole-people-dont-want-a-drill-they-want-a-hole-thing-doesnt-go-far-enough/">post critiquing the adage</a>, saying it &ldquo;doesn&rsquo;t go far enough.&rdquo; The heart of the argument there is that people don&rsquo;t want <em>holes</em> either. The hole is itself another means to an end, such as hooks or shelving.
+But do people want hooks and shelving? No, they want to store objects on the wall.
+Why?
+<label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+A shelf of objects can also serve as decor; my favorite walls are filled with books.
+</span>
+Because they want room to store <em>more things</em>, or they want to be able to fetch and replace things more efficiently, yielding <em>more time</em>.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+The <a href="https://www.websearchsocial.com/why-that-whole-people-dont-want-a-drill-they-want-a-hole-thing-doesnt-go-far-enough/">post</a> includes the caveat that intermediate results
+like the hole are not irrelevant. Its just important to keep the end-goal somewhere
+in your mind, if only in the back of your mind, as you identify your more immediate (and usually intermediate) goals.
+</span></p>
+
+<p>That is what people want: Extra capacity for &ldquo;stuff&rdquo;, or to reduce the time they
+spend searching through clutter.</p>
+
+<p>That is such an important point, and I think it provides the right perspective that we will need to answer the question of &ldquo;What is Rust&rsquo;s hole purpose?&rdquo; (Or, if you prefer a pun-free version: &ldquo;What is Rust&rsquo;s value proposition?&rdquo;)</p>
+
+<!-- I do not think this section serves the overall document. Its just filler. So I'm killing it.
+
+## The Pillars
+
+Under "Why Rust?", the language website offers three pillars:
+
+* Performance
+* Reliability
+* Productivity
+
+We can already see a shift in perspective: "safety" is listed *under* "reliabilty", as a component of that feature.
+
+There is a reason the team is showing all three pillars at once. The underlying
+point is that you have to weigh tradeoffs.
+
+Historically, maximizing performance meant that you had to work in a language
+like C or C++. That risks sacrificing reliabilty; if you wanted to recover
+reliability, you had to spend more time architecting and validating your system
+to avoid the safety pitfalls suffered by those languages.
+
+As just-in-time compiler and memory-management technology has improved, managed
+languages like Java are narrowing the performance gap when compared with C, *if*
+you are willing to accept the garbage-collection overhead (either in time or in
+memory usage), and you also need to know how to write code in a manner that
+meshes well with your runtime environment so that it will optimize well.
+
+So in either case, if you want to deliver performance, then either reliability
+or productivity will suffer.
+
+Rust's claim is that you can get all three. But how?
+
+-->
+
+
+<a name="The.Promise.s..of.Rust"></a>
+<h2>The Promise(s) of Rust</h2>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+I am using &ldquo;sub-&rdquo; and &ldquo;super-&rdquo; here in a mathematical sense, as in &ldquo;every safe Rust program is also an Unsafe Rust program, but there are some Unsafe Rust programs that are not part of safe Rust.&rdquo; There is no value judgement being made as to one being &ldquo;superior&rdquo; to this other.
+</span></p>
+
+<p>Rust provides two distinct languages: the safe Rust (sub)language, and the Unsafe Rust (super)language. You can read the <a href="https://doc.rust-lang.org/nomicon/meet-safe-and-unsafe.html">Rustonomicon</a> for more discussion of this distinction.</p>
+
+<p>An over-simplified way of describing the benefits of the safe Rust language is
+this &ldquo;promise&rdquo;: You will get <em>predictable</em> behavior from your program. If you
+write a program in safe Rust, it will not surprise you.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+After all, if a program were incapable of surprising anyone, then would it be worth
+executing in the first place?
+</span>
+But, that promise is a lie: There&rsquo;s plenty of ways to observe unpredictable
+outcomes, in most any programming language of interest. (Consider for example <a href="https://en.wikipedia.org/wiki/Pseudorandom_number_generator">psuedorandom number generation</a>.)</p>
+
+<p>Here is a somewhat improved promise: You will never get <a href="https://en.wikipedia.org/wiki/Undefined_behavior">Undefined Behavior</a>
+from a safe Rust program. It won&rsquo;t ever access memory after its been freed, and
+it won&rsquo;t ever have two threads racing to read and write the same location in
+memory.</p>
+
+<p>But in fact, this is still somewhat of a lie!</p>
+
+<p>For one thing, we allow crates written in safe Rust to link to crates that are
+written in Unsafe Rust. Should that be considered an instance of a &ldquo;safe Rust&rdquo;
+program? If it is, then its easy to see a counter-example to the improved
+promise: just have safe crate that calls out to a helper function <code>oops</code> in an
+unsafe crate, where <code>oops</code> demonstrates undefined behavior.</p>
+
+<p>Even if you say &ldquo;no, I do not consider such a program to be an instance of safe
+Rust. You need <em>all</em> of your crates to be written in safe Rust to make me
+happy&rdquo;, you will still run afoul of problems. (1.) Rust&rsquo;s standard library is
+using unsafe code that might not always maintain global safety invariants. Even
+worse, (2.) the Rust compiler itself may generate incorrect output.</p>
+
+<p>So, your program might <em>still</em> exhibit Undefined Behavior even if you restrict
+yourself to crate graphs where all crates are written in safe Rust.</p>
+
+<p>Such an outcome is not what anyone <em>desires</em>; but it is a reality that we have
+to deal with, at least with the state of the art today.</p>
+
+<!-- Do I need to say this? Lets see how it looks without this.
+
+Software development is a process of continual refinement, striving towards
+idealized goals. Those idealized goals themselves may change over time. Part of
+that process is that expecting mistakes to happen, and having plans in place to
+correct errors in a timely fashion after they have been detected.
+-->
+
+
+<a name="Blame.Assignment"></a>
+<h2>Blame Assignment</h2>
+
+<p>Here is my favorite statement of Rust&rsquo;s promise: Undefined Behavior is never a
+bug in your (safe) code.</p>
+
+<p>Now <em>this</em> is a promise I can get behind.</p>
+
+<p>This is important, because it clearly delineates the
+<a href="https://en.wikipedia.org/wiki/Trusted_computing_base">&ldquo;Trusted Computing Base&rdquo;</a>
+for your program.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+In other words, The TCB is TCB: The Trusted Computing Base is Taking Care of Business.
+</span></p>
+
+<p>In safe Rust, you are trusting the compiler and standard library to get the
+safety conditions right. You expect that any crates you link to will properly
+ensure any preconditions necessary for <em>their</em> <code>unsafe</code> blocks, if any.</p>
+
+<p>Why does this matter: Compare against other environments, like C projects, where
+people can debate for ages about whether a given example is violating the rules
+of an API or of the language itself, and that leads to issues lying unaddressed,
+because its unclear <em>who is responsible</em> for the issue.</p>
+
+<p>In Rust, this occurs far less frequently. If someone finds unsound behavior via
+a program example that has no occurrences of <code>unsafe { ... }</code>, then the Rust
+community tends to immediately say &ldquo;that must be a bug!&rdquo;, and the only task then
+is to identify whether it is from some <code>unsafe { ... }</code> code elsewhere, or if
+the Rust compiler itself has an issue.</p>
+
+<p>Of course, Rust is not alone in enjoying this property. <em>Any</em> safe language
+worth its salt can make the same statement. But Rust is different, in that we
+make it really easy for people who <em>want</em> to drop into the Unsafe Rust
+superlanguage to do so.
+<label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Again, no value judgement is being made here. Really! Safe and unsafe Rust are mathematically incomparable when it comes to inherent value!
+</span>
+That lets developers get their work done faster,
+because they can hyper-optimize their generated machine code. Or they can
+easily call out to a foreign library and avoid implementing a tricky algorithm in the first place!</p>
+
+<p>I claim: Compared to developers using unsafe languages, safe Rust developers
+spend less time debating about who is responsible when soundness issues arise.
+Compared to developers using safe languages, Unsafe Rust developers spend less
+time figuring out how to deliver a performant solution.</p>
+
+<p>The end value provided by Rust to its developers (and thus to <em>their</em> customers
+and employers) is <em>less time</em> arguing linguistic minutia and <em>less time</em>
+wrestling with a managed language environment, and <em>more time</em> focused on what
+actually matters to each of those developers (be it business logic, or family
+time).</p>
+
+<p>But, notice that I used two distinct categories for the subjects of the two
+claims. Am I comfortable strengthening my claim? Can I just say &ldquo;Rust developers
+spend less time debating about who is responsible when issues arise, and they
+spend less time figuring out how to get a performant solution into shape&rdquo;?</p>
+
+<a name="The.Holes.in.the.Argument"></a>
+<h2>The Holes in the Argument</h2>
+
+<p>I would like make that stronger claim. I think we have some evidence to support
+it. But we are not all the way there yet.</p>
+
+<a name="From.safe.to.unsafe"></a>
+<h3>From safe to unsafe</h3>
+
+<p>To me, the biggest open problem is: How does one make the transition from safe
+Rust developer to unsafe Rust developer? How do you prove to yourself that your
+<code>unsafe { ... }</code> code is not introducing an soundness issue?</p>
+
+<p>We have some ongoing work in this space, but it is not a solved problem.</p>
+
+<a name="How.to.stay.safe"></a>
+<h3>How to stay safe</h3>
+
+<p>The other obvious open problem is: When is safe Rust not performant enough, and
+why?</p>
+
+<p>There are some inherent overheads that safe Rust is simply going to pay (e.g.
+bounds checking on array accesses). Some of those cases can be side-stepped in
+many cases by better understanding of what the language offers (e.g. iterating
+rather than indexing will skip the bounds checks), which is arguably an instance
+of &ldquo;wrestling with your environment&rdquo; to reap more performance.</p>
+
+<p>Then there are overheads that are incidental rather than inherent. The Rust
+developers have tried to leave many doors open for future improvements to our
+output code quality. (Some of these cases overlap with our need for better ways
+to catch bugs in <code>unsafe</code> code. Others are a matter of &ldquo;just&rdquo; putting in the
+work.)</p>
+
+<a name="Conclusion"></a>
+<h2>Conclusion</h2>
+
+<p>If you are interested in helping solve any of these problems, please reach
+out!</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Surfaces and Signatures: Component Privacy versus Dependence]]></title>
