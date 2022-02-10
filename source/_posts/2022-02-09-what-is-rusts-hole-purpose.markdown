@@ -96,7 +96,7 @@ Rust's claim is that you can get all three. But how?
 ## The Promise(s) of Rust
 
 {% marginblock %}
-I am using "sub-" and "super-" here in a mathematical sense, as in "every safe Rust program is also an Unsafe Rust program, but there are some Unsafe Rust programs that are not part of safe Rust." There is no value judgement being made as to one being "superior" to this other.
+I am using "sub-" and "super-" here in a mathematical sense, as in "every safe Rust program is also an Unsafe Rust program, but there are some Unsafe Rust programs that are not part of safe Rust." There is no value judgement being made as to one being "superior" to the other.
 {% endmarginblock %}
 
 Rust provides two distinct languages: the safe Rust (sub)language, and the Unsafe Rust (super)language. You can read the [Rustonomicon](https://doc.rust-lang.org/nomicon/meet-safe-and-unsafe.html) for more discussion of this distinction.
