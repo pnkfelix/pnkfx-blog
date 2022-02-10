@@ -4,7 +4,7 @@
   <title><![CDATA[Category: rust | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/rust/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2022-02-09T19:31:02-05:00</updated>
+  <updated>2022-02-10T09:19:55-05:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -225,7 +225,7 @@ spend less time figuring out how to get a performant solution into shape&rdquo;?
 <a name="The.Holes.in.the.Argument"></a>
 <h2>The Holes in the Argument</h2>
 
-<p>I would like make that stronger claim. I think we have some evidence to support
+<p>I would like to make that stronger claim. I think we have some evidence to support
 it. But we are not all the way there yet.</p>
 
 <a name="From.safe.to.unsafe"></a>
