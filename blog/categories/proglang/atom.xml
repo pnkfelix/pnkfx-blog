@@ -4,7 +4,7 @@
   <title><![CDATA[Category: proglang | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/proglang/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2022-02-09T13:09:22-05:00</updated>
+  <updated>2022-02-09T19:23:25-05:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -18,7 +18,7 @@
     <link href="http://blog.pnkfx.org/blog/2022/02/09/what-is-rusts-hole-purpose/"/>
     <updated>2022-02-09T13:00:00-05:00</updated>
     <id>http://blog.pnkfx.org/blog/2022/02/09/what-is-rusts-hole-purpose</id>
-    <content type="html"><![CDATA[<p>There is a adage in the business world that goes something like this:</p>
+    <content type="html"><![CDATA[<p>There is an adage in the business world that goes something like this:</p>
 
 <p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
 This quote is attributed to Theodore Levitt, but there is <a href="https://quoteinvestigator.com/2019/03/23/drill/">significant evidence</a> that the
@@ -157,6 +157,12 @@ that process is that expecting mistakes to happen, and having plans in place to
 correct errors in a timely fashion after they have been detected.
 -->
 
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+This title implicitly references the work of <a href="https://www2.ccs.neu.edu/racket/pubs/icfp2002-ff.pdf">Findler and Felleisen (2002)</a> on
+using contracts to assign proper <em>blame</em> when one is dealing with higher-order functions.</p>
+
+<p></span></p>
 
 <a name="Blame.Assignment"></a>
 <h2>Blame Assignment</h2>
