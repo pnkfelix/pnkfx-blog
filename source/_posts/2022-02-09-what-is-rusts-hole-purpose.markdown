@@ -5,7 +5,7 @@ date: 2022-02-09 13:00:00 -0500
 comments: false
 categories: rust proglang programming
 ---
-There is a adage in the business world that goes something like this:
+There is an adage in the business world that goes something like this:
 
 {% marginblock %}
 This quote is attributed to Theodore Levitt, but there is [significant evidence][quote-investigator] that the
@@ -148,6 +148,13 @@ idealized goals. Those idealized goals themselves may change over time. Part of
 that process is that expecting mistakes to happen, and having plans in place to
 correct errors in a timely fashion after they have been detected.
 -->
+
+{% marginblock %}
+This title implicitly references the work of [Findler and Felleisen (2002)][FF02] on
+using contracts to assign proper *blame* when one is dealing with higher-order functions.
+
+[FF02]: https://www2.ccs.neu.edu/racket/pubs/icfp2002-ff.pdf
+{% endmarginblock %}
 
 ## Blame Assignment
 
