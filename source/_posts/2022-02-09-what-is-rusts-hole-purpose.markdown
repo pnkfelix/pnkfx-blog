@@ -215,7 +215,7 @@ spend less time figuring out how to get a performant solution into shape"?
 
 ## The Holes in the Argument
 
-I would like make that stronger claim. I think we have some evidence to support
+I would like to make that stronger claim. I think we have some evidence to support
 it. But we are not all the way there yet.
 
 ### From safe to unsafe
