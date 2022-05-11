@@ -9,9 +9,11 @@
   <meta name="author" content="Felix S. Klock II">
 
   
-  <meta name="description" content="I have had some thoughts on what privacy is used for in programming
-languages, and how it differs from the notion of dependence between
-modules (or &hellip;">
+  <meta name="description" content="&#8853;
+Update 1 July 2019: fixed bugs in EscapingWriter and
+as_reader examples. Update 8 July 2019: fixed a new bug in as_reader example. Hey there &hellip;">
+  
+
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -69,6 +71,123 @@ modules (or &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/">Breaking News: Non-Lexical Lifetimes Arrives for Everyone</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-06-26T12:54:29+02:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+<em>Update 1 July 2019</em>: fixed bugs in <a href="#Closure.fixes"><code>EscapingWriter</code></a> and
+<a href="#Fixed.leaking.into.Drop"><code>as_reader</code></a> examples.
+<br></br>
+<em>Update 8 July 2019</em>: fixed a new bug in <a href="#Fixed.leaking.into.Drop"><code>as_reader</code></a> example.
+</span></p>
+
+<p>Hey there everyone!</p>
+
+<p>It has been literally years since I last posted to this blog.
+I have been doing a bunch of Rust compiler work.
+One big feature has been deployed: Non-Lexical Lifetimes (hereafter denoted &ldquo;NLL&rdquo;).</p>
+
+<p>The motivation for this blog post: The next version of Rust, 1.36, is
+going to have NLL turned on for the 2015 edition. Going forward,
+all editions of Rust will now use NLL.
+That is a big change.
+It is mostly a change that empowers developers;
+but it also is a change that will cause some existing code to break.</p>
+
+<p>This post is going to talk a little bit about what NLL is and why you
+as a Rust developer should be excited about it as a feature
+(because it enables programmers to express themselves more directly).</p>
+
+<p>However, even though the main feature of NLL is to <em>increase</em>
+the set of programs that Rust accepts,
+the vast majority of this post will focus on cases where the
+switch to NLL has caused the compiler to start
+rejecting<label for='soundness-as-a-feature' class='margin-toggle'> &#8853;</label><input type='checkbox' id='soundness-as-a-feature' class='margin-toggle'/><span class='marginnote'>Rejecting unsound code is also a Rust feature that I value highly; but it often fails to excite developers, especially when it causes their legacy code to stop compiling. </span>
+code that it used to accept erroneously.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2019/06/26/breaking-news-non-lexical-lifetimes-arrives-for-everyone/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/">GC and Rust Part 2: The Roots of the Problem</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-01-01T00:00:00-05:00" pubdate data-updated="true"></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>This is the second in a series of posts will discuss why garbage
+collection is hard, especially for Rust, and brainstorm about
+solutions to the problems we face.</p>
+
+<p>The <a href="/blog/2015/11/10/gc-and-rust-part-1-specing-the-problem/">previous post</a> wrote down some criteria for integration.
+Now I want to delve into why satisfying those criteria is hard,
+at least in Rust as it stands today.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/01/01/gc-and-rust-part-2-roots-of-the-problem/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -435,148 +554,6 @@ not work.</p>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2013/06/07/detective-work-on-rust-closures/">Detective Work on Rust Closures</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-06-07T10:17:00-04:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><ul>
-<li><a href="#background_fns">Background: Closures (recurring and otherwise)</a></li>
-<li><a href="#background_dst">Background: DST</a></li>
-<li><a href="#the_problem">The Problem: DST and Closures</a>
-
-<ul>
-<li><a href="#is_fn_too_ugly">Is fn~ too ugly?</a></li>
-<li><a href="#leveraging_proc">Leveraging a proc keyword/expression</a></li>
-<li><a href="#other_ways_to_proc">Other ways to express proc</a>
-
-<ul>
-<li><a href="#digression_on_macros">A Personal Digression on Macros</a></li>
-</ul>
-</li>
-<li><a href="#more_followup_on_procs_and_fns">More followups on procs and fns</a></li>
-</ul>
-</li>
-<li><a href="#where_are_we">So where are we?</a></li>
-</ul>
-
-
-<p>I have recently been trying to keep myself abreast of a flurry of
-discussion about reforming the design of Rust closures.  Niko has a
-series of blog posts (<a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/">1</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/04/30/dynamically-sized-types/">2</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/recurring-closures-and-dynamically-sized-types/">3</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/13/mutable-fn-alternatives/">4</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/14/procedures/">5</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/05/30/removing-procs/">6</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/03/more-on-fns/">7</a>, <a href="http://smallcultfollowing.com/babysteps/blog/2013/06/06/reducing-dst-annotation/">8</a>); the
-content of some of those posts were further discussed at Rust team
-meetings (<a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-04-30">11</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-07">12</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-14">13</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-21">14</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-05-28">15</a>, <a href="https://github.com/mozilla/rust/wiki/Meeting-weekly-2013-06-04">16</a>), and there have been some
-more formalized proposals with their own set of discussions: (<a href="https://github.com/mozilla/rust/wiki/Proposal-for-closure-reform">9</a>,
-<a href="https://github.com/mozilla/rust/wiki/Proposal-for-closure-reform-%28specific%29">10</a>).</p>
-
-<p>There are also associated github issues (<a href="https://github.com/mozilla/rust/issues/2202">17</a>, <a href="https://github.com/mozilla/rust/issues/3569">18</a>, <a href="https://github.com/mozilla/rust/issues/6308">19</a>), though
-without sufficient context the discussion in the github issues may not
-always be intelligible.</p>
-
-<p>Some of the links above are more about &ldquo;Dynamically Sized Types&rdquo;
-(DST), a related topic, as we shall see.</p>
-
-<p>This post is my attempt to condense all of this information down into
-something where I can see all the pieces at once, and discard the
-red herrings along the way.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2013/06/07/detective-work-on-rust-closures/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Designing Syntax for Associated Items in Rust</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-04-22T14:37:00-04:00" pubdate data-updated="true"></time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><ul>
-<li><a href="#background">Background</a>
-
-<ul>
-<li><a href="#encodingunpalatable">Encoding via parameters is unpalatable</a></li>
-</ul>
-</li>
-<li><a href="#rustspec">Rust-specific issues</a>
-
-<ul>
-<li><a href="#nikoposts">Niko&rsquo;s blog posts</a></li>
-<li><a href="#thinkbinding">Simpler syntax: What about binding?</a></li>
-</ul>
-</li>
-<li><a href="#insight">Insight</a></li>
-<li><a href="#proposal">The proposed syntax for associated items in Rust</a></li>
-<li><a href="#futurework">What the proposal does not cover</a></li>
-</ul>
-
-
-<p>Executive summary: if you don&rsquo;t want or need the background information
-or the discussion motivating the proposal, then just jump
-straight to the <a href="#proposal">proposal</a> itself.</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2013/04/22/designing-syntax-for-associated-items-in-rust/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="3">&larr; Older</a>
@@ -594,6 +571,14 @@ straight to the <a href="#proposal">proposal</a> itself.</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2022/05/10/visuals-redux-getting-mermaid-going/">Visuals redux: Getting mermaid going</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2022/05/06/linking-rust-crates/">Linking Rust Crates, Part 1</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2022/02/09/what-is-rusts-hole-purpose/">What is Rust's Hole Purpose?</a>
       </li>
     
@@ -603,14 +588,6 @@ straight to the <a href="#proposal">proposal</a> itself.</p>
     
       <li class="post">
         <a href="/blog/2021/05/03/road-to-turbowish-part-3-design/">Road to TurboWish part 3: Design</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2021/04/27/road-to-turbowish-part-2-stories/">Road to TurboWish; Part 2: Stories</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2021/04/26/road-to-turbowish-part-1-goals/">Road to TurboWish; Part 1: Goals</a>
       </li>
     
   </ul>
