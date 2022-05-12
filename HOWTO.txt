@@ -1,0 +1,65 @@
+* `bundle exec rake new_post["Title goes here."]`: creates template for a new post
+  in `source/_posts/`.
+
+* `bundle exec rake generate` converts post source into static html pages,
+  rooted at `_deploy/index.html`.
+
+  * (Originally I just had `rake generate` above, but then recently
+    that yielded page generation errors, see discussion here:
+    https://github.com/imathis/octopress/issues/585
+
+    *SO* close to dropping octopress...)
+
+  * One might need to use `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 rake generate`
+    or `LC_CTYPE=en_US.UTF-8 rake generate` to get around encoding issues.
+    For some reason I think my older laptop does not need this but the newer
+    one does.
+
+  * In particular my use of the word "voilà" caused me to hit this issue.
+
+  * https://github.com/imathis/octopress/issues/267 recommends setting this
+    in one's `~/.profile`, which I suppose I will consider doing eventually
+    if I encounter similar problems.
+
+* `jekyll serve --drafts` starts a local webserver for previewing generated
+   content; visit via `http://localhost:4000/`
+
+   Note that this preview version at port 4000 includes unpublished posts
+   in the `source/_drafts/` folder, which will not be published on calls
+   to `rake generate` or `rake deploy`.
+
+   `rake preview` also starts a local webserver for previewing generated content,
+   but it has different behavior in how it handles drafting (it wants you to
+   embed `published: false` into draft files, at least originally, and I
+   cannot get even that to work with Octopress 3.0), and it seems like it is
+   generally less reliable than using `jekyll serve` directly (e.g. it seemed
+   to take an absurdly long time to pick up on when I made changes to my draft
+   posts).
+
+* `rake deploy` deploys the content to the target site (i.e.: takes it live).
+
+## Ruby maintenance
+
+If it seems like ruby itself is broken, here are some steps I had to
+do recently to fix ruby on my OS X machine.
+
+```
+# Not sure if this step was *actually* necessary
+
+% git clone git://github.com/sstephenson/ruby-build.git ~/.rbenv/plugins/ruby-build
+```
+
+```
+# I had to add the "without tk/tcl" options on OS X, otherwise it tries to #include X11 stuff
+# during its build.
+
+% CONFIGURE_OPTS="--without-tk --without-tcl" rbenv install 1.9.3-p194
+```
+
+```
+# This installed bundler globally (I think)
+% gem install bundler
+
+# This grabbed the stuff needed for octopress (I ran it in the blog project directory).
+% bundle install
+```

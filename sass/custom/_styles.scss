@@ -1,0 +1,30 @@
+// This File is imported last, and will override other styles in the cascade
+// Add styles here to make changes without digging in too much
+
+.pre-code { .n { color: $base1 !important } }
+
+// I would like to experiment with the Tufte CSS, but
+// getting a usable result is *not* as simple as just
+// adding a few imports like the below.
+//
+// So, I am going to put off such experimentation
+// for later.
+
+// @import url("/tufte-css/tufte.css")
+
+@import "fsk_tufte";
+
+// article {
+//   ol, ul {
+// //    padding-left: 3em;
+//   }
+// }
+
+
+// Trying to figure out how to allow or force my code blocks to be fullwidth...
+#content {
+//  > div     { width: none; }
+//  > article { width: none; }
+}
+
+@import "better_tables";
