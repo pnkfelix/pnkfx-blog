@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2022-05-12T02:17:02-04:00</updated>
+  <updated>2022-05-12T02:22:27-04:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -220,224 +220,20 @@ and run the resulting binary.</p>
 </span></code></pre></td></tr></table></div></figure>
 
 
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+If you&rsquo;re squinting at the diagram and wondering how you might confirm that the relations
+it describes properly reflect what these commands are doing, I recommend you
+check out the &ldquo;Who is using that library?&rdquo; appendix at the end of this post.
+It walks through some of the issues that arise when linking crates
+together.
+</span></p>
+
 <p>The first <code>rustc</code> invocation, compiling <code>simple-lib.rs</code>, is much like our <code>simple-bin.rs</code> example.
 The second <code>rustc</code> invocation, compiling <code>demo-simple-lib.rs</code>, has something new: it is
 passing the option <code>-Lout/sl</code>, which tells the compiler &ldquo;if you need to resolve any external crates,
 you should add <code>out/sl</code> to the list of paths you will search for them.&rdquo;</p>
 
-<a name="Who.is.using.that.library."></a>
-<h2>Who is using that library?</h2>
-
-<p>Consider this diagram:</p>
-
-<div class="mermaid">
-graph TD
-SlObj[libsimple_lib.rlib]
-DemoSlCompile -.finds file.-> SlObj
-DemoSlSource[demo-simple-lib.rs]
-DemoSlObj[demo-simple-lib.obj]
-DemoSlSource --> DemoSlCompile((rustc))
-SlObj --> link
-DemoSlCompile -- generates --> DemoSlObj
-subgraph "implicit &nbsp;&nbsp; link-step"
-DemoSlObj --> link
-link((link))
-end
-</div>
-
-
-<p>Here is an important question you should ask yourself: is <code>libsimple_lib.rlib</code>
-actually used by the linker? Or is it solely used as input to <code>rustc</code> (i.e.,
-potentially used in the generation of <code>demo-simple-lib.obj</code> itself). Or is it
-used by both <code>rustc</code> <em>and</em> the linker?</p>
-
-<p>We can test this question directly, with some slight tweaks to our commands.</p>
-
-<a name="Proving.the.link.step.s.dependence.on.the.library"></a>
-<h3>Proving the link step&rsquo;s dependence on the library</h3>
-
-<p>First, we can test whether its used by the linker at all by separating the link
-invocation from the rest of the compiler steps, and then modifying it and
-running it on its own.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class='sh'><span class='line'>% mkdir -p out/sl out/bins/ps/dsl2step
-</span><span class='line'>% rustc --out-dir out/ps/sl simple-lib.rs
-</span><span class='line'>% ls out/ps/sl
-</span><span class='line'>libsimple_lib.rlib
-</span><span class='line'>% <span class="nv">LINKER_COMMAND</span><span class="o">=</span><span class="k">$(</span>rustc --out-dir out/bins/ps/dsl2step demo-simple-lib.rs -Lout/ps/sl -Csave-temps --print<span class="o">=</span>link-args -Ccodegen-units<span class="o">=</span>1<span class="k">)</span>
-</span><span class='line'>% ls out/bins/ps/dsl2step
-</span><span class='line'>demo-simple-lib                                                demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.o
-</span><span class='line'>demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.bc         demo-simple-lib.hlsxcd1s0pxo20a.rcgu.bc
-</span><span class='line'>demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.no-opt.bc  demo-simple-lib.hlsxcd1s0pxo20a.rcgu.o
-</span><span class='line'>% ./out/bins/ps/dsl2step/demo-simple-lib
-</span><span class='line'>Running main from simple-lib.rs
-</span><span class='line'>% rm ./out/bins/ps/dsl2step/demo-simple-lib
-</span><span class='line'>% <span class="nb">eval</span> <span class="nv">$LINKER_COMMAND</span>
-</span><span class='line'>% ./out/bins/ps/dsl2step/demo-simple-lib
-</span><span class='line'>Running main from simple-lib.rs
-</span><span class='line'>%
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The significance of the above sequence: It runs <code>rustc -Csave-temps --print=link-args</code> which will preserve the generated object files and also print out the linker invocation it runs.</p>
-
-<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
-In practice when doing these kinds of experiments, you should not blindly use <code>eval</code>  in the manner I have shown here,
-but instead echo the linker command to the screen and confirm that it is something you trust running.
-</span>
-We can run the generated binary, delete the binary, and then re-run that linker
-command ourselves (<code>eval $LINKER_COMMAND</code>), and re-run the binary again. This
-confirms that this linker invocation does indeed generate that binary.</p>
-
-<p>With that in place, one way we could exercise the linker&rsquo;s use of the file: we
-could just delete <code>libsimple_lib.rlib</code>, and run the original linker invocation:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class='sh'><span class='line'>% <span class="nb">eval</span> <span class="nv">$LINKER_COMMAND</span>
-</span><span class='line'>% rm out/ps/sl/libsimple_lib.rlib
-</span><span class='line'>% ls out/ps/sl/
-</span><span class='line'>% <span class="nb">eval</span> <span class="nv">$LINKER_COMMAND</span>
-</span><span class='line'>/usr/bin/ld: cannot find /media/pnkfelix/Rust/Linking/out/ps/sl/libsimple_lib.rlib: No such file or directory
-</span><span class='line'>collect2: error: ld returned <span class="m">1</span> <span class="nb">exit </span>status
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Another slightly more complicated way we could expose the dependence of our
-object code on that file: We can remove the reference to <code>libsimple_lib.rlib</code>
-from the linker invocation, and run the resulting new linker invocation:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='sh'><span class='line'>% <span class="nv">NEW_COMMAND</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span> <span class="s2">&quot;$LINKER_COMMAND&quot;</span> <span class="p">|</span> sed -e <span class="s1">&#39;s@&quot;-Wl,-Bstatic&quot; .*/libsimple_lib.rlib&quot;@@&#39;</span><span class="k">)</span>
-</span><span class='line'>% <span class="nb">eval</span> <span class="nv">$NEW_COMMAND</span>
-</span><span class='line'>/usr/bin/ld: out/bins/ps/dsl2step/demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.o: in <span class="k">function</span> <span class="sb">`</span>demo_simple_lib::main<span class="s1">&#39;:</span>
-</span><span class='line'><span class="s1">demo_simple_lib.66aa33f3-cgu.0:(.text._ZN15demo_simple_lib4main17h9794b393d760d697E+0x3): undefined reference to `simple_lib::main&#39;</span>
-</span><span class='line'>collect2: error: ld returned <span class="m">1</span> <span class="nb">exit </span>status
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This gives you an idea of the kinds of nasty error messages you have to deal
-with when you start playing games with your build artifacts: The linker is
-rightfully complaining that the generated object code for
-<code>demo_simple_lib::main</code> has some reference to <code>simple_lib::main</code> (indeed,the
-very definition of the former is just a single invocation of the latter), and
-yet that reference cannot be satisfied. (It is up to the user to read that
-message and infer that the core problem is that the linker is no longer
-receiving the path to <code>libsimple_lib.rlib</code> as one of its command line
-arguments.)</p>
-
-<a name="Proving.the.compiler.s.dependence.on.the.library"></a>
-<h3>Proving the compiler&rsquo;s dependence on the library</h3>
-
-<p>The previous section established that the linker needs the <code>.rlib</code> file in
-place. But, maybe that&rsquo;s only necessary for the link step alone, and <code>rustc</code>
-itself doesn&rsquo;t need the actual file?</p>
-
-<p>We can test this theory too, in a similar form of direct experimentation
-on the build artifacts.</p>
-
-<p>First, lets try removing the file (same as illustrated in the previous section)</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='sh'><span class='line'>% rm -f out/ps/sl/libsimple_lib.rlib
-</span><span class='line'>% ls out/ps/sl
-</span><span class='line'>% rustc --out-dir out/bins/ps/dsl demo-simple-lib.rs -Lout/ps/sl
-</span><span class='line'>error<span class="o">[</span>E0463<span class="o">]</span>: can<span class="s1">&#39;t find crate for `simple_lib`</span>
-</span><span class='line'><span class="s1"> --&gt; demo-simple-lib.rs:1:1</span>
-</span><span class='line'><span class="s1">  |</span>
-</span><span class='line'><span class="s1">1 | extern crate simple_lib;</span>
-</span><span class='line'><span class="s1">  | ^^^^^^^^^^^^^^^^^^^^^^^^ can&#39;</span>t find crate
-</span><span class='line'>
-</span><span class='line'>error: aborting due to previous error
-</span><span class='line'>
-</span><span class='line'>For more information about this error, try <span class="sb">`</span>rustc --explain E0463<span class="sb">`</span>.
-</span><span class='line'>%
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This shows that the compiler is <em>definitely</em> using the file <code>libsimple_lib.rlib</code>
-as part of its compilation of <code>demo-simple-lib.rs</code>.</p>
-
-<p>If we try to force the compiler to make forward progress by giving it a dummy file,
-it will still complain:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="o">%</span> <span class="n">touch</span> <span class="n">out</span><span class="o">/</span><span class="n">ps</span><span class="o">/</span><span class="n">sl</span><span class="o">/</span><span class="n">libsimple_lib</span><span class="p">.</span><span class="n">rlib</span>
-</span><span class='line'><span class="o">%</span> <span class="n">ls</span> <span class="o">-</span><span class="n">s</span> <span class="n">out</span><span class="o">/</span><span class="n">ps</span><span class="o">/</span><span class="n">sl</span><span class="o">/</span>
-</span><span class='line'><span class="n">total</span> <span class="mi">0</span>
-</span><span class='line'><span class="mi">0</span> <span class="n">libsimple_lib</span><span class="p">.</span><span class="n">rlib</span>
-</span><span class='line'><span class="o">%</span> <span class="n">rustc</span> <span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="n">dir</span> <span class="n">out</span><span class="o">/</span><span class="n">bins</span><span class="o">/</span><span class="n">ps</span><span class="o">/</span><span class="n">dsl</span> <span class="n">demo</span><span class="o">-</span><span class="n">simple</span><span class="o">-</span><span class="n">lib</span><span class="p">.</span><span class="n">rs</span> <span class="o">-</span><span class="n">Lout</span><span class="o">/</span><span class="n">ps</span><span class="o">/</span><span class="n">sl</span>
-</span><span class='line'><span class="n">error</span><span class="p">[</span><span class="n">E0786</span><span class="p">]</span><span class="o">:</span> <span class="n">found</span> <span class="n">invalid</span> <span class="n">metadata</span> <span class="n">files</span> <span class="k">for</span> <span class="n">crate</span> <span class="err">`</span><span class="n">simple_lib</span><span class="err">`</span>
-</span><span class='line'> <span class="o">--&gt;</span> <span class="n">demo</span><span class="o">-</span><span class="n">simple</span><span class="o">-</span><span class="n">lib</span><span class="p">.</span><span class="n">rs</span><span class="o">:</span><span class="mi">1</span><span class="o">:</span><span class="mi">1</span>
-</span><span class='line'>  <span class="o">|</span>
-</span><span class='line'><span class="mi">1</span> <span class="o">|</span> <span class="k">extern</span> <span class="n">crate</span> <span class="n">simple_lib</span><span class="p">;</span>
-</span><span class='line'>  <span class="o">|</span> <span class="o">^^^^^^^^^^^^^^^^^^^^^^^^</span>
-</span><span class='line'>  <span class="o">|</span>
-</span><span class='line'>  <span class="o">=</span> <span class="n">note</span><span class="o">:</span> <span class="n">failed</span> <span class="n">to</span> <span class="n">mmap</span> <span class="n">file</span> <span class="err">&#39;</span><span class="o">/</span><span class="n">media</span><span class="o">/</span><span class="n">pnkfelix</span><span class="o">/</span><span class="n">Rust</span><span class="o">/</span><span class="n">Linking</span><span class="o">/</span><span class="n">out</span><span class="o">/</span><span class="n">ps</span><span class="o">/</span><span class="n">sl</span><span class="o">/</span><span class="n">libsimple_lib</span><span class="p">.</span><span class="n">rlib</span><span class="err">&#39;</span><span class="o">:</span> <span class="n">memory</span> <span class="n">map</span> <span class="n">must</span> <span class="n">have</span> <span class="n">a</span> <span class="n">non</span><span class="o">-</span><span class="n">zero</span> <span class="n">length</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">error</span><span class="o">:</span> <span class="n">aborting</span> <span class="n">due</span> <span class="n">to</span> <span class="n">previous</span> <span class="n">error</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">For</span> <span class="n">more</span> <span class="n">information</span> <span class="n">about</span> <span class="n">this</span> <span class="n">error</span><span class="p">,</span> <span class="n">try</span> <span class="err">`</span><span class="n">rustc</span> <span class="o">--</span><span class="n">explain</span> <span class="n">E0786</span><span class="err">`</span><span class="p">.</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Upon reflection, this all makes perfect sense: As part of compiling
-<code>demo-simple-lib.rs</code>, the compiler is going to reference external metadata (i.e.
-the function signatures and type definitions from the <code>simple-lib</code> crate).</p>
-
-<p>So, we have walked through some of the issues that arise when linking crates
-together. The <code>demo-simple-lib</code> example demostrated Rust&rsquo;s <code>lib</code> crate type,
+<p>The <code>demo-simple-lib</code> example demonstrates Rust&rsquo;s <code>lib</code> crate type,
 which is specified as a compiler-defined choice from one of the flavors of
 libraries that Rust supports.</p>
 
@@ -1062,6 +858,217 @@ how to use <code>objdump</code> to learn things about the generated code.</p>
 
 <p>(And also, lots of opportunities to try to clean up the presentation of this
 post.)</p>
+
+<a name="Appendix:.Who.is.using.that.library."></a>
+<h2>Appendix: Who is using that library?</h2>
+
+<p>Consider this diagram:</p>
+
+<div class="mermaid">
+graph TD
+SlObj[libsimple_lib.rlib]
+DemoSlCompile -.finds file.-> SlObj
+DemoSlSource[demo-simple-lib.rs]
+DemoSlObj[demo-simple-lib.obj]
+DemoSlSource --> DemoSlCompile((rustc))
+SlObj --> link
+DemoSlCompile -- generates --> DemoSlObj
+subgraph "implicit &nbsp;&nbsp; link-step"
+DemoSlObj --> link
+link((link))
+end
+</div>
+
+
+<p>Here is an important question you should ask yourself: is <code>libsimple_lib.rlib</code>
+actually used by the linker? Or is it solely used as input to <code>rustc</code> (i.e.,
+potentially used in the generation of <code>demo-simple-lib.obj</code> itself). Or is it
+used by both <code>rustc</code> <em>and</em> the linker?</p>
+
+<p>We can test this question directly, with some slight tweaks to our commands.</p>
+
+<a name="Proving.the.link.step.s.dependence.on.the.library"></a>
+<h3>Proving the link step&rsquo;s dependence on the library</h3>
+
+<p>First, we can test whether its used by the linker at all by separating the link
+invocation from the rest of the compiler steps, and then modifying it and
+running it on its own.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'>% mkdir -p out/sl out/bins/ps/dsl2step
+</span><span class='line'>% rustc --out-dir out/ps/sl simple-lib.rs
+</span><span class='line'>% ls out/ps/sl
+</span><span class='line'>libsimple_lib.rlib
+</span><span class='line'>% <span class="nv">LINKER_COMMAND</span><span class="o">=</span><span class="k">$(</span>rustc --out-dir out/bins/ps/dsl2step demo-simple-lib.rs -Lout/ps/sl -Csave-temps --print<span class="o">=</span>link-args -Ccodegen-units<span class="o">=</span>1<span class="k">)</span>
+</span><span class='line'>% ls out/bins/ps/dsl2step
+</span><span class='line'>demo-simple-lib                                                demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.o
+</span><span class='line'>demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.bc         demo-simple-lib.hlsxcd1s0pxo20a.rcgu.bc
+</span><span class='line'>demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.no-opt.bc  demo-simple-lib.hlsxcd1s0pxo20a.rcgu.o
+</span><span class='line'>% ./out/bins/ps/dsl2step/demo-simple-lib
+</span><span class='line'>Running main from simple-lib.rs
+</span><span class='line'>% rm ./out/bins/ps/dsl2step/demo-simple-lib
+</span><span class='line'>% <span class="nb">eval</span> <span class="nv">$LINKER_COMMAND</span>
+</span><span class='line'>% ./out/bins/ps/dsl2step/demo-simple-lib
+</span><span class='line'>Running main from simple-lib.rs
+</span><span class='line'>%
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The significance of the above sequence: It runs <code>rustc -Csave-temps --print=link-args</code> which will preserve the generated object files and also print out the linker invocation it runs.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+In practice when doing these kinds of experiments, you should not blindly use <code>eval</code>  in the manner I have shown here,
+but instead echo the linker command to the screen and confirm that it is something you trust running.
+</span>
+We can run the generated binary, delete the binary, and then re-run that linker
+command ourselves (<code>eval $LINKER_COMMAND</code>), and re-run the binary again. This
+confirms that this linker invocation does indeed generate that binary.</p>
+
+<p>With that in place, one way we could exercise the linker&rsquo;s use of the file: we
+could just delete <code>libsimple_lib.rlib</code>, and run the original linker invocation:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'>% <span class="nb">eval</span> <span class="nv">$LINKER_COMMAND</span>
+</span><span class='line'>% rm out/ps/sl/libsimple_lib.rlib
+</span><span class='line'>% ls out/ps/sl/
+</span><span class='line'>% <span class="nb">eval</span> <span class="nv">$LINKER_COMMAND</span>
+</span><span class='line'>/usr/bin/ld: cannot find /media/pnkfelix/Rust/Linking/out/ps/sl/libsimple_lib.rlib: No such file or directory
+</span><span class='line'>collect2: error: ld returned <span class="m">1</span> <span class="nb">exit </span>status
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Another slightly more complicated way we could expose the dependence of our
+object code on that file: We can remove the reference to <code>libsimple_lib.rlib</code>
+from the linker invocation, and run the resulting new linker invocation:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'>% <span class="nv">NEW_COMMAND</span><span class="o">=</span><span class="k">$(</span><span class="nb">echo</span> <span class="s2">&quot;$LINKER_COMMAND&quot;</span> <span class="p">|</span> sed -e <span class="s1">&#39;s@&quot;-Wl,-Bstatic&quot; .*/libsimple_lib.rlib&quot;@@&#39;</span><span class="k">)</span>
+</span><span class='line'>% <span class="nb">eval</span> <span class="nv">$NEW_COMMAND</span>
+</span><span class='line'>/usr/bin/ld: out/bins/ps/dsl2step/demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.o: in <span class="k">function</span> <span class="sb">`</span>demo_simple_lib::main<span class="s1">&#39;:</span>
+</span><span class='line'><span class="s1">demo_simple_lib.66aa33f3-cgu.0:(.text._ZN15demo_simple_lib4main17h9794b393d760d697E+0x3): undefined reference to `simple_lib::main&#39;</span>
+</span><span class='line'>collect2: error: ld returned <span class="m">1</span> <span class="nb">exit </span>status
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This gives you an idea of the kinds of nasty error messages you have to deal
+with when you start playing games with your build artifacts: The linker is
+rightfully complaining that the generated object code for
+<code>demo_simple_lib::main</code> has some reference to <code>simple_lib::main</code> (indeed,the
+very definition of the former is just a single invocation of the latter), and
+yet that reference cannot be satisfied. (It is up to the user to read that
+message and infer that the core problem is that the linker is no longer
+receiving the path to <code>libsimple_lib.rlib</code> as one of its command line
+arguments.)</p>
+
+<a name="Proving.the.compiler.s.dependence.on.the.library"></a>
+<h3>Proving the compiler&rsquo;s dependence on the library</h3>
+
+<p>The previous section established that the linker needs the <code>.rlib</code> file in
+place. But, maybe that&rsquo;s only necessary for the link step alone, and <code>rustc</code>
+itself doesn&rsquo;t need the actual file?</p>
+
+<p>We can test this theory too, in a similar form of direct experimentation
+on the build artifacts.</p>
+
+<p>First, lets try removing the file (same as illustrated in the previous section)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'>% rm -f out/ps/sl/libsimple_lib.rlib
+</span><span class='line'>% ls out/ps/sl
+</span><span class='line'>% rustc --out-dir out/bins/ps/dsl demo-simple-lib.rs -Lout/ps/sl
+</span><span class='line'>error<span class="o">[</span>E0463<span class="o">]</span>: can<span class="s1">&#39;t find crate for `simple_lib`</span>
+</span><span class='line'><span class="s1"> --&gt; demo-simple-lib.rs:1:1</span>
+</span><span class='line'><span class="s1">  |</span>
+</span><span class='line'><span class="s1">1 | extern crate simple_lib;</span>
+</span><span class='line'><span class="s1">  | ^^^^^^^^^^^^^^^^^^^^^^^^ can&#39;</span>t find crate
+</span><span class='line'>
+</span><span class='line'>error: aborting due to previous error
+</span><span class='line'>
+</span><span class='line'>For more information about this error, try <span class="sb">`</span>rustc --explain E0463<span class="sb">`</span>.
+</span><span class='line'>%
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This shows that the compiler is <em>definitely</em> using the file <code>libsimple_lib.rlib</code>
+as part of its compilation of <code>demo-simple-lib.rs</code>.</p>
+
+<p>If we try to force the compiler to make forward progress by giving it a dummy file,
+it will still complain:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='rust'><span class='line'><span class="o">%</span> <span class="n">touch</span> <span class="n">out</span><span class="o">/</span><span class="n">ps</span><span class="o">/</span><span class="n">sl</span><span class="o">/</span><span class="n">libsimple_lib</span><span class="p">.</span><span class="n">rlib</span>
+</span><span class='line'><span class="o">%</span> <span class="n">ls</span> <span class="o">-</span><span class="n">s</span> <span class="n">out</span><span class="o">/</span><span class="n">ps</span><span class="o">/</span><span class="n">sl</span><span class="o">/</span>
+</span><span class='line'><span class="n">total</span> <span class="mi">0</span>
+</span><span class='line'><span class="mi">0</span> <span class="n">libsimple_lib</span><span class="p">.</span><span class="n">rlib</span>
+</span><span class='line'><span class="o">%</span> <span class="n">rustc</span> <span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="n">dir</span> <span class="n">out</span><span class="o">/</span><span class="n">bins</span><span class="o">/</span><span class="n">ps</span><span class="o">/</span><span class="n">dsl</span> <span class="n">demo</span><span class="o">-</span><span class="n">simple</span><span class="o">-</span><span class="n">lib</span><span class="p">.</span><span class="n">rs</span> <span class="o">-</span><span class="n">Lout</span><span class="o">/</span><span class="n">ps</span><span class="o">/</span><span class="n">sl</span>
+</span><span class='line'><span class="n">error</span><span class="p">[</span><span class="n">E0786</span><span class="p">]</span><span class="o">:</span> <span class="n">found</span> <span class="n">invalid</span> <span class="n">metadata</span> <span class="n">files</span> <span class="k">for</span> <span class="n">crate</span> <span class="err">`</span><span class="n">simple_lib</span><span class="err">`</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">demo</span><span class="o">-</span><span class="n">simple</span><span class="o">-</span><span class="n">lib</span><span class="p">.</span><span class="n">rs</span><span class="o">:</span><span class="mi">1</span><span class="o">:</span><span class="mi">1</span>
+</span><span class='line'>  <span class="o">|</span>
+</span><span class='line'><span class="mi">1</span> <span class="o">|</span> <span class="k">extern</span> <span class="n">crate</span> <span class="n">simple_lib</span><span class="p">;</span>
+</span><span class='line'>  <span class="o">|</span> <span class="o">^^^^^^^^^^^^^^^^^^^^^^^^</span>
+</span><span class='line'>  <span class="o">|</span>
+</span><span class='line'>  <span class="o">=</span> <span class="n">note</span><span class="o">:</span> <span class="n">failed</span> <span class="n">to</span> <span class="n">mmap</span> <span class="n">file</span> <span class="err">&#39;</span><span class="o">/</span><span class="n">media</span><span class="o">/</span><span class="n">pnkfelix</span><span class="o">/</span><span class="n">Rust</span><span class="o">/</span><span class="n">Linking</span><span class="o">/</span><span class="n">out</span><span class="o">/</span><span class="n">ps</span><span class="o">/</span><span class="n">sl</span><span class="o">/</span><span class="n">libsimple_lib</span><span class="p">.</span><span class="n">rlib</span><span class="err">&#39;</span><span class="o">:</span> <span class="n">memory</span> <span class="n">map</span> <span class="n">must</span> <span class="n">have</span> <span class="n">a</span> <span class="n">non</span><span class="o">-</span><span class="n">zero</span> <span class="n">length</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">error</span><span class="o">:</span> <span class="n">aborting</span> <span class="n">due</span> <span class="n">to</span> <span class="n">previous</span> <span class="n">error</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">For</span> <span class="n">more</span> <span class="n">information</span> <span class="n">about</span> <span class="n">this</span> <span class="n">error</span><span class="p">,</span> <span class="n">try</span> <span class="err">`</span><span class="n">rustc</span> <span class="o">--</span><span class="n">explain</span> <span class="n">E0786</span><span class="err">`</span><span class="p">.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Upon reflection, this all makes perfect sense: As part of compiling
+<code>demo-simple-lib.rs</code>, the compiler is going to reference external metadata (i.e.
+the function signatures and type definitions from the <code>simple-lib</code> crate).</p>
 ]]></content>
   </entry>
   
