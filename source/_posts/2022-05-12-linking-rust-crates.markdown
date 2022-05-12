@@ -6,6 +6,12 @@ categories: linkers
 mermaid: true
 ---
 
+{% marginblock %}
+This post is the first part in a planned series on linking Rust crates.
+My desire is to get informal feedback on these posts, and then
+turn it into more structured content suitable for the Rust reference, or
+maybe the Rustonomicon (or a book on its own.)
+{% endmarginblock %}
 Working on the Rust compiler, one topic that I come across from time to time is
 "what is *supposed* to happen when we use these particular features of my
 tools?" More specifically, Rust has various metaphorical knobs that allow
