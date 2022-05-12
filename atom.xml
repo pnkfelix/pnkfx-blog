@@ -4,7 +4,7 @@
   <title><![CDATA[The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2022-05-12T10:57:47-04:00</updated>
+  <updated>2022-05-12T14:19:54-04:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -194,7 +194,7 @@ for compiling <code>demo-simple-lib</code>.</p>
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>We have omitted <code>#![crate_type="bin]"</code> from <code>demo-simple-lib.rs</code> because that is
+<p>We have omitted <code>#![crate_type="bin"]</code> from <code>demo-simple-lib.rs</code> because that is
 the default crate type.</p>
 
 <p>(In practice, most modern Rust code does not use <code>extern crate</code>; instead, people
