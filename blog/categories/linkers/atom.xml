@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linkers | The {pnk}f(eli)x Blog]]></title>
   <link href="http://blog.pnkfx.org/blog/categories/linkers/atom.xml" rel="self"/>
   <link href="http://blog.pnkfx.org/"/>
-  <updated>2022-05-12T02:08:35-04:00</updated>
+  <updated>2022-05-12T02:17:02-04:00</updated>
   <id>http://blog.pnkfx.org/</id>
   <author>
     <name><![CDATA[Felix S. Klock II]]></name>
@@ -349,6 +349,13 @@ definitions from <code>rlib</code> crates as well.</p>
 
 <p>We will now step through other supported crate types, and provide
 a similar demonstration of how they operate.</p>
+
+<p><label for='' class='margin-toggle'>&#8853;</label><input type='checkbox' id='' class='margin-toggle'/><span class='marginnote'>
+Re-reading the overall post now, I am thinking that I should have put <code>dylib</code> at
+the end, due to the number of rabbit holes it opens up. Maybe I will edit the
+post in the future and do that rearrangement, so that people can see the &ldquo;easy
+cases&rdquo; first.
+</span></p>
 
 <a name="Dynamic.Libraries:..code.dylib..code."></a>
 <h2>Dynamic Libraries: <code>dylib</code></h2>
