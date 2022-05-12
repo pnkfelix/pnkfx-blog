@@ -172,166 +172,20 @@ Running main from simple-lib.rs
 %
 ```
 
+{% marginblock %}
+If you're squinting at the diagram and wondering how you might confirm that the relations
+it describes properly reflect what these commands are doing, I recommend you
+check out the "Who is using that library?" appendix at the end of this post.
+It walks through some of the issues that arise when linking crates
+together.
+{% endmarginblock %}
+
 The first `rustc` invocation, compiling `simple-lib.rs`, is much like our `simple-bin.rs` example.
 The second `rustc` invocation, compiling `demo-simple-lib.rs`, has something new: it is
 passing the option `-Lout/sl`, which tells the compiler "if you need to resolve any external crates,
 you should add `out/sl` to the list of paths you will search for them."
 
-## Who is using that library?
-
-Consider this diagram:
-
-<div class="mermaid">
-graph TD
-SlObj[libsimple_lib.rlib]
-DemoSlCompile -.finds file.-> SlObj
-DemoSlSource[demo-simple-lib.rs]
-DemoSlObj[demo-simple-lib.obj]
-DemoSlSource --> DemoSlCompile((rustc))
-SlObj --> link
-DemoSlCompile -- generates --> DemoSlObj
-subgraph "implicit &nbsp;&nbsp; link-step"
-DemoSlObj --> link
-link((link))
-end
-</div>
-
-Here is an important question you should ask yourself: is `libsimple_lib.rlib`
-actually used by the linker? Or is it solely used as input to `rustc` (i.e.,
-potentially used in the generation of `demo-simple-lib.obj` itself). Or is it
-used by both `rustc` *and* the linker?
-
-We can test this question directly, with some slight tweaks to our commands.
-
-### Proving the link step's dependence on the library
-[proving-link-dep-on-lib]: #Proving.the.link.step.s.dependence.on.the.library
-
-First, we can test whether its used by the linker at all by separating the link
-invocation from the rest of the compiler steps, and then modifying it and
-running it on its own.
-
-```sh
-% mkdir -p out/sl out/bins/ps/dsl2step
-% rustc --out-dir out/ps/sl simple-lib.rs
-% ls out/ps/sl
-libsimple_lib.rlib
-% LINKER_COMMAND=$(rustc --out-dir out/bins/ps/dsl2step demo-simple-lib.rs -Lout/ps/sl -Csave-temps --print=link-args -Ccodegen-units=1)
-% ls out/bins/ps/dsl2step
-demo-simple-lib                                                demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.o
-demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.bc         demo-simple-lib.hlsxcd1s0pxo20a.rcgu.bc
-demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.no-opt.bc  demo-simple-lib.hlsxcd1s0pxo20a.rcgu.o
-% ./out/bins/ps/dsl2step/demo-simple-lib
-Running main from simple-lib.rs
-% rm ./out/bins/ps/dsl2step/demo-simple-lib
-% eval $LINKER_COMMAND
-% ./out/bins/ps/dsl2step/demo-simple-lib
-Running main from simple-lib.rs
-%
-```
-
-The significance of the above sequence: It runs `rustc -Csave-temps --print=link-args` which will preserve the generated object files and also print out the linker invocation it runs.
-
-{% marginblock %}
-In practice when doing these kinds of experiments, you should not blindly use `eval`  in the manner I have shown here,
-but instead echo the linker command to the screen and confirm that it is something you trust running.
-{% endmarginblock %}
-We can run the generated binary, delete the binary, and then re-run that linker
-command ourselves (`eval $LINKER_COMMAND`), and re-run the binary again. This
-confirms that this linker invocation does indeed generate that binary.
-
-With that in place, one way we could exercise the linker's use of the file: we
-could just delete `libsimple_lib.rlib`, and run the original linker invocation:
-
-```sh
-% eval $LINKER_COMMAND
-% rm out/ps/sl/libsimple_lib.rlib
-% ls out/ps/sl/
-% eval $LINKER_COMMAND
-/usr/bin/ld: cannot find /media/pnkfelix/Rust/Linking/out/ps/sl/libsimple_lib.rlib: No such file or directory
-collect2: error: ld returned 1 exit status
-```
-
-Another slightly more complicated way we could expose the dependence of our
-object code on that file: We can remove the reference to `libsimple_lib.rlib`
-from the linker invocation, and run the resulting new linker invocation:
-
-```sh
-% NEW_COMMAND=$(echo "$LINKER_COMMAND" | sed -e 's@"-Wl,-Bstatic" .*/libsimple_lib.rlib"@@')
-% eval $NEW_COMMAND
-/usr/bin/ld: out/bins/ps/dsl2step/demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.o: in function `demo_simple_lib::main':
-demo_simple_lib.66aa33f3-cgu.0:(.text._ZN15demo_simple_lib4main17h9794b393d760d697E+0x3): undefined reference to `simple_lib::main'
-collect2: error: ld returned 1 exit status
-```
-
-This gives you an idea of the kinds of nasty error messages you have to deal
-with when you start playing games with your build artifacts: The linker is
-rightfully complaining that the generated object code for
-`demo_simple_lib::main` has some reference to `simple_lib::main` (indeed,the
-very definition of the former is just a single invocation of the latter), and
-yet that reference cannot be satisfied. (It is up to the user to read that
-message and infer that the core problem is that the linker is no longer
-receiving the path to `libsimple_lib.rlib` as one of its command line
-arguments.)
-
-### Proving the compiler's dependence on the library
-[proving-comp-dep-on-lib]: #Proving.the.compiler.s.dependence.on.the.library
-The previous section established that the linker needs the `.rlib` file in
-place. But, maybe that's only necessary for the link step alone, and `rustc`
-itself doesn't need the actual file?
-
-We can test this theory too, in a similar form of direct experimentation
-on the build artifacts.
-
-First, lets try removing the file (same as illustrated in the previous section)
-
-```sh
-% rm -f out/ps/sl/libsimple_lib.rlib
-% ls out/ps/sl
-% rustc --out-dir out/bins/ps/dsl demo-simple-lib.rs -Lout/ps/sl
-error[E0463]: can't find crate for `simple_lib`
- --> demo-simple-lib.rs:1:1
-  |
-1 | extern crate simple_lib;
-  | ^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0463`.
-%
-```
-
-This shows that the compiler is *definitely* using the file `libsimple_lib.rlib`
-as part of its compilation of `demo-simple-lib.rs`.
-
-If we try to force the compiler to make forward progress by giving it a dummy file,
-it will still complain:
-
-```rust
-% touch out/ps/sl/libsimple_lib.rlib
-% ls -s out/ps/sl/
-total 0
-0 libsimple_lib.rlib
-% rustc --out-dir out/bins/ps/dsl demo-simple-lib.rs -Lout/ps/sl
-error[E0786]: found invalid metadata files for crate `simple_lib`
- --> demo-simple-lib.rs:1:1
-  |
-1 | extern crate simple_lib;
-  | ^^^^^^^^^^^^^^^^^^^^^^^^
-  |
-  = note: failed to mmap file '/media/pnkfelix/Rust/Linking/out/ps/sl/libsimple_lib.rlib': memory map must have a non-zero length
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0786`.
-```
-
-Upon reflection, this all makes perfect sense: As part of compiling
-`demo-simple-lib.rs`, the compiler is going to reference external metadata (i.e.
-the function signatures and type definitions from the `simple-lib` crate).
-
-
-So, we have walked through some of the issues that arise when linking crates
-together. The `demo-simple-lib` example demostrated Rust's `lib` crate type,
+The `demo-simple-lib` example demonstrates Rust's `lib` crate type,
 which is specified as a compiler-defined choice from one of the flavors of
 libraries that Rust supports.
 
@@ -343,6 +197,13 @@ definitions from `rlib` crates as well.
 
 We will now step through other supported crate types, and provide
 a similar demonstration of how they operate.
+
+{% marginblock %}
+Re-reading the overall post now, I am thinking that I should have put `dylib` at
+the end, due to the number of rabbit holes it opens up. Maybe I will edit the
+post in the future and do that rearrangement, so that people can see the "easy
+cases" first.
+{% endmarginblock %}
 
 ## Dynamic Libraries: `dylib`
 
@@ -821,3 +682,156 @@ So, lots of material for future posts.
 
 (And also, lots of opportunities to try to clean up the presentation of this
 post.)
+
+## Appendix: Who is using that library?
+
+
+Consider this diagram:
+
+<div class="mermaid">
+graph TD
+SlObj[libsimple_lib.rlib]
+DemoSlCompile -.finds file.-> SlObj
+DemoSlSource[demo-simple-lib.rs]
+DemoSlObj[demo-simple-lib.obj]
+DemoSlSource --> DemoSlCompile((rustc))
+SlObj --> link
+DemoSlCompile -- generates --> DemoSlObj
+subgraph "implicit &nbsp;&nbsp; link-step"
+DemoSlObj --> link
+link((link))
+end
+</div>
+
+Here is an important question you should ask yourself: is `libsimple_lib.rlib`
+actually used by the linker? Or is it solely used as input to `rustc` (i.e.,
+potentially used in the generation of `demo-simple-lib.obj` itself). Or is it
+used by both `rustc` *and* the linker?
+
+We can test this question directly, with some slight tweaks to our commands.
+
+### Proving the link step's dependence on the library
+[proving-link-dep-on-lib]: #Proving.the.link.step.s.dependence.on.the.library
+
+First, we can test whether its used by the linker at all by separating the link
+invocation from the rest of the compiler steps, and then modifying it and
+running it on its own.
+
+```sh
+% mkdir -p out/sl out/bins/ps/dsl2step
+% rustc --out-dir out/ps/sl simple-lib.rs
+% ls out/ps/sl
+libsimple_lib.rlib
+% LINKER_COMMAND=$(rustc --out-dir out/bins/ps/dsl2step demo-simple-lib.rs -Lout/ps/sl -Csave-temps --print=link-args -Ccodegen-units=1)
+% ls out/bins/ps/dsl2step
+demo-simple-lib                                                demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.o
+demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.bc         demo-simple-lib.hlsxcd1s0pxo20a.rcgu.bc
+demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.no-opt.bc  demo-simple-lib.hlsxcd1s0pxo20a.rcgu.o
+% ./out/bins/ps/dsl2step/demo-simple-lib
+Running main from simple-lib.rs
+% rm ./out/bins/ps/dsl2step/demo-simple-lib
+% eval $LINKER_COMMAND
+% ./out/bins/ps/dsl2step/demo-simple-lib
+Running main from simple-lib.rs
+%
+```
+
+The significance of the above sequence: It runs `rustc -Csave-temps --print=link-args` which will preserve the generated object files and also print out the linker invocation it runs.
+
+{% marginblock %}
+In practice when doing these kinds of experiments, you should not blindly use `eval`  in the manner I have shown here,
+but instead echo the linker command to the screen and confirm that it is something you trust running.
+{% endmarginblock %}
+We can run the generated binary, delete the binary, and then re-run that linker
+command ourselves (`eval $LINKER_COMMAND`), and re-run the binary again. This
+confirms that this linker invocation does indeed generate that binary.
+
+With that in place, one way we could exercise the linker's use of the file: we
+could just delete `libsimple_lib.rlib`, and run the original linker invocation:
+
+```sh
+% eval $LINKER_COMMAND
+% rm out/ps/sl/libsimple_lib.rlib
+% ls out/ps/sl/
+% eval $LINKER_COMMAND
+/usr/bin/ld: cannot find /media/pnkfelix/Rust/Linking/out/ps/sl/libsimple_lib.rlib: No such file or directory
+collect2: error: ld returned 1 exit status
+```
+
+Another slightly more complicated way we could expose the dependence of our
+object code on that file: We can remove the reference to `libsimple_lib.rlib`
+from the linker invocation, and run the resulting new linker invocation:
+
+```sh
+% NEW_COMMAND=$(echo "$LINKER_COMMAND" | sed -e 's@"-Wl,-Bstatic" .*/libsimple_lib.rlib"@@')
+% eval $NEW_COMMAND
+/usr/bin/ld: out/bins/ps/dsl2step/demo-simple-lib.demo_simple_lib.66aa33f3-cgu.0.rcgu.o: in function `demo_simple_lib::main':
+demo_simple_lib.66aa33f3-cgu.0:(.text._ZN15demo_simple_lib4main17h9794b393d760d697E+0x3): undefined reference to `simple_lib::main'
+collect2: error: ld returned 1 exit status
+```
+
+This gives you an idea of the kinds of nasty error messages you have to deal
+with when you start playing games with your build artifacts: The linker is
+rightfully complaining that the generated object code for
+`demo_simple_lib::main` has some reference to `simple_lib::main` (indeed,the
+very definition of the former is just a single invocation of the latter), and
+yet that reference cannot be satisfied. (It is up to the user to read that
+message and infer that the core problem is that the linker is no longer
+receiving the path to `libsimple_lib.rlib` as one of its command line
+arguments.)
+
+### Proving the compiler's dependence on the library
+[proving-comp-dep-on-lib]: #Proving.the.compiler.s.dependence.on.the.library
+The previous section established that the linker needs the `.rlib` file in
+place. But, maybe that's only necessary for the link step alone, and `rustc`
+itself doesn't need the actual file?
+
+We can test this theory too, in a similar form of direct experimentation
+on the build artifacts.
+
+First, lets try removing the file (same as illustrated in the previous section)
+
+```sh
+% rm -f out/ps/sl/libsimple_lib.rlib
+% ls out/ps/sl
+% rustc --out-dir out/bins/ps/dsl demo-simple-lib.rs -Lout/ps/sl
+error[E0463]: can't find crate for `simple_lib`
+ --> demo-simple-lib.rs:1:1
+  |
+1 | extern crate simple_lib;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0463`.
+%
+```
+
+This shows that the compiler is *definitely* using the file `libsimple_lib.rlib`
+as part of its compilation of `demo-simple-lib.rs`.
+
+If we try to force the compiler to make forward progress by giving it a dummy file,
+it will still complain:
+
+```rust
+% touch out/ps/sl/libsimple_lib.rlib
+% ls -s out/ps/sl/
+total 0
+0 libsimple_lib.rlib
+% rustc --out-dir out/bins/ps/dsl demo-simple-lib.rs -Lout/ps/sl
+error[E0786]: found invalid metadata files for crate `simple_lib`
+ --> demo-simple-lib.rs:1:1
+  |
+1 | extern crate simple_lib;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: failed to mmap file '/media/pnkfelix/Rust/Linking/out/ps/sl/libsimple_lib.rlib': memory map must have a non-zero length
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0786`.
+```
+
+Upon reflection, this all makes perfect sense: As part of compiling
+`demo-simple-lib.rs`, the compiler is going to reference external metadata (i.e.
+the function signatures and type definitions from the `simple-lib` crate).
